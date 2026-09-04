@@ -1,0 +1,345 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(5, 5, 15, 0.9);
+    backdrop-filter: blur(0rem);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease, backdrop-filter 0.4s ease;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    backdrop-filter: blur(1.25rem);
+}
+
+.modal-content {
+    /* Glassmorphism background */
+    background: rgba(10, 12, 25, 0.85);
+    backdrop-filter: blur(1.25rem);
+    -webkit-backdrop-filter: blur(1.25rem);
+
+    /* Gradient border effect */
+    border: 0.0625rem solid transparent;
+    border-radius: 1.25rem;
+    background-image:
+        linear-gradient(rgba(10, 12, 25, 0.9), rgba(10, 12, 25, 0.9)),
+        linear-gradient(135deg, rgba(3, 218, 198, 0.5) 0%, rgba(3, 218, 198, 0.1) 30%, rgba(100, 100, 150, 0.1) 70%, rgba(3, 218, 198, 0.3) 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 35rem;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+
+    /* Premium shadow */
+    box-shadow:
+        0 2.5rem 5rem rgba(0, 0, 0, 0.6),
+        0 0 3.75rem rgba(3, 218, 198, 0.1);
+
+    transform: scale(0.92) translateY(1.875rem);
+    opacity: 0;
+    transition:
+        transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.4s ease;
+}
+
+/* ===== LIGHT MODE ===== */
+html[data-theme='light'] .modal-overlay {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-theme='light'] .modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)),
+        linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.3) 0%, rgba(var(--accent-color-rgb), 0.1) 30%, rgba(200, 200, 220, 0.1) 70%, rgba(var(--accent-color-rgb), 0.2) 100%);
+    box-shadow:
+        0 1.5rem 3rem rgba(0, 0, 0, 0.1),
+        0 0 2rem rgba(var(--accent-color-rgb), 0.05);
+}
+
+.modal-overlay.open .modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* Main Modal Title (passed as prop) */
+.modal-content>h2 {
+    background: linear-gradient(135deg, #03dac6 0%, #00f0d6 50%, #03dac6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -0.02em;
+    opacity: 0;
+    transform: translateY(0.9375rem);
+}
+
+html[data-theme='light'] .modal-content>h2 {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 50%, var(--accent-color) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.modal-overlay.open .modal-content>h2 {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.5s ease 0.1s;
+}
+
+/* Subtitle h2 inside modal-body */
+.modal-body h2 {
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0;
+}
+
+html[data-theme='light'] .modal-body h2 {
+    color: var(--text-color);
+}
+
+/* Close button */
+.modal-close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625rem solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.625rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 10;
+    opacity: 0;
+}
+
+html[data-theme='light'] .modal-close-button {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-overlay.open .modal-close-button {
+    opacity: 1;
+    transition: opacity 0.3s ease 0.2s, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.modal-close-button:hover {
+    background: rgba(255, 80, 80, 0.15);
+    border-color: rgba(255, 80, 80, 0.3);
+    color: #ff6666;
+}
+
+/* Modal body */
+.modal-body {
+    opacity: 0;
+    transform: translateY(0.9375rem);
+}
+
+.modal-overlay.open .modal-body {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.5s ease 0.2s;
+}
+
+/* First paragraph - intro */
+.modal-body>p:first-of-type {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    line-height: 1.7;
+    text-align: center;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='light'] .modal-body>p:first-of-type {
+    color: var(--text-color-secondary);
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Feature section headings */
+.modal-body h3 {
+    color: #ffffff;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.modal-body h3::before {
+    content: '';
+    width: 0.1875rem;
+    height: 1.125rem;
+    background: linear-gradient(180deg, #03dac6, rgba(3, 218, 198, 0.3));
+    border-radius: 0.125rem;
+    flex-shrink: 0;
+}
+
+html[data-theme='light'] .modal-body h3 {
+    color: var(--text-color);
+}
+
+html[data-theme='light'] .modal-body h3::before {
+    background: linear-gradient(180deg, var(--accent-color), rgba(var(--accent-color-rgb), 0.3));
+}
+
+/* Feature descriptions */
+.modal-body p {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    padding-left: 0.8125rem;
+}
+
+html[data-theme='light'] .modal-body p {
+    color: var(--text-color-secondary);
+}
+
+/* Feature cards container - for grouped features */
+.modal-feature-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 0.0625rem solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+html[data-theme='light'] .modal-feature-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Modal Feature Image */
+.modal-feature-image {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.05) 0%, rgba(3, 218, 198, 0.02) 100%);
+    border: 0.0625rem solid rgba(3, 218, 198, 0.1);
+}
+
+html[data-theme='light'] .modal-feature-image {
+    background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.05) 0%, rgba(var(--accent-color-rgb), 0.02) 100%);
+    border-color: rgba(var(--accent-color-rgb), 0.15);
+}
+
+.modal-feature-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+/* Modal CTA Button */
+.modal-cta-button {
+    display: block;
+    width: 100%;
+    padding: 0.875rem 1.75rem;
+    margin-top: 1.75rem;
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.15) 0%, rgba(3, 218, 198, 0.08) 100%);
+    border: 0.0625rem solid rgba(3, 218, 198, 0.35);
+    border-radius: 0.75rem;
+    color: #03dac6;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.modal-cta-button:hover {
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.25) 0%, rgba(3, 218, 198, 0.15) 100%);
+    border-color: rgba(3, 218, 198, 0.6);
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.75rem 1.875rem rgba(3, 218, 198, 0.2);
+}
+
+html[data-theme='light'] .modal-cta-button {
+    background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.15) 0%, rgba(var(--accent-color-rgb), 0.08) 100%);
+    border-color: rgba(var(--accent-color-rgb), 0.35);
+    color: var(--accent-color);
+}
+
+html[data-theme='light'] .modal-cta-button:hover {
+    background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.25) 0%, rgba(var(--accent-color-rgb), 0.15) 100%);
+    border-color: rgba(var(--accent-color-rgb), 0.6);
+    box-shadow: 0 0.75rem 1.875rem rgba(var(--accent-color-rgb), 0.15);
+}
+
+/* Custom Scrollbar - Ultra Discreet */
+.modal-content::-webkit-scrollbar {
+    width: 0.1875rem !important;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(3, 218, 198, 0.2) !important;
+    border-radius: 0.125rem;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(3, 218, 198, 0.4) !important;
+}
+
+html[data-theme='light'] .modal-content::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-color-rgb), 0.3) !important;
+}
+
+html[data-theme='light'] .modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-color-rgb), 0.5) !important;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .modal-content {
+        padding: 1.75rem 1.25rem;
+        border-radius: 1rem;
+    }
+
+    .modal-content h2 {
+        font-size: 1.4rem;
+    }
+
+    .modal-body h3 {
+        font-size: 0.95rem;
+    }
+
+    .modal-body p {
+        font-size: 0.85rem;
+    }
+}

@@ -1,0 +1,186 @@
+/* Conectores — Clinical Glassmorphism. Dark = glow (luz emitida), Light = cast shadow. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.header {
+  margin-bottom: 4px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text-primary, #e8e6ef);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #a9a6b8);
+  line-height: 1.5;
+}
+
+/* --- Card por provedor --- */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: rgba(30, 30, 40, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cardConnected {
+  border-color: rgba(3, 218, 198, 0.4);
+  box-shadow: 0 0 0 1px rgba(3, 218, 198, 0.15), 0 6px 24px rgba(3, 218, 198, 0.12);
+}
+
+.cardRevoked {
+  border-color: rgba(255, 183, 77, 0.45);
+}
+
+.cardSoon {
+  opacity: 0.6;
+}
+
+.cardIcon {
+  font-size: 1.9rem;
+  width: 44px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardName {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary, #e8e6ef);
+}
+
+.cardStatus {
+  margin-top: 3px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #a9a6b8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusOk {
+  color: #03dac6;
+}
+
+.statusRevoked {
+  color: #ffb74d;
+}
+
+.cardAction {
+  flex-shrink: 0;
+}
+
+/* Botão conectar — gradiente teal com glow (secundário do design system) */
+.connectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #03dac6 0%, #018786 100%);
+  box-shadow: 0 4px 15px rgba(3, 218, 198, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.connectBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(3, 218, 198, 0.5);
+}
+
+.connectBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.disconnectBtn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: var(--text-secondary, #a9a6b8);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.disconnectBtn:hover {
+  color: #cf6679;
+  border-color: rgba(207, 102, 121, 0.5);
+}
+
+.soonBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--text-secondary, #a9a6b8);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* --- Light mode: profundidade por sombra projetada, não por glow --- */
+html[data-theme='light'] .card {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='light'] .cardConnected {
+  border-color: rgba(1, 135, 134, 0.4);
+  box-shadow: 0 4px 16px rgba(1, 135, 134, 0.15);
+}
+
+html[data-theme='light'] .title,
+html[data-theme='light'] .cardName {
+  color: #1a1a24;
+}
+
+html[data-theme='light'] .subtitle,
+html[data-theme='light'] .cardStatus,
+html[data-theme='light'] .disconnectBtn {
+  color: #5a5766;
+}
+
+html[data-theme='light'] .statusOk {
+  color: #018786;
+}
+
+html[data-theme='light'] .soonBadge {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #5a5766;
+}

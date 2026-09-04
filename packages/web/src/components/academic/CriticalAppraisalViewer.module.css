@@ -1,0 +1,233 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px;
+  color: var(--text-color, #e6e6ea);
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-color, #fff);
+}
+
+.citation {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary, #9aa);
+  font-style: italic;
+  margin: -8px 0 0;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(187, 134, 252, 0.14);
+  border: 1px solid rgba(187, 134, 252, 0.3);
+  color: var(--accent-color, #bb86fc);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--text-color-secondary, #9aa);
+  margin: 0;
+}
+
+.section p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.picoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.picoCell {
+  background: var(--card-background-color, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.picoLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-color, #bb86fc);
+  margin-bottom: 4px;
+}
+
+.picoValue {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.biasItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.06);
+  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.15));
+}
+
+.biasDomain {
+  font-weight: 600;
+}
+
+.biasRationale {
+  flex: 1 1 100%;
+  font-size: 0.88rem;
+  color: var(--text-color-secondary, #aab);
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.resultItem {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.06);
+  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.15));
+}
+
+.resultOutcome {
+  font-weight: 600;
+}
+
+.resultEffect {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.9rem;
+  color: var(--accent-color, #bb86fc);
+  margin: 2px 0;
+}
+
+.resultInterp {
+  font-size: 0.88rem;
+  color: var(--text-color-secondary, #aab);
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.examBox {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(3, 218, 198, 0.1), rgba(3, 218, 198, 0.04));
+  border: 1px solid rgba(3, 218, 198, 0.3);
+}
+
+.examLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: #03dac6;
+  margin-bottom: 4px;
+}
+
+.examBox p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.bottomLine {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(187, 134, 252, 0.14), rgba(187, 134, 252, 0.05));
+  border: 1px solid rgba(187, 134, 252, 0.35);
+}
+
+.bottomLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--accent-color, #bb86fc);
+  margin-bottom: 4px;
+}
+
+.bottomLine p {
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.badgeGood {
+  background: rgba(46, 204, 113, 0.18);
+  color: #2ecc71;
+}
+
+.badgeWarn {
+  background: rgba(241, 196, 15, 0.18);
+  color: #f1c40f;
+}
+
+.badgeBad {
+  background: rgba(231, 76, 60, 0.18);
+  color: #e74c3c;
+}
+
+.badgeInfo {
+  background: rgba(52, 152, 219, 0.18);
+  color: #3498db;
+}
+
+.badgeNeutral {
+  background: rgba(127, 127, 127, 0.16);
+  color: var(--text-color-secondary, #9aa);
+}
+
+@media (max-width: 560px) {
+  .picoGrid,
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}

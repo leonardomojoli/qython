@@ -1,0 +1,56 @@
+/* frontend/src/components/InlineLoading.module.css */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(10px, 3vw, 20px);
+  gap: clamp(8px, 2vw, 15px);
+  color: var(--text-color-secondary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.loadingText {
+  margin: 0;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  font-style: italic;
+}
+
+/* Animações copiadas de DNALoadingAnimation.module.css */
+.dnaStrand1,
+.dnaStrand2 {
+  stroke-dasharray: 20, 20;
+  animation: moveHelix 2s linear infinite;
+}
+
+.dnaStrand2 {
+  animation-delay: 1s;
+}
+
+.dnaBar {
+  animation: subtlePulse 1s infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes moveHelix {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 40;
+  }
+}
+
+@keyframes subtlePulse {
+
+  0%,
+  100% {
+    stroke-width: 1;
+  }
+
+  50% {
+    stroke-width: 1.5;
+  }
+}

@@ -1,0 +1,512 @@
+/* frontend/src/global.css */
+
+/* ============================================================
+   QYTHON - SISTEMA DE DESIGN (Design Tokens)
+   ============================================================
+
+   ESTRUTURA:
+   1. Reset & Base
+   2. Variáveis de Tema (Dark Mode - Padrão)
+   3. Variáveis de Tema (Light Mode)
+   4. Elementos de Formulário Globais
+   5. Layout da Aplicação
+   6. Scrollbar Customizada
+
+   CONVENÇÃO DE NOMENCLATURA:
+   - Cores semânticas: --color-{contexto}-{variante}
+   - Cores de marca: --brand-{primary|secondary}
+   - Cores de feedback: --feedback-{success|error|warning|info}
+   - Componentes: --{componente}-{propriedade}
+
+   ============================================================ */
+
+/* --- 1. RESET & BASE --- */
+* {
+  font-family: "Inter", Arial, sans-serif !important;
+  box-sizing: border-box;
+}
+
+html {
+  /* Scale all rem-based measurements to ~80.75% (95% of 85%) for a more compact feel */
+  font-size: 80.75%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- 2. VARIÁVEIS DE TEMA (DARK MODE - Padrão) --- */
+:root {
+  /* ========================================
+     CORES DE SUPERFÍCIE (Backgrounds)
+     Premium Medical Dark - Clean & Sophisticated
+     ======================================== */
+  --color-bg: #0f1117;
+  --color-bg-rgb: 15, 17, 23;
+  --color-surface: #181b23;           /* Cards, painéis elevados */
+  --color-surface-rgb: 24, 27, 35;
+  --color-surface-elevated: #1f232d;  /* Elementos mais elevados */
+  --color-input-bg: #252a36;          /* Campos de input */
+
+  /* ========================================
+     CORES DE TEXTO - Clean & Readable
+     ======================================== */
+  --color-text: #f0f2f5;
+  --color-text-rgb: 240, 242, 245;
+  --color-text-secondary: #9ca3af;    /* Labels, descrições */
+  --color-text-muted: rgba(240, 242, 245, 0.45); /* Placeholders, desabilitados */
+
+  /* ========================================
+     CORES DE BORDA - Subtle & Refined
+     ======================================== */
+  --color-border: #2a2f3a;
+  --color-border-light: rgba(255, 255, 255, 0.04);
+  --color-border-hover: rgba(255, 255, 255, 0.08);
+
+  /* ========================================
+     CORES DA MARCA (Brand) - Premium Medical
+     ======================================== */
+  /* Primária: Violet/Purple refinado - Identidade principal */
+  --brand-primary: #7c5ce0;
+  --brand-primary-rgb: 124, 92, 224;
+  --brand-primary-light: #9b82e8;
+  --brand-primary-dark: #5d3fc7;
+
+  /* Secundária: Teal médico - Profissional e clean */
+  --brand-secondary: #2dd4bf;
+  --brand-secondary-rgb: 45, 212, 191;
+  --brand-secondary-light: #5eead4;
+  --brand-secondary-dark: #14b8a6;
+
+  /* ========================================
+     CORES INTERATIVAS (Estados) - Softer
+     ======================================== */
+  --color-interactive: #a78bfa;       /* Foco, hover, estados ativos */
+  --color-interactive-rgb: 167, 139, 250;
+  --color-interactive-hover: #c4b5fd;
+  --color-highlight: #8b5cf6;         /* Destaques, badges */
+
+  /* ========================================
+     CORES DE FEEDBACK (Notificações) - Muted Tones
+     ======================================== */
+  --feedback-success: #10b981;
+  --feedback-success-light: #d1fae5;
+  --feedback-success-text: #ffffff;
+  --feedback-success-border: #059669;
+
+  --feedback-error: #ef4444;
+  --feedback-error-light: #fee2e2;
+  --feedback-error-text: #ffffff;
+  --feedback-error-border: #dc2626;
+
+  --feedback-warning: #f59e0b;
+  --feedback-warning-light: #fef3c7;
+  --feedback-warning-text: #fffbeb;
+  --feedback-warning-border: #d97706;
+
+  --feedback-info: #8b5cf6;
+  --feedback-info-light: #ede9fe;
+  --feedback-info-text: #ffffff;
+  --feedback-info-border: #7c3aed;
+
+  /* ========================================
+     GRADIENTES - Subtle & Premium
+     ======================================== */
+  --gradient-brand: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-light) 100%);
+  --gradient-brand-dark: linear-gradient(135deg, var(--brand-primary-dark) 0%, var(--brand-primary) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--brand-secondary) 0%, var(--brand-secondary-dark) 100%);
+  --gradient-interactive: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --gradient-logo: linear-gradient(to right, #5eead4, #2dd4bf);
+
+  /* ========================================
+     GLASSMORPHISM (Efeito Vidro) - Refined
+     ======================================== */
+  --glass-bg: rgba(24, 27, 35, 0.75);
+  --glass-bg-elevated: rgba(31, 35, 45, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.04);
+  --glass-border-hover: rgba(255, 255, 255, 0.08);
+
+  /* ========================================
+     SOMBRAS E OVERLAYS - Softer
+     ======================================== */
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.2);
+  --overlay-modal: rgba(0, 0, 0, 0.7);
+
+  /* ========================================
+     COMPONENTES ESPECÍFICOS - Premium
+     ======================================== */
+  /* Sidebar */
+  --sidebar-bg: #13161e;
+  --sidebar-text: var(--color-text);
+  --sidebar-icon: var(--color-text-secondary);
+  --sidebar-hover: var(--brand-secondary);
+
+  /* Header */
+  --header-title: #f0f2f5;
+  --header-accent: var(--brand-secondary);
+
+  /* Checkbox */
+  --checkbox-bg: #252a36;
+  --checkbox-border: var(--color-border);
+  --checkbox-hover-border: var(--color-interactive);
+  --checkbox-checked-bg: var(--brand-primary);
+  --checkbox-checked-border: var(--brand-primary);
+  --checkbox-checkmark: #ffffff;
+
+  /* ========================================
+     ALIASES (Compatibilidade com código existente)
+     Estes aliases garantem que o código antigo continue funcionando.
+     Em futuras refatorações, podem ser removidos gradualmente.
+     ======================================== */
+  --background-color: var(--color-bg);
+  --background-color-rgb: var(--color-bg-rgb);
+  --text-color: var(--color-text);
+  --text-color-rgb: var(--color-text-rgb);
+  --text-color-secondary: var(--color-text-secondary);
+  --text-primary: var(--color-text);
+  --text-muted: var(--color-text-muted);
+  --border-color: var(--color-border);
+
+  --primary-color: var(--brand-primary);
+  --primary-color-rgb: var(--brand-primary-rgb);
+  --primary-light: var(--brand-primary-light);
+  --primary-dark: var(--brand-primary-dark);
+
+  --secondary-color: var(--brand-secondary);
+  --secondary-color-rgb: var(--brand-secondary-rgb);
+  --secondary-light: var(--brand-secondary-light);
+  --secondary-dark: var(--brand-secondary-dark);
+
+  --accent-color: var(--color-interactive);
+  --accent-color-rgb: var(--color-interactive-rgb);
+
+  --card-background-color: var(--color-surface);
+  --card-background-color-rgb: var(--color-surface-rgb);
+  --input-background-color: var(--color-input-bg);
+
+  --sidebar-background-color: var(--sidebar-bg);
+  --sidebar-text-color: var(--sidebar-text);
+  --sidebar-icon-color: var(--sidebar-icon);
+  --sidebar-hover-link-color: var(--sidebar-hover);
+
+  --header-title-color: var(--header-title);
+  --header-accent-color: var(--header-accent);
+
+  --modal-overlay: var(--overlay-modal);
+  --inset-shadow: rgba(255, 255, 255, 0.05);
+
+  /* Notificações (aliases) */
+  --notification-success-bg: var(--feedback-success);
+  --notification-success-text: var(--feedback-success-text);
+  --notification-success-border: var(--feedback-success-border);
+
+  --notification-error-bg: var(--feedback-error);
+  --notification-error-text: var(--feedback-error-text);
+  --notification-error-border: var(--feedback-error-border);
+
+  --notification-warning-bg: var(--feedback-warning);
+  --notification-warning-text: var(--feedback-warning-text);
+  --notification-warning-border: var(--feedback-warning-border);
+
+  --notification-info-bg: var(--feedback-info);
+  --notification-info-text: var(--feedback-info-text);
+  --notification-info-border: var(--feedback-info-border);
+
+  /* Logo Gradient (alias) */
+  --logo-gradient: var(--gradient-logo);
+
+  /* Checkbox (aliases) */
+  --checkbox-bg-unchecked: var(--checkbox-bg);
+  --checkbox-border-unchecked: var(--checkbox-border);
+  --checkbox-hover-border: var(--checkbox-hover-border);
+  --checkbox-bg-checked: var(--checkbox-checked-bg);
+  --checkbox-border-checked: var(--checkbox-checked-border);
+  --checkbox-checkmark-color: var(--checkbox-checkmark);
+}
+
+/* --- 3. VARIÁVEIS DE TEMA (LIGHT MODE) --- */
+html[data-theme='light'] {
+  /* ========================================
+     CORES DE SUPERFÍCIE (Backgrounds)
+     Premium Medical Light - Clean & Airy
+     ======================================== */
+  --color-bg: #f8fafc;
+  --color-bg-rgb: 248, 250, 252;
+  --color-surface: #ffffff;
+  --color-surface-rgb: 255, 255, 255;
+  --color-surface-elevated: #ffffff;
+  --color-input-bg: #ffffff;
+
+  /* ========================================
+     CORES DE TEXTO - High Contrast & Readable
+     ======================================== */
+  --color-text: #1e293b;
+  --color-text-rgb: 30, 41, 59;
+  --color-text-secondary: #64748b;
+  --color-text-muted: rgba(30, 41, 59, 0.45);
+
+  /* ========================================
+     CORES DE BORDA - Subtle & Clean
+     ======================================== */
+  --color-border: #e2e8f0;
+  --color-border-light: rgba(0, 0, 0, 0.04);
+  --color-border-hover: rgba(0, 0, 0, 0.08);
+
+  /* ========================================
+     CORES DA MARCA (Brand) - Light Mode with Lilac
+     No modo claro, lilás substitui turquesa como cor de destaque
+     ======================================== */
+  /* Primária: Violet profissional (mantém) */
+  --brand-primary: #7c5ce0;
+  --brand-primary-rgb: 124, 92, 224;
+  --brand-primary-light: #9b82e8;
+  --brand-primary-dark: #5d3fc7;
+
+  /* Secundária: Lilás elegante - Substitui turquesa no modo claro */
+  --brand-secondary: #8b5cf6;
+  --brand-secondary-rgb: 139, 92, 246;
+  --brand-secondary-light: #a78bfa;
+  --brand-secondary-dark: #7c3aed;
+
+  /* ========================================
+     CORES INTERATIVAS (Estados)
+     ======================================== */
+  --color-interactive: #8b5cf6;
+  --color-interactive-rgb: 139, 92, 246;
+  --color-interactive-hover: #a78bfa;
+  --color-highlight: #7c3aed;
+
+  /* ========================================
+     CORES DE FEEDBACK (Notificações) - Light Mode
+     ======================================== */
+  --feedback-success: #10b981;
+  --feedback-success-light: #d1fae5;
+  --feedback-success-text: #065f46;
+  --feedback-success-border: #a7f3d0;
+
+  --feedback-error: #ef4444;
+  --feedback-error-light: #fee2e2;
+  --feedback-error-text: #991b1b;
+  --feedback-error-border: #fecaca;
+
+  --feedback-warning: #f59e0b;
+  --feedback-warning-light: #fef3c7;
+  --feedback-warning-text: #92400e;
+  --feedback-warning-border: #fde68a;
+
+  --feedback-info: #8b5cf6;
+  --feedback-info-light: #ede9fe;
+  --feedback-info-text: #5b21b6;
+  --feedback-info-border: #ddd6fe;
+
+  /* ========================================
+     GLASSMORPHISM (Efeito Vidro) - Light Mode
+     ======================================== */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.04);
+  --glass-border-hover: rgba(0, 0, 0, 0.08);
+
+  /* ========================================
+     SOMBRAS E OVERLAYS - Light Mode Subtle
+     ======================================== */
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.1);
+  --overlay-modal: rgba(0, 0, 0, 0.5);
+
+  /* ========================================
+     COMPONENTES ESPECÍFICOS - Light Mode with Lilac
+     ======================================== */
+  /* Sidebar */
+  --sidebar-bg: #f1f5f9;
+  --sidebar-text: var(--color-text);
+  --sidebar-icon: #64748b;
+  --sidebar-hover: var(--brand-secondary);
+
+  /* Header */
+  --header-title: #1e293b;
+  --header-accent: var(--brand-secondary);
+
+  /* Checkbox */
+  --checkbox-bg: #ffffff;
+  --checkbox-border: #e2e8f0;
+  --checkbox-checked-bg: var(--brand-secondary);
+  --checkbox-checked-border: var(--brand-secondary);
+  --checkbox-checkmark: #ffffff;
+
+  /* ========================================
+     ALIASES - Light Mode Overrides
+     ======================================== */
+  --inset-shadow: rgba(0, 0, 0, 0.03);
+
+  /* Notificações Light (backgrounds mais claros) */
+  --notification-success-bg: var(--feedback-success-light);
+  --notification-success-text: var(--feedback-success-text);
+  --notification-success-border: var(--feedback-success-border);
+
+  --notification-error-bg: var(--feedback-error-light);
+  --notification-error-text: var(--feedback-error-text);
+  --notification-error-border: var(--feedback-error-border);
+
+  --notification-warning-bg: var(--feedback-warning-light);
+  --notification-warning-text: var(--feedback-warning-text);
+  --notification-warning-border: var(--feedback-warning-border);
+
+  --notification-info-bg: var(--feedback-info-light);
+  --notification-info-text: var(--feedback-info-text);
+  --notification-info-border: var(--feedback-info-border);
+}
+
+/* --- 4. ELEMENTOS DE FORMULÁRIO GLOBAIS --- */
+input,
+textarea,
+select {
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  border-radius: 6px;
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-interactive);
+  box-shadow: 0 0 0 2px rgba(var(--color-interactive-rgb), 0.25);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="%23adb5bd"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 35px;
+}
+
+/* --- 5. LAYOUT DA APLICAÇÃO (Sidebar + Main) --- */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.sidebar-app-container {
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+  height: 100%;
+  z-index: 100;
+}
+
+/* Só quando o visualizador PERSISTENTE do Produtor de Materiais está com o overlay aberto
+   (classe adicionada em App.js) elevamos a barra lateral ACIMA do overlay (2000), para que
+   ela continue clicável — o usuário navega pra outra seção e o material recolhe pra pílula.
+   Fora disso — inclusive durante uma PROVA do Meus Concursos, que é um modal local focado —
+   a barra fica em z-index 100 e o overlay a bloqueia, como antes (sem sair no meio da prova).
+   Fica abaixo dos modais transitórios (99999) e do tour (10000), então não os cobre. */
+.sidebar-app-container.viewer-active {
+  position: relative;
+  z-index: 2100;
+}
+
+.sidebar-app-container.open {
+  width: 13.75rem;
+}
+
+.sidebar-app-container.closed {
+  width: 5rem;
+}
+
+/* Área Principal de Conteúdo */
+.main-content-area {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  position: relative;
+}
+
+/* --- 6. SCROLLBAR CUSTOMIZADA (Webkit) --- */
+.main-content-area::-webkit-scrollbar {
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.main-content-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content-area::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 0.25rem;
+}
+
+.main-content-area::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-interactive);
+}
+
+/* Firefox Scrollbar */
+.main-content-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* --- 6b. SCROLLBAR GLOBAL — qualquer área rolável (textareas, modais, listas) herda o tema.
+   Regras por-componente mais específicas (.main-content-area, chat, etc.) continuam ganhando. --- */
+*::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 0.25rem;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-interactive);
+}
+
+/* Firefox — herda para todos os descendentes */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Tela cheia dos modais (#modal-portal)
+
+   O alvo do `requestFullscreen()` é o CONTAINER do portal, não o nó do modal:
+   o navegador sai da tela cheia sozinho quando o elemento em fullscreen é
+   removido/reinserido no DOM, e o conteúdo do modal é reconciliado pelo React
+   a todo momento. O container é estático no index.html, então a tela cheia
+   fica estável — e os diálogos de confirmação (irmãos no mesmo container)
+   ficam visíveis, em vez de renderizarem fora do elemento em tela cheia.
+   O overlay do modal (position: fixed; inset: 0) já pinta o fundo.
+--------------------------------------------------------------------------- */
+#modal-portal:fullscreen {
+  background: transparent;
+}
+
+#modal-portal::backdrop {
+  background: var(--modal-overlay, rgba(0, 0, 0, 0.6));
+}

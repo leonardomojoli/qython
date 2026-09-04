@@ -1,0 +1,81 @@
+.sticky-cta {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 20, 0.85);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(3, 218, 198, 0.2);
+    padding: 1.5rem;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 999;
+    animation: slideUp 0.5s ease-out;
+}
+
+.sticky-cta-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.sticky-cta h3 {
+    color: #ffffff;
+    font-size: 1.3rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.sticky-cta-button {
+    background: #121212;
+    color: #03dac6;
+    padding: 12px 32px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sticky-cta-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    background: #0a0a14;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .sticky-cta {
+        padding: 1rem;
+    }
+
+    .sticky-cta-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .sticky-cta h3 {
+        font-size: 1.1rem;
+    }
+
+    .sticky-cta-button {
+        width: 100%;
+        padding: 12px 24px;
+    }
+}

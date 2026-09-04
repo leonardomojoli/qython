@@ -1,0 +1,374 @@
+/* PrivacySection — LGPD settings panel */
+
+.privacySection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(30, 30, 40, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.sectionIcon {
+  color: var(--accent-color, #bb86fc);
+}
+
+.sectionDescription {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.consentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: rgba(20, 20, 30, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.consentBlock.danger {
+  border: 1px solid rgba(207, 102, 121, 0.4);
+}
+
+.subheader {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.blockDescription {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.65));
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 0.25rem 0;
+}
+
+/* Loading / states */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+  padding: 1rem 0;
+}
+
+.scopesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scopeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.scopeRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scopeText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.scopeLabel {
+  font-weight: 500;
+  color: var(--text-primary, #fff);
+  font-size: 0.95rem;
+}
+
+.scopeDescription {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.busyIcon {
+  color: var(--accent-color, #bb86fc);
+  align-self: center;
+}
+
+.activeIcon {
+  color: #03dac6;
+  align-self: center;
+}
+
+/* Toggle switch — mirrors the rest of Profile */
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.18);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+}
+
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(22px);
+}
+
+/* Action buttons */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(187, 134, 252, 0.35);
+  align-self: flex-start;
+}
+
+.actionButton:hover:not(:disabled) {
+  box-shadow: 0 8px 25px rgba(187, 134, 252, 0.5);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dangerButton {
+  background: linear-gradient(135deg, #cf6679 0%, #b00020 100%);
+  box-shadow: 0 4px 15px rgba(207, 102, 121, 0.35);
+}
+
+.dangerButton:hover:not(:disabled) {
+  box-shadow: 0 8px 25px rgba(207, 102, 121, 0.55);
+}
+
+.cancelButton {
+  padding: 0.7rem 1.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #fff);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancelButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Confirm dialog inline */
+.confirmBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(207, 102, 121, 0.08);
+  border: 1px solid rgba(207, 102, 121, 0.3);
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.warnIcon {
+  color: #cf6679;
+  font-size: 1.25rem;
+  align-self: flex-start;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.errorMessage {
+  color: #cf6679;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* Patient transparency share block */
+.patientShare {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.qrBox {
+  background: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.patientShareActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.linkText {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #fff);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.iconButton:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.plainLink {
+  color: var(--accent-color, #bb86fc);
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.plainLink:hover {
+  text-decoration: underline;
+}
+
+.footnote {
+  font-size: 0.85rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+  text-align: center;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.footnote a {
+  color: var(--accent-color, #bb86fc);
+  text-decoration: none;
+}
+
+.footnote a:hover {
+  text-decoration: underline;
+}
+
+/* Light mode adjustments */
+html[data-theme='light'] .privacySection {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .consentBlock {
+  background: rgba(245, 245, 250, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='light'] .scopeRow {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html[data-theme='light'] .scopeRow:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme='light'] .toggleSlider {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme='light'] .linkText {
+  color: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme='light'] .iconButton {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='light'] .iconButton:hover {
+  background: rgba(0, 0, 0, 0.09);
+}

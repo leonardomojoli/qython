@@ -1,0 +1,75 @@
+/* frontend/src/components/shared/DNALoadingAnimation.module.css */
+.dnaContainer {
+  display: flex;
+  justify-content: center;
+  /* Centraliza horizontalmente */
+  align-items: center;
+  /* Centraliza verticalmente */
+  height: 100vh;
+  /* Altura total da viewport */
+  width: 100vw;
+  /* Largura total da viewport */
+  margin: 0;
+  /* Remove margens padrão */
+  padding: 0;
+  /* Remove paddings padrão */
+  background-color: var(--background-color);
+  /* Cor de fundo do tema */
+  position: fixed;
+  /* Garante que cubra toda a tela */
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  /* Fica acima de outros elementos */
+}
+
+.dnaSvg {
+  width: clamp(120px, 25vw, 200px);
+  /* Largura fluida do SVG */
+  height: clamp(120px, 25vw, 200px);
+  /* Altura fluida do SVG */
+}
+
+/* Animação das hélices */
+.dnaStrand1,
+.dnaStrand2 {
+  stroke-dasharray: 20, 20;
+  /* Padrão de traço e espaço */
+  animation: moveHelix 2s linear infinite;
+}
+
+/* Atraso para a segunda hélice, criando um efeito alternado */
+.dnaStrand2 {
+  animation-delay: 1s;
+}
+
+/* Animação sutil para as barras */
+.dnaBar {
+  animation: subtlePulse 1s infinite;
+  animation-delay: var(--delay);
+}
+
+/* Animação para simular o movimento das hélices */
+@keyframes moveHelix {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 40;
+    /* Dobro do stroke-dasharray para loop contínuo */
+  }
+}
+
+/* Animação sutil para as barras */
+@keyframes subtlePulse {
+
+  0%,
+  100% {
+    stroke-width: 1;
+  }
+
+  50% {
+    stroke-width: 1.5;
+  }
+}

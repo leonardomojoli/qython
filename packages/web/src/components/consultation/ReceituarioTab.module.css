@@ -1,0 +1,586 @@
+/* frontend/src/components/consultation/ReceituarioTab.module.css */
+/* Deep Tech Glassmorphism - Combines Prescription + Document styles */
+
+.container {
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    /* Deep Tech Glass Base - Theme Responsive */
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    padding: 28px;
+    box-shadow:
+        0 8px 32px var(--shadow-color),
+        inset 0 1px 0 var(--inset-shadow);
+}
+
+.header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.title svg {
+    color: var(--accent-color, #bb86fc);
+    -webkit-text-fill-color: var(--accent-color, #bb86fc);
+    filter: drop-shadow(0 0 8px rgba(var(--accent-color-rgb), 0.4));
+}
+
+/* Sub-Tabs */
+.docTabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.docTabs::-webkit-scrollbar {
+    display: none;
+}
+
+.docTab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.docTab:hover {
+    background: var(--glass-bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--glass-border-hover);
+}
+
+.docTabActive {
+    background: rgba(var(--accent-color-rgb), 0.12);
+    border-color: rgba(var(--accent-color-rgb), 0.3);
+    color: var(--accent-color, #bb86fc);
+}
+
+.docTabActive:hover {
+    background: rgba(var(--accent-color-rgb), 0.15);
+}
+
+.docTabIcon {
+    font-size: 0.9rem;
+}
+
+.docTabActive .docTabIcon {
+    filter: drop-shadow(0 0 6px rgba(var(--accent-color-rgb), 0.4));
+}
+
+/* Section */
+.section {
+    margin-bottom: 20px;
+}
+
+.label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Patient Row */
+.patientRow {
+    margin-bottom: 20px;
+}
+
+.selectedPatient {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    border-radius: 12px;
+}
+
+.patientInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.patientName {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.patientMeta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.clearPatientBtn {
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.2);
+    color: #ff6b6b;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clearPatientBtn:hover {
+    background: rgba(255, 82, 82, 0.2);
+    border-color: rgba(255, 82, 82, 0.4);
+}
+
+.selectPatientBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px;
+    background: var(--glass-bg);
+    border: 1px dashed var(--glass-border-hover);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.selectPatientBtn:hover {
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border-color: rgba(var(--accent-color-rgb), 0.3);
+    color: var(--accent-color, #bb86fc);
+}
+
+/* Form Content */
+.formContent {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.formContent::-webkit-scrollbar {
+    width: 5px;
+}
+
+.formContent::-webkit-scrollbar-thumb {
+    background: var(--glass-border-hover);
+    border-radius: 3px;
+}
+
+.row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Cut-out Input Style */
+.input,
+.select,
+.textarea {
+    background: var(--input-background-color);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px var(--shadow-color);
+    width: 100%;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+    border-color: var(--accent-color);
+    background: var(--input-background-color);
+    box-shadow:
+        inset 0 2px 4px var(--shadow-color),
+        0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+}
+
+/* Medications List */
+.medicationsList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.medicationsList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.medicationsList::-webkit-scrollbar-track {
+    background: var(--glass-bg);
+    border-radius: 3px;
+}
+
+.medicationsList::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(187, 134, 252, 0.4), rgba(98, 0, 238, 0.4));
+    border-radius: 3px;
+}
+
+.medicationsList::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(187, 134, 252, 0.6), rgba(98, 0, 238, 0.6));
+}
+
+/* Medication Card */
+.medicationItem {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 18px;
+    position: relative;
+    transition: all 0.3s ease;
+    animation: fadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.medicationItem:hover {
+    background: var(--glass-bg-elevated);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 4px 16px var(--shadow-color);
+}
+
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.itemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.itemNumber {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-color, #bb86fc);
+    background: rgba(var(--accent-color-rgb), 0.12);
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+}
+
+.removeButton {
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.2);
+    color: #ff6b6b;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.removeButton:hover {
+    background: rgba(255, 82, 82, 0.2);
+    border-color: rgba(255, 82, 82, 0.4);
+    color: #ff5252;
+    box-shadow: 0 0 12px rgba(255, 82, 82, 0.2);
+}
+
+.medicationGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+/* Add Medication Button */
+.addItemButton {
+    width: 100%;
+    padding: 14px;
+    background: var(--glass-bg);
+    border: 1px dashed var(--glass-border-hover);
+    border-radius: 14px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    margin-bottom: 24px;
+}
+
+.addItemButton:hover {
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border-color: rgba(var(--accent-color-rgb), 0.3);
+    color: var(--accent-color, #bb86fc);
+    box-shadow: 0 0 20px rgba(var(--accent-color-rgb), 0.1);
+}
+
+.addItemButton svg {
+    transition: transform 0.2s ease;
+}
+
+.addItemButton:hover svg {
+    transform: scale(1.15);
+}
+
+/* ICD-10 Chips */
+.icdSection {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(76, 175, 80, 0.05);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    border-radius: 8px;
+}
+
+.icdChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.icdChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 16px;
+    font-size: 0.8125rem;
+    color: var(--text-color);
+}
+
+.icdChip strong {
+    color: #4caf50;
+    font-family: monospace;
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    padding-top: 24px;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Generate Button - Deep Tech Neon Style */
+.generateButton {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+
+    background: linear-gradient(135deg,
+            rgba(187, 134, 252, 0.9) 0%,
+            rgba(98, 0, 238, 0.9) 100%);
+    color: white;
+    border: none;
+    box-shadow:
+        0 4px 20px rgba(150, 80, 250, 0.35),
+        0 0 40px rgba(150, 80, 250, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.generateButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent);
+    transition: left 0.5s ease;
+}
+
+.generateButton:hover::before {
+    left: 100%;
+}
+
+.generateButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow:
+        0 8px 30px rgba(150, 80, 250, 0.45),
+        0 0 60px rgba(150, 80, 250, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.generateButton:disabled {
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.generateButton:disabled::before {
+    display: none;
+}
+
+.generateButton svg {
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+/* Feedback Section */
+.feedbackSection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+}
+
+.feedbackLabel {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.feedbackBtn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.likeBtn:hover {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+}
+
+.dislikeBtn:hover {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.3);
+    color: #f44336;
+}
+
+.feedbackThanks {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #4caf50;
+    margin-right: auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+        border-radius: 16px;
+    }
+
+    .docTabs {
+        gap: 6px;
+    }
+
+    .docTab {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+
+    .docTab span {
+        display: none;
+    }
+
+    .medicationGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .footer {
+        flex-direction: column;
+    }
+
+    .generateButton {
+        width: 100%;
+        justify-content: center;
+    }
+}

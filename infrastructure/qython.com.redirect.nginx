@@ -1,0 +1,49 @@
+# Legacy redirect: qython.com → qython.ai
+# Location: /etc/nginx/sites-available/qython.com
+#
+# 301 redirects everything to qython.ai. qython.com was acquired
+# (2026-03-14) as a brand-defense / vanity domain; the project chose
+# qython.ai as canonical, so qython.com stays here as a permanent redirect.
+
+server {
+    server_name qython.com www.qython.com;
+
+    location = /.well-known/assetlinks.json {
+        root /opt/qython/packages/web/build;
+        default_type application/json;
+        try_files $uri =404;
+    }
+    location = /.well-known/apple-app-site-association {
+        root /opt/qython/packages/web/build;
+        default_type application/json;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://qython.ai$request_uri;
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/qython.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/qython.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    listen 80;
+    server_name qython.com www.qython.com;
+
+    # ACME HTTP-01 (Let's Encrypt) — PRECISA vir antes do redirect. Um `return 301`
+    # em nível de server curto-circuita a seleção de location e a validação falha.
+    # Ver a explicação completa em qython.ai.nginx.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://qython.ai$request_uri;
+    }
+}

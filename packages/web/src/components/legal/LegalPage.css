@@ -1,0 +1,158 @@
+/* Legal Pages Styling */
+
+.legal-content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    line-height: 1.8;
+    color: var(--text-color);
+}
+
+.legal-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(to right, #8dffea, #00d7c6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.legal-last-updated {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    font-style: italic;
+}
+
+.legal-intro {
+    background: rgba(141, 255, 234, 0.05);
+    border-left: 4px solid var(--primary-color);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 4px;
+}
+
+.legal-intro p {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.legal-section {
+    margin-bottom: 3rem;
+}
+
+.legal-section h2 {
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+    color: #a390d4;
+    border-bottom: 2px solid rgba(163, 144, 212, 0.2);
+    padding-bottom: 0.5rem;
+}
+
+.legal-section-content {
+    font-size: 1rem;
+    color: #ccc;
+}
+
+.legal-section-content p {
+    margin-bottom: 1rem;
+}
+
+.legal-section-content ul,
+.legal-section-content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.legal-section-content li {
+    margin-bottom: 0.5rem;
+}
+
+.legal-section-content strong {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.legal-section-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.legal-section-content table th {
+    background: rgba(141, 255, 234, 0.1);
+    color: var(--primary-color);
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.legal-section-content table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Medical Disclaimer Section */
+.medical-disclaimer {
+    background: rgba(255, 193, 7, 0.05);
+    border: 3px solid #ffc107;
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 2rem 0;
+}
+
+.medical-disclaimer h2 {
+    color: #ffc107 !important;
+    border-bottom: 2px solid #ffc107;
+    text-align: center;
+    font-size: 1.8rem;
+}
+
+.disclaimer-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 1.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .legal-content {
+        padding: 1.5rem 1rem;
+    }
+
+    .legal-content h1 {
+        font-size: 2rem;
+    }
+
+    .legal-section h2 {
+        font-size: 1.3rem;
+    }
+
+    .legal-section-content {
+        font-size: 0.95rem;
+    }
+
+    .medical-disclaimer {
+        padding: 1.5rem;
+    }
+
+    .disclaimer-box {
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .legal-content h1 {
+        font-size: 1.75rem;
+    }
+
+    .legal-section h2 {
+        font-size: 1.2rem;
+    }
+}

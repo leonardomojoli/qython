@@ -1,0 +1,918 @@
+/* frontend/src/components/academic/SlideshowPreview.module.css */
+
+.slideshowContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.noContent {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+/* Header */
+.header {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.presentationTitle {
+  text-align: center;
+  color: var(--accent-color);
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.viewedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(3, 218, 198, 0.15);
+  border: 1px solid rgba(3, 218, 198, 0.3);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #03dac6;
+  font-weight: 500;
+}
+
+/* Progress Section */
+.progressSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #03dac6 0%, #00b4a0 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Main Layout with Sidebar */
+.mainLayout {
+  display: flex;
+  flex-grow: 1;
+  min-height: 0;
+  gap: 16px;
+}
+
+/* Thumbnail Sidebar */
+.thumbnailSidebar {
+  width: 160px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.thumbnailSidebar.hidden {
+  display: none;
+}
+
+.thumbnail {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.thumbnail:hover {
+  border-color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.05);
+}
+
+.thumbnail.active {
+  border-color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.1);
+}
+
+.thumbnail.viewed {
+  background: rgba(3, 218, 198, 0.03);
+}
+
+.thumbnailHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.thumbnailNumber {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.thumbnailBookmark {
+  font-size: 10px;
+  color: #ffc107;
+}
+
+.thumbnailCheck {
+  font-size: 10px;
+  color: #03dac6;
+  margin-left: auto;
+}
+
+.thumbnailTitle {
+  font-size: 11px;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.thumbnailPreview {
+  font-size: 9px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Slide Area */
+.slideArea {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 12px;
+}
+
+.slideWrapper {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide {
+  flex-grow: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.slideTitle {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+  color: var(--text-color);
+  flex-shrink: 0;
+}
+
+.slideContent {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.slideContent ul {
+  padding-left: 20px;
+  margin: 0;
+  line-height: 1.7;
+}
+
+.slideContent li {
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
+.subPoint {
+  list-style-type: circle;
+  margin-left: 20px;
+}
+
+/* Speaker Notes Panel */
+.notesPanel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.notesPanelTitle {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: var(--secondary-color);
+  font-weight: 600;
+}
+
+.notesContent {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Content Block Styles */
+.tableBlock h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: var(--text-color-secondary);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.tableBlock table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tableBlock th, .tableBlock td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.tableBlock th {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
+.imageBlock {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.imageBlock img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.keyTakeawayBlock {
+  background: rgba(var(--accent-color-rgb), 0.08);
+  border-left: 4px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 15px 20px;
+}
+
+.keyTakeawayBlock h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--accent-color);
+}
+
+.vignetteBlock {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+.vignetteBlock h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.vignetteBlock p {
+  margin: 0 0 10px 0;
+}
+
+.vignetteBlock p:last-child {
+  margin-bottom: 0;
+}
+
+/* Action Bar */
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 12px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.08);
+}
+
+.actionBtn.active {
+  background: rgba(3, 218, 198, 0.15);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.actionBtn svg {
+  font-size: 0.9rem;
+}
+
+/* Export Menu */
+.exportWrapper {
+  position: relative;
+}
+
+.exportMenu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  background: var(--card-background-color);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  overflow: hidden;
+  min-width: 160px;
+}
+
+.exportMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.exportMenu button:hover {
+  background: rgba(3, 218, 198, 0.1);
+}
+
+.exportMenu button svg {
+  color: var(--secondary-color);
+  font-size: 14px;
+}
+
+/* Bookmarks Panel */
+.bookmarksPanel {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 12px;
+}
+
+.bookmarksPanel h5 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.bookmarksList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bookmarkItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bookmarkSlide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(3, 218, 198, 0.1);
+  border: none;
+  border-radius: 6px;
+  color: #03dac6;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bookmarkSlide:hover {
+  background: rgba(3, 218, 198, 0.2);
+}
+
+.bookmarkNumber {
+  font-weight: 600;
+  background: rgba(3, 218, 198, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.bookmarkDelete {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 0.15s ease;
+}
+
+.bookmarkDelete:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff5252;
+}
+
+/* Grid View Overlay */
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 15, 20, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 16px;
+}
+
+.gridHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.gridHeader h4 {
+  margin: 0;
+  color: var(--text-color);
+}
+
+.closeButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.gridItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 80px;
+}
+
+.gridItem:hover {
+  border-color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.05);
+}
+
+.gridItemActive {
+  border-color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.1);
+}
+
+.gridItemViewed {
+  border-color: rgba(3, 218, 198, 0.3);
+}
+
+.gridItemNumber {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-bottom: 6px;
+}
+
+.gridItemTitle {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.gridItemBookmark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  color: #ffc107;
+}
+
+.gridItemCheck {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 10px;
+  color: #03dac6;
+}
+
+/* Navigation Styles */
+.navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 16px;
+  flex-shrink: 0;
+}
+
+.navLeft, .navCenter, .navRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navLeft {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.navCenter {
+  flex: 2;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navRight {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.navButton {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-color-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.navButton:hover {
+  background: rgba(3, 218, 198, 0.1);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.navActionButton {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-color-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.navActionButton:hover {
+  background: rgba(3, 218, 198, 0.1);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.navActionButton.activeAction {
+  background: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: var(--background-color);
+}
+
+.slideCounter {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+/* Timer Display */
+.timerDisplay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.timerDisplay svg {
+  color: var(--secondary-color);
+}
+
+.timerButton {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: all 0.15s ease;
+}
+
+.timerButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Presentation Mode */
+.presentationMode {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  padding: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.presentationMode .mainLayout {
+  flex-grow: 1;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.presentationMode .slideArea {
+  max-width: 1200px;
+  max-height: 100%;
+}
+
+.presentationSlide {
+  background: var(--card-background-color);
+  border-radius: 16px;
+  padding: 48px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-height: 80vh;
+}
+
+.presentationSlide .slideTitle {
+  font-size: 1.8rem;
+  margin-bottom: 32px;
+}
+
+.presentationSlide .slideContent {
+  font-size: 1.2rem;
+}
+
+.presentationNav {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 12px 24px;
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+}
+
+.presentationNav .navCenter {
+  flex-direction: row;
+  gap: 16px;
+}
+
+.presentationNav .slideCounter {
+  color: #fff;
+}
+
+.presentationNav .navButton,
+.presentationNav .navActionButton {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.presentationNav .navButton:hover,
+.presentationNav .navActionButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.presentationHint {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+/* Hide scrollbar in presentation mode */
+.presentationMode .slide::-webkit-scrollbar {
+  width: 8px;
+}
+
+.presentationMode .slide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.presentationMode .slide::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Light Mode */
+html[data-theme='light'] .slideshowContainer {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .thumbnail,
+html[data-theme='light'] .slide,
+html[data-theme='light'] .notesPanel,
+html[data-theme='light'] .bookmarksPanel,
+html[data-theme='light'] .gridItem {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .actionBtn {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .gridOverlay {
+  background: rgba(250, 250, 252, 0.98);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .thumbnailSidebar {
+    width: 120px;
+  }
+
+  .thumbnail {
+    padding: 8px;
+  }
+
+  .thumbnailTitle {
+    font-size: 10px;
+  }
+
+  .thumbnailPreview {
+    display: none;
+  }
+
+  .presentationMode .mainLayout {
+    padding: 20px;
+  }
+
+  .presentationSlide {
+    padding: 24px;
+  }
+
+  .presentationSlide .slideTitle {
+    font-size: 1.3rem;
+  }
+
+  .actionBar {
+    gap: 6px;
+  }
+
+  .actionBtn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .actionBtn span {
+    display: none;
+  }
+
+  .gridContainer {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .thumbnailSidebar {
+    display: none;
+  }
+
+  .header {
+    margin-bottom: 12px;
+  }
+
+  .presentationTitle {
+    font-size: 1rem;
+  }
+
+  .slide {
+    padding: 16px;
+  }
+}

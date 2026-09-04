@@ -1,0 +1,677 @@
+/* frontend/src/components/consultation/QythonTipTapEditor.css */
+.qython-tiptap-editor-wrapper {
+  background-color: var(--input-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.qython-tiptap-editor-wrapper.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 10000;
+  background-color: var(--input-background-color);
+  border-radius: 0;
+  border: none;
+  resize: none !important;
+  overflow: hidden !important;
+}
+
+/* --- ESTILOS ATUALIZADOS PARA A TOOLBAR --- */
+.qython-editor-toolbar {
+  display: flex;                  /* Ativa o Flexbox */
+  justify-content: space-between; /* Empurra as seções para os extremos */
+  align-items: center;            /* Alinha os itens verticalmente ao centro */
+  flex-wrap: wrap;                /* Permite que as seções quebrem linha */
+  gap: 8px;                       /* Espaço entre as seções principais e os itens na seção direita */
+  padding: 6px 8px;               /* Padding geral da toolbar (ajustado o padding do original) */
+  background-color: var(--card-background-color);
+  border-bottom: 1px solid var(--border-color);
+  border-top-left-radius: 7px;    /* Mantido do original */
+  border-top-right-radius: 7px;   /* Mantido do original */
+  flex-shrink: 0;                 /* Mantido do original */
+  position: sticky;               /* Mantido do original */
+  top: 0;
+  z-index: 10;
+}
+
+.qython-tiptap-editor-wrapper.fullscreen .qython-editor-toolbar {
+  border-radius: 0; /* Mantido do original */
+}
+
+/* Seções dentro da Toolbar */
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px; /* Espaço entre os botões/itens dentro de cada seção */
+}
+
+/* .toolbar-section-left e .toolbar-section-right não precisam de estilos específicos adicionais
+   se o 'gap' e 'justify-content' do .qython-editor-toolbar forem suficientes. */
+
+
+/* Estilos para botões da Toolbar (baseados nos seus estilos existentes) */
+.qython-editor-toolbar button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  padding: 6px; /* Mantido do original */
+  /* margin: 2px; Removido - 'gap' nos containers flex agora controla o espaçamento */
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', Arial, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;  /* Mantido do original */
+  height: 28px;     /* Mantido do original */
+  font-size: 1em;   /* Mantido do original */
+  line-height: 1;   /* Para melhor alinhamento de ícones */
+}
+
+.qython-editor-toolbar button:hover:not(:disabled) { /* :not(:disabled) adicionado para precisão */
+  background-color: rgba(var(--text-color-rgb), 0.1); /* Mantido do original */
+  color: var(--accent-color);                       /* Mantido do original */
+}
+
+.qython-editor-toolbar button.is-active {
+  background-color: var(--accent-color);            /* Mantido do original */
+  color: var(--button-text-on-light-bg);            /* Mantido do original */
+}
+
+.qython-editor-toolbar button:disabled {
+    opacity: 0.5;                                   /* Mantido do original */
+    cursor: not-allowed;                            /* Mantido do original */
+    background-color: transparent;                  /* Mantido do original */
+}
+.qython-editor-toolbar button:disabled:hover {
+    background-color: transparent;                  /* Mantido do original */
+    color: var(--text-color);                       /* Mantido do original */
+}
+
+/* Ícones específicos (mantido do original) */
+.qython-editor-toolbar button .fa-table-columns,
+.qython-editor-toolbar button .fa-table-rows,
+.qython-editor-toolbar button .fa-trash {
+  font-size: 1em;
+}
+
+/* Divisórias (adaptado do seu e da minha sugestão) */
+.toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 22px; /* Altura explícita para alinhar melhor com botões de 28px */
+  background-color: var(--border-color); /* Mantido do seu */
+  /* margin: 4px 6px; Removido - 'gap' no .toolbar-section controla o espaçamento */
+  align-self: center; /* Para centralizar verticalmente no container flex */
+}
+
+/* Texto dentro dos botões (mantido do original) */
+.toolbar-button-text {
+  margin-left: 4px;
+  font-size: 0.8em;
+}
+
+/* Indicador de Status de Salvamento */
+.save-status-indicator {
+  display: flex;
+  align-items: center;
+  font-size: 0.85em;
+  color: var(--text-muted, #6c757d);
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  min-height: 28px;
+}
+
+.save-status-indicator:not(:empty) {
+  background: rgba(var(--accent-color-rgb, 74, 144, 226), 0.1);
+  border: 1px solid rgba(var(--accent-color-rgb, 74, 144, 226), 0.2);
+}
+
+.save-status-indicator .svg-inline--fa {
+  font-size: 1em;
+  margin-right: 6px;
+}
+
+/* Status: Gravando */
+.save-status-indicator.saving {
+  color: var(--accent-color, #4a90e2);
+}
+
+/* Status: Auto-save ativo (idle) */
+.save-status-indicator.idle-autosave {
+  color: var(--text-muted, #6c757d);
+  opacity: 0.6;
+}
+
+/* Status: Gravado */
+.save-status-indicator.saved {
+  color: var(--feedback-success, #10b981);
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* Status: Erro */
+.save-status-indicator.error {
+  color: var(--notification-error-bg, #dc3545);
+  background: rgba(220, 53, 69, 0.12);
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+
+/* --- FIM DOS AJUSTES DA TOOLBAR --- */
+
+.ProseMirror.qython-tiptap-editable-area {
+  flex-grow: 1;
+  padding: 10px 15px;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--input-background-color);
+  outline: none;
+  overflow-y: auto;
+}
+
+.ProseMirror.qython-tiptap-editable-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ProseMirror.qython-tiptap-editable-area::-webkit-scrollbar-track {
+  background: rgba(var(--text-color-rgb), 0.1);
+  border-radius: 10px;
+}
+
+.ProseMirror.qython-tiptap-editable-area::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.ProseMirror.qython-tiptap-editable-area::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color);
+}
+
+.ProseMirror.qython-tiptap-editable-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) rgba(var(--text-color-rgb), 0.1);
+}
+
+
+.qython-tiptap-editor-wrapper.fullscreen .ProseMirror.qython-tiptap-editable-area {
+  height: calc(100% - 45px); /* Ajustar se a altura da toolbar mudar */
+  resize: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #868e96;
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4 {
+  color: var(--text-color);
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+.ProseMirror h1 { font-size: 2em; font-weight: bold; }
+.ProseMirror h2 { font-size: 1.5em; font-weight: bold; }
+.ProseMirror h3 { font-size: 1.25em; font-weight: bold; }
+.ProseMirror h4 { font-size: 1em; font-weight: bold; }
+
+.ProseMirror strong { font-weight: bold; }
+.ProseMirror em { font-style: italic; }
+
+.ProseMirror ul, .ProseMirror ol {
+  padding-left: 25px;
+  margin: 0.5em 0;
+}
+.ProseMirror li { margin-bottom: 0.2em; }
+.ProseMirror li > p { margin: 0; }
+
+.ProseMirror blockquote {
+  border-left: 3px solid var(--accent-color);
+  margin: 1em 0;
+  padding-left: 1em;
+  color: var(--text-color-secondary);
+}
+
+.ProseMirror a {
+  color: var(--secondary-light);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em 0;
+  border-radius: 4px;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border: 1px solid var(--border-color);
+  table-layout: fixed;
+}
+.ProseMirror th, .ProseMirror td {
+  border: 1px solid var(--border-color);
+  padding: 0.5em;
+  vertical-align: top;
+  position: relative;
+}
+.ProseMirror th {
+  font-weight: bold;
+  background-color: var(--card-background-color);
+  text-align: left;
+}
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(var(--accent-color-rgb), 0.15);
+  pointer-events: none;
+}
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px; top: 0; bottom: 0;
+  width: 4px;
+  background-color: var(--accent-color);
+  pointer-events: none;
+}
+
+
+.qython-tiptap-editor-wrapper .resize-handle {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  z-index: 10;
+  opacity: 0.6;
+  background-image:
+    linear-gradient(135deg, var(--border-color) 25%, transparent 25%),
+    linear-gradient(135deg, var(--border-color) 50%, transparent 50%),
+    linear-gradient(135deg, var(--border-color) 75%, transparent 75%);
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+  background-position: bottom right;
+}
+.qython-tiptap-editor-wrapper .resize-handle:hover {
+  opacity: 1;
+}
+.qython-tiptap-editor-wrapper.fullscreen .resize-handle {
+  display: none;
+}
+
+/* Estilos para qython-inline-form (mantidos e ajustados para 'gap') */
+.qython-inline-form {
+  display: inline-flex; /* Mudado para inline-flex para melhor integração na toolbar */
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: var(--card-background-color);
+  border-radius: 4px;
+  /* margin-left: 8px; Removido, 'gap' da toolbar-section deve cuidar */
+}
+
+.qython-inline-form input[type="url"],
+.qython-inline-form input[type="number"] {
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background-color);
+  color: var(--text-color);
+  border-radius: 3px;
+  font-size: 0.9em;
+  width: 120px;
+}
+.qython-inline-form input[type="number"] {
+    width: 50px;
+}
+
+.qython-inline-form button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  padding: 4px; /* Reduzido um pouco para caber melhor */
+  cursor: pointer;
+  border-radius: 3px;
+  display: inline-flex; /* Adicionado para alinhar ícone */
+  align-items: center;  /* Adicionado para alinhar ícone */
+  justify-content: center; /* Adicionado para alinhar ícone */
+  min-width: auto; /* Reset para botões pequenos */
+  height: auto;    /* Reset para botões pequenos */
+}
+.qython-inline-form button:hover {
+  background-color: rgba(var(--text-color-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+
+.qython-table-form span { /* Mantido */
+    margin: 0 2px;
+}
+
+.qython-bubble-menu-form { /* Mantido */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: var(--card-background-color);
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(var(--background-color-rgb), 0.2);
+}
+
+.qython-bubble-menu-form input[type="url"] { /* Mantido */
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-background-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    font-size: 0.9em;
+    outline: none;
+}
+.qython-bubble-menu-form input[type="url"]:focus { /* Mantido */
+    border-color: var(--accent-color);
+}
+
+.qython-bubble-menu-form button { /* Mantido */
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.qython-bubble-menu-form button:hover { /* Mantido */
+    background-color: rgba(var(--text-color-rgb), 0.1);
+    color: var(--accent-color);
+}
+
+.qython-table-form input[type="number"]::-webkit-outer-spin-button,
+.qython-table-form input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.qython-table-form input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield; /* Correção de 'appearance: none;' para 'appearance: textfield;' se quiser permitir algum estilo padrão ainda */
+  text-align: center;
+  width: 30px; /* Já definido em .qython-inline-form input[type="number"], mas pode ser específico aqui */
+}
+
+.table-dimension-control {
+  display: flex;
+  align-items: center;
+  /* margin: 0 4px; Removido, 'gap' do .qython-inline-form cuida */
+}
+
+.table-dimension-control span {
+  margin-right: 4px;
+  font-size: 0.9em;
+}
+
+.dimension-buttons {
+  display: flex;
+  flex-direction: column;
+  margin-left: 2px;
+}
+
+.dimension-buttons button {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  padding: 0px 3px;
+  cursor: pointer;
+  border-radius: 2px;
+  line-height: 1;
+  height: auto;
+  min-width: auto;
+}
+.dimension-buttons button:hover {
+  background-color: rgba(var(--text-color-rgb), 0.1);
+  color: var(--accent-color);
+}
+.dimension-buttons button svg {
+    font-size: 0.7em;
+}
+
+/* Estilos para Context Menu do Editor */
+.qython-context-menu {
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 6px 0;
+  min-width: 180px;
+  max-width: 280px;
+  z-index: 10000;
+  position: fixed;
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-color);
+  font-family: 'Inter', Arial, sans-serif;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.context-menu-item:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.context-menu-item.active {
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.context-menu-item:disabled {
+  color: var(--text-color-secondary);
+  cursor: not-allowed;
+  background-color: transparent;
+  opacity: 0.5;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 6px 0;
+}
+
+/* ============================================
+   Prompt de Restauração - Premium Design
+   ============================================ */
+.qython-restore-prompt {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--brand-secondary-rgb), 0.08) 0%,
+    rgba(var(--brand-secondary-rgb), 0.03) 100%
+  );
+  border: 1px solid rgba(var(--brand-secondary-rgb), 0.2);
+  border-radius: 12px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  animation: fadeInPrompt 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes fadeInPrompt {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.qython-restore-prompt-content {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  margin-right: 20px;
+  gap: 12px;
+}
+
+.qython-restore-prompt-icon {
+  color: var(--brand-secondary);
+  font-size: 1.1em;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(var(--brand-secondary-rgb), 0.4));
+}
+
+.qython-restore-prompt-text {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--text-color);
+  line-height: 1.5;
+  font-weight: 450;
+}
+
+.qython-restore-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.qython-restore-prompt-button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.qython-restore-prompt-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Botão Confirmar - Estilo Teal Premium */
+.qython-restore-button-confirm {
+  background: linear-gradient(
+    135deg,
+    var(--brand-secondary) 0%,
+    var(--brand-secondary-dark) 100%
+  );
+  color: #0f1117;
+  border: none;
+  box-shadow:
+    0 2px 8px rgba(var(--brand-secondary-rgb), 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.qython-restore-button-confirm:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 16px rgba(var(--brand-secondary-rgb), 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  filter: brightness(1.08);
+}
+
+.qython-restore-button-confirm:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 6px rgba(var(--brand-secondary-rgb), 0.25),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Botão Descartar - Estilo Ghost Sutil */
+.qython-restore-button-discard {
+  background: rgba(var(--color-text-rgb), 0.06);
+  color: var(--text-color-secondary);
+  border: 1px solid rgba(var(--color-text-rgb), 0.1);
+}
+
+.qython-restore-button-discard:hover {
+  background: rgba(var(--color-text-rgb), 0.1);
+  color: var(--text-color);
+  border-color: rgba(var(--color-text-rgb), 0.15);
+}
+
+.qython-restore-button-discard:active {
+  background: rgba(var(--color-text-rgb), 0.12);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .qython-restore-prompt {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .qython-restore-prompt-content {
+    margin-right: 0;
+  }
+  .qython-restore-prompt-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .qython-restore-prompt-button {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+}

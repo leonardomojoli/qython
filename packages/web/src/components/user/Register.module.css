@@ -1,0 +1,1105 @@
+/* frontend/src/components/user/Register.module.css */
+
+.splitScreen {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #0a0a14;
+  overflow: hidden;
+}
+
+/* Lado Esquerdo: Estética "Deep Tech" */
+.leftPane {
+  flex: 1;
+  background-color: #0a0a14;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(102, 39, 205, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(3, 218, 198, 0.1) 0%, transparent 40%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(40px, 8vw, 80px);
+  color: white;
+  position: relative;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Padrão de Grid Tecnológico */
+.bgPattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 1;
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+
+.leftPaneContent {
+  position: relative;
+  z-index: 2;
+  max-width: 550px;
+  margin-top: clamp(30px, 6vw, 60px);
+}
+
+.leftPane h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: clamp(15px, 3vw, 25px);
+  letter-spacing: -1px;
+  background: linear-gradient(to right, #ffffff, #a5b4fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.leftPane p {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: #a0a0a0;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.testimonial {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.testimonial p {
+  font-style: italic;
+  font-size: 1.1rem;
+  color: #e0e0e0;
+  margin-bottom: 15px;
+}
+
+.testimonialAuthor {
+  display: block;
+  font-weight: 700;
+  color: var(--secondary-color);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Lado Direito: Formulário */
+.rightPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(20px, 5vw, 40px);
+  background-color: #0a0a14;
+  overflow-y: auto;
+  position: relative;
+  max-width: 600px;
+}
+
+.formWrapper {
+  width: 100%;
+  max-width: min(420px, 100%);
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.logoHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: clamp(25px, 5vw, 40px);
+  cursor: pointer;
+}
+
+.logoImg {
+  height: clamp(24px, 3.5vw, 34px);
+  width: auto;
+  object-fit: contain;
+}
+
+.formTitle {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  color: white;
+  margin-bottom: clamp(6px, 1.5vw, 10px);
+  letter-spacing: -0.5px;
+}
+
+.formSubtitle {
+  color: #888;
+  margin-bottom: clamp(20px, 4vw, 35px);
+  font-size: clamp(0.85rem, 2vw, 1rem);
+}
+
+/* Inputs e Labels */
+.inputGroup {
+  margin-bottom: 20px;
+}
+
+.themeLabel {
+  display: flex;
+  align-items: flex-end;
+  /* Aligns text to bottom for consistent input alignment */
+  margin-bottom: 8px;
+  color: #ccc;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-height: 38px;
+  /* Height for up to 2 lines of text */
+  line-height: 1.3;
+}
+
+.themeInput {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.themeInput:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(102, 39, 205, 0.15);
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* SELECT MELHORADO */
+.themeSelect {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2303dac6%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px top 50%;
+  background-size: 12px auto;
+  cursor: pointer;
+}
+
+.themeSelect option {
+  background-color: #12151f;
+  color: white;
+  padding: 12px;
+}
+
+.themeSelect:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(102, 39, 205, 0.15);
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* UPLOAD DE ARQUIVO CUSTOMIZADO */
+.fileInputHidden {
+  display: none;
+}
+
+.fileUploadLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 1px dashed #444;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.02);
+  color: #a0a0a0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.fileUploadLabel:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background-color: rgba(3, 218, 198, 0.05);
+}
+
+.fileUploadLabel.hasFile {
+  border-color: var(--primary-color);
+  color: var(--primary-light);
+  background-color: rgba(102, 39, 205, 0.1);
+  border-style: solid;
+  font-weight: 600;
+}
+
+.uploadHelp {
+  color: #666;
+  font-size: 0.8rem;
+  display: block;
+  margin-top: 5px;
+}
+
+/* ========== CHECKBOX BASE STYLES ========== */
+
+/* Marketing Checkbox (Multi-line text) */
+.marketingGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.marketingGroup input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.05);
+  margin: 0;
+  margin-top: 5px;
+  /* Alinha com o topo das letras maiúsculas em multi-linha */
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  display: grid;
+  place-content: center;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.marketingGroup:hover input[type="checkbox"] {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(3, 218, 198, 0.1);
+}
+
+.marketingGroup input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(102, 39, 205, 0.4);
+}
+
+.marketingGroup input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em white;
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.marketingGroup input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.marketingGroup label {
+  color: #b0b0b0;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  padding-top: 2px;
+}
+
+/* Terms Checkbox (Single-line text) */
+.termsGroup {
+  display: flex;
+  align-items: center;
+  /* Centralizado para linha única */
+  gap: 12px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.termsGroup input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.05);
+  margin: 0;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  display: grid;
+  place-content: center;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.termsGroup:hover input[type="checkbox"] {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(3, 218, 198, 0.1);
+}
+
+.termsGroup input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(102, 39, 205, 0.4);
+}
+
+.termsGroup input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em white;
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.termsGroup input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.termsGroup label {
+  color: #b0b0b0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.termsGroup label a {
+  color: var(--secondary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.termsGroup label a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* BUTTON */
+.themeButton {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(102, 39, 205, 0.3);
+}
+
+.themeButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 39, 205, 0.5);
+}
+
+.themeButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.themeButtonSecondary {
+  background: transparent;
+  border: 1px solid #333;
+  color: #a0a0a0;
+  box-shadow: none;
+}
+
+.themeButtonSecondary:hover {
+  border-color: #666;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: none;
+}
+
+/* Invite Section Styles */
+.inviteContainer {
+  text-align: center;
+  padding: 40px 30px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inviteOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* Row Layout */
+.rowLayout {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+/* Back Button */
+.backButton {
+  background: none;
+  border: none;
+  color: #666;
+  margin-top: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.backButton:hover {
+  color: #a0a0a0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Password Strength Criteria */
+.passwordCriteria {
+  margin-top: 8px;
+  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: fadeIn 0.2s ease;
+}
+
+.criteriaTitle {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  margin-bottom: 8px;
+  display: block;
+  font-weight: 500;
+}
+
+.criteriaList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.criteriaItem {
+  font-size: 0.75rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.criteriaItem.valid {
+  color: #03dac6;
+}
+
+.criteriaItem.invalid {
+  color: #666;
+}
+
+.criteriaIcon {
+  font-size: 0.65rem;
+  width: 12px;
+  text-align: center;
+}
+
+/* Phone Input with Flag Selector */
+.phoneWrapper {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* Main container for react-phone-number-input */
+.phoneInputCustom {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0 16px;
+  transition: all 0.2s ease;
+  height: 50px;
+}
+
+.phoneInputCustom:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(102, 39, 205, 0.15);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* The actual input field */
+.phoneInputCustom input {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  font-size: 1rem !important;
+  height: 100% !important;
+  outline: none !important;
+  padding-left: 10px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Remove double glow effect from global.css */
+.phoneInputCustom input:focus {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+/* Country selector area */
+.phoneInputCustom .PhoneInputCountry {
+  margin-right: 10px;
+}
+
+.phoneInputCustom .PhoneInputCountrySelect {
+  background-color: #12151f;
+  color: white;
+}
+
+/* Flag icon border */
+.phoneInputCustom .PhoneInputCountryIcon {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Dropdown arrow */
+.phoneInputCustom .PhoneInputCountrySelectArrow {
+  color: #a0a0a0;
+  opacity: 0.7;
+}
+
+/* Invalid state */
+.phoneInputCustom.PhoneInput--invalid {
+  border-color: #ff5252;
+}
+
+/* Password Visibility Toggle */
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.eyeButton {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  font-size: 1rem;
+  z-index: 2;
+}
+
+.eyeButton:hover {
+  color: var(--secondary-color);
+}
+
+.eyeButton:focus {
+  outline: none;
+}
+
+/* Confirmation Step (Final Screen) */
+.confirmationStep {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(3, 218, 198, 0.2);
+  border-radius: 16px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.confirmationStep h2 {
+  font-size: 2.2rem;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.confirmationStep p {
+  color: #a0a0a0;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  margin-bottom: 15px;
+}
+
+.confirmationStep strong {
+  color: #03dac6;
+  font-weight: 600;
+}
+
+.emailIcon {
+  font-size: 4rem;
+  color: var(--primary-light);
+  margin-bottom: 20px;
+  display: block;
+}
+
+/* Botão do Google */
+.googleButton {
+  width: 100%;
+  padding: 14px;
+  background-color: white;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.googleButton:hover {
+  background-color: #f1f1f1;
+  transform: translateY(-2px);
+}
+
+.googleButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Divisor "OU" */
+.divider {
+  display: flex;
+  align-items: center;
+  color: #666;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #333;
+}
+
+.divider::before {
+  margin-right: 10px;
+}
+
+.divider::after {
+  margin-left: 10px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 1000px) {
+  .leftPane {
+    display: none;
+  }
+
+  .rightPane {
+    padding: 20px;
+    max-width: 100%;
+  }
+
+  .formWrapper {
+    max-width: min(460px, 100%);
+  }
+}
+
+/* =========================================
+   LIGHT MODE OVERRIDES
+   ========================================= */
+html[data-theme='light'] .splitScreen {
+  background-color: var(--background-color);
+}
+
+html[data-theme='light'] .leftPane {
+  background-color: var(--background-color);
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(var(--accent-color-rgb), 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(var(--accent-color-rgb), 0.12) 0%, transparent 40%);
+  border-right: 1px solid rgba(var(--text-color-rgb), 0.08);
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .bgPattern {
+  background-image:
+    linear-gradient(rgba(var(--text-color-rgb), 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--text-color-rgb), 0.04) 1px, transparent 1px);
+}
+
+html[data-theme='light'] .leftPane h1 {
+  background: linear-gradient(to right, var(--text-color), var(--accent-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html[data-theme='light'] .leftPane p {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .testimonial {
+  background: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .testimonial p {
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .testimonialAuthor {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .rightPane {
+  background-color: var(--background-color);
+}
+
+html[data-theme='light'] .logoHeader span {
+  background: linear-gradient(to right, #03dac6, #018786);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html[data-theme='light'] .formTitle {
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .formSubtitle {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .themeLabel {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .themeInput {
+  background-color: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.15);
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .themeInput:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.1);
+  background-color: rgba(var(--text-color-rgb), 0.02);
+}
+
+html[data-theme='light'] .themeInput::placeholder {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .themeSelect {
+  background-color: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.15);
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .themeSelect:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.1);
+}
+
+html[data-theme='light'] .themeSelect option {
+  background-color: white;
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .fileUploadLabel {
+  border-color: rgba(var(--text-color-rgb), 0.2);
+  background-color: rgba(var(--text-color-rgb), 0.02);
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .fileUploadLabel:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.05);
+}
+
+html[data-theme='light'] .fileUploadLabel.hasFile {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+}
+
+html[data-theme='light'] .uploadHelp {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .marketingGroup input[type="checkbox"],
+html[data-theme='light'] .termsGroup input[type="checkbox"] {
+  background-color: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.2);
+}
+
+html[data-theme='light'] .marketingGroup:hover input[type="checkbox"],
+html[data-theme='light'] .termsGroup:hover input[type="checkbox"] {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
+}
+
+html[data-theme='light'] .marketingGroup input[type="checkbox"]:checked,
+html[data-theme='light'] .termsGroup input[type="checkbox"]:checked {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px rgba(var(--accent-color-rgb), 0.3);
+}
+
+html[data-theme='light'] .marketingGroup label,
+html[data-theme='light'] .termsGroup label {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .termsGroup label a {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .termsGroup label a:hover {
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .themeButton {
+  background: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.25);
+  color: white;
+}
+
+html[data-theme='light'] .themeButton:hover {
+  box-shadow: 0 6px 20px rgba(var(--accent-color-rgb), 0.35);
+  color: white;
+}
+
+html[data-theme='light'] .themeButtonSecondary {
+  background: transparent;
+  border: 2px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .themeButtonSecondary:hover {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+html[data-theme='light'] .inviteContainer {
+  background: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.08);
+}
+
+html[data-theme='light'] .backButton {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .backButton:hover {
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .passwordCriteria {
+  background: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.05);
+}
+
+html[data-theme='light'] .criteriaTitle {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .criteriaItem {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .criteriaItem.valid {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .phoneInputCustom {
+  background-color: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--text-color-rgb), 0.15);
+}
+
+html[data-theme='light'] .phoneInputCustom:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.1);
+}
+
+html[data-theme='light'] .phoneInputCustom input {
+  color: var(--text-color) !important;
+}
+
+html[data-theme='light'] .phoneInputCustom .PhoneInputCountrySelect {
+  background-color: white;
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .eyeButton {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .eyeButton:hover {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .confirmationStep {
+  background: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+}
+
+html[data-theme='light'] .confirmationStep h2 {
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .confirmationStep p {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .confirmationStep strong {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .emailIcon {
+  color: var(--accent-color);
+}
+
+html[data-theme='light'] .googleButton {
+  background-color: white;
+  border: 1px solid rgba(var(--text-color-rgb), 0.15);
+  color: var(--text-color);
+}
+
+html[data-theme='light'] .googleButton:hover {
+  background-color: rgba(var(--text-color-rgb), 0.02);
+  border-color: rgba(var(--text-color-rgb), 0.25);
+}
+
+html[data-theme='light'] .divider {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .divider::before,
+html[data-theme='light'] .divider::after {
+  background: rgba(var(--text-color-rgb), 0.15);
+}
+
+/* Google Success Banner */
+.googleSuccessBanner {
+  background: rgba(3, 218, 198, 0.1);
+  border-left: 3px solid #03dac6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #03dac6;
+  font-size: 0.9rem;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-theme='light'] .googleSuccessBanner {
+  background: rgba(1, 135, 134, 0.06);
+  color: #018786;
+}
+
+/* Verification Card */
+.verificationCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #03dac6;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.verificationCardIcon {
+  color: #03dac6;
+  font-size: 1.2rem;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.verificationCardContent p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #b0b0b0;
+  line-height: 1.5;
+}
+
+.verificationTime {
+  font-size: 0.8rem;
+  color: #03dac6;
+  margin-top: 6px;
+  display: block;
+}
+
+html[data-theme='light'] .verificationCard {
+  background: rgba(1, 135, 134, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+  border-left-color: #018786;
+}
+
+html[data-theme='light'] .verificationCardIcon {
+  color: #018786;
+}
+
+html[data-theme='light'] .verificationCardContent p {
+  color: var(--text-color-secondary);
+}
+
+html[data-theme='light'] .verificationTime {
+  color: #018786;
+}
+
+/* Password Note */
+.passwordNote {
+  display: block;
+  color: #03dac6;
+  font-size: 0.8rem;
+  margin-top: 8px;
+  opacity: 0.8;
+}
+
+html[data-theme='light'] .passwordNote {
+  color: #018786;
+}

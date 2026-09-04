@@ -1,0 +1,663 @@
+/* frontend/src/components/pharmacy/SupplySearch.module.css */
+/* Reuses the same visual language as MedicationSearch */
+
+.container {
+  width: 100%;
+}
+
+/* Search */
+.searchRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.searchInputWrapper {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 36px 12px 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-color);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--accent-color);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Gov program toggle */
+.fpToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.fpToggle:hover {
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.fpToggleActive {
+  background: rgba(39, 174, 96, 0.15);
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+/* Filters */
+.filtersRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filterIcon {
+  color: var(--text-muted);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Custom filter dropdowns */
+.filterDropdown {
+  position: relative;
+}
+
+.countryFilter {
+  font-weight: 500;
+  min-width: 160px;
+}
+
+.filterTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-color);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.filterTrigger:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.filterTrigger:focus {
+  border-color: var(--accent-color);
+}
+
+.filterTriggerOpen {
+  border-color: var(--accent-color);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.filterTriggerActive {
+  color: var(--text-color);
+}
+
+.filterSelectedValue {
+  color: var(--text-color);
+}
+
+.filterPlaceholder {
+  color: var(--text-muted);
+}
+
+.filterArrow {
+  color: var(--text-muted);
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.filterArrowOpen {
+  transform: rotate(180deg);
+}
+
+.filterMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--card-background-color, var(--glass-bg-elevated, #1f232d));
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  max-height: 260px;
+  overflow-y: auto;
+  animation: filterSlideDown 0.15s ease-out;
+  backdrop-filter: blur(16px);
+}
+
+@keyframes filterSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.filterMenuItem {
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--text-color);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.filterMenuItem:hover {
+  background: rgba(var(--accent-color-rgb), 0.15);
+  color: var(--accent-color);
+}
+
+.filterMenuItemSelected {
+  background: rgba(var(--accent-color-rgb), 0.2);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.filterMenu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.filterMenu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filterMenu::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 3px;
+}
+
+.filterMenu::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  opacity: 0.3;
+}
+
+/* Results */
+.resultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+/* Card */
+.medCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.medCard:hover {
+  border-color: var(--glass-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.medCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.medName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: flex-end;
+}
+
+.badgesRow {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badgesRow .badge {
+  max-width: none;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.badgeFree {
+  background: rgba(39, 174, 96, 0.15);
+  color: #27ae60;
+  border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.badgeSubsidy {
+  background: rgba(52, 152, 219, 0.15);
+  color: #3498db;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.badgeCbaf {
+  background: rgba(52, 152, 219, 0.15);
+  color: #2980b9;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.badgeCeaf {
+  background: rgba(155, 89, 182, 0.15);
+  color: #8e44ad;
+  border: 1px solid rgba(155, 89, 182, 0.3);
+}
+
+/* LME / Requires Authorization badge */
+.lmeBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  background: rgba(230, 126, 34, 0.15);
+  color: #e67e22;
+  border: 1px solid rgba(230, 126, 34, 0.3);
+}
+
+.medPrinciple {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.medPresentation {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* Load more */
+.loadMoreWrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.loadMoreBtn {
+  padding: 10px 32px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-color);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.loadMoreBtn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Modal overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modalContent {
+  background: var(--glass-bg-elevated, var(--glass-bg));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: slideUp 0.2s ease;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.modalSubtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.modalHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.modalClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--glass-bg);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.modalClose:hover {
+  background: var(--glass-bg-elevated, rgba(255, 255, 255, 0.1));
+  color: var(--text-color);
+}
+
+.modalBody {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Detail rows */
+.detailRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-color);
+}
+
+.detailLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 130px;
+  flex-shrink: 0;
+}
+
+.brandsText {
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.rxIcon {
+  color: var(--accent-color);
+  font-size: 12px;
+}
+
+/* CEAF/LME info box */
+.ceafInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(230, 126, 34, 0.1);
+  border: 1px solid rgba(230, 126, 34, 0.25);
+  border-radius: 10px;
+  color: #e67e22;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ceafInfo svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.ceafInfo strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #d35400;
+}
+
+.ceafInfo p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Feedback section */
+.feedbackSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.feedbackLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.feedbackButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.feedbackBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.feedbackBtn:hover:not(:disabled) {
+  border-color: #27ae60;
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.feedbackBtn.feedbackBtnDislike:hover:not(:disabled) {
+  border-color: #e74c3c;
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.feedbackBtnActive {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.feedbackBtn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.feedbackThanks {
+  font-size: 11px;
+  color: #27ae60;
+  font-weight: 500;
+}
+
+html[data-theme='light'] .badgeCbaf {
+  background: rgba(52, 152, 219, 0.12);
+}
+
+html[data-theme='light'] .badgeCeaf {
+  background: rgba(155, 89, 182, 0.12);
+}
+
+html[data-theme='light'] .ceafInfo {
+  background: rgba(230, 126, 34, 0.08);
+}
+
+html[data-theme='light'] .ceafInfo strong {
+  color: #c0392b;
+}
+
+html[data-theme='light'] .filterMenu {
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .resultsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchRow {
+    flex-direction: column;
+  }
+
+  .fpToggle {
+    align-self: flex-start;
+  }
+
+  .modalContent {
+    max-width: 100%;
+    max-height: 90vh;
+  }
+
+  .detailLabel {
+    min-width: 100px;
+  }
+}

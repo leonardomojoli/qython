@@ -1,0 +1,62 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+pydantic[email]
+email-validator
+python-multipart
+google-genai==2.8.0
+tiktoken  # Token counting for context window management
+huggingface_hub<1.0  # pin under 1.0 — transformers (transitive via presidio path) requires <1.0
+
+# Manipulação de Arquivos e Mídia
+PyMuPDF
+python-pptx
+moviepy==1.0.3
+pytesseract
+python-magic
+opencv-python
+fpdf2
+WeasyPrint
+Markdown
+faster-whisper  # transcrição local self-host (CTranslate2 INT8, large-v3-turbo) — whisper.service
+
+# RAG v2 (busca na biblioteca: dense e5 + BM25 + RRF + cross-encoder rerank)
+rank-bm25  # BM25 esparso (import rank_bm25) p/ recuperação híbrida — vector_db_service
+# embedder.service usa sentence-transformers (e5-base + reranker mmarco), que já está no venv;
+# os modelos baixam no 1º start. Sem EMBED_SERVER_URL, o RAG cai no MiniLM local (v1).
+
+# Segurança e Autenticação
+python-jose
+passlib==1.7.4
+bcrypt==4.0.1
+firebase-admin
+cryptography  # Fernet field-level encryption (encryption_service.py)
+
+# Privacy / LGPD compliance
+presidio-analyzer  # PII detection (multi-country) — local, no SaaS
+presidio-anonymizer  # Inline redaction with consistent placeholders
+# spaCy model PT-BR must be downloaded after install:
+#   python -m spacy download pt_core_news_lg
+
+# Utilitários e Outros
+python-dotenv
+fastapi-mail
+slowapi
+aiofiles
+aiohttp  # Async HTTP client for reference validation
+openai
+resend
+demjson3
+json-repair  # Repara JSON malformado de LLMs (vírgula faltando, truncamento, etc.)
+apscheduler
+psutil  # Server metrics monitoring
+
+# Integração Google e Processamento de Arquivos Adicional
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+Pillow
+qrcode[pil]
+beautifulsoup4
+defusedxml

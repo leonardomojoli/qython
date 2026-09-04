@@ -1,0 +1,110 @@
+/* Banner "conecte sua nuvem" — glass com rim-light roxo (dark = glow). */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(187, 134, 252, 0.12) 0%, rgba(154, 103, 234, 0.06) 100%);
+  border: 1px solid rgba(187, 134, 252, 0.28);
+  box-shadow: 0 0 0 1px rgba(187, 134, 252, 0.08), 0 6px 26px rgba(187, 134, 252, 0.14);
+}
+
+.banner.revoked {
+  background: linear-gradient(135deg, rgba(255, 183, 77, 0.12) 0%, rgba(255, 152, 0, 0.06) 100%);
+  border-color: rgba(255, 183, 77, 0.4);
+  box-shadow: 0 6px 26px rgba(255, 152, 0, 0.14);
+}
+
+.icon {
+  font-size: 1.6rem;
+  color: #bb86fc;
+  flex-shrink: 0;
+}
+
+.revoked .icon {
+  color: #ffb74d;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary, #e8e6ef);
+}
+
+.subtitle {
+  margin-top: 3px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-secondary, #a9a6b8);
+}
+
+/* CTA — gradiente roxo (primário do design system), texto branco sempre */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  box-shadow: 0 4px 15px rgba(187, 134, 252, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(187, 134, 252, 0.5);
+}
+
+.cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Responsivo: empilha em telas estreitas */
+@media (max-width: 620px) {
+  .banner {
+    flex-wrap: wrap;
+  }
+  .cta {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Light mode: sombra projetada em vez de glow */
+html[data-theme='light'] .banner {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(124, 58, 237, 0.03) 100%);
+  border-color: rgba(124, 58, 237, 0.28);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12);
+}
+
+html[data-theme='light'] .banner.revoked {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+html[data-theme='light'] .icon {
+  color: #7c3aed;
+}
+
+html[data-theme='light'] .title {
+  color: #1a1a24;
+}
+
+html[data-theme='light'] .subtitle {
+  color: #5a5766;
+}

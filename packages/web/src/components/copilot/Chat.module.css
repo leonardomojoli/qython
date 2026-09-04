@@ -1,0 +1,1048 @@
+/* frontend/src/components/copilot/Chat.module.css */
+.chatWrapper {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 20px);
+  /* More vertical space */
+  width: 100%;
+  box-sizing: border-box;
+  padding: clamp(0.5rem, 2vw, 1.25rem);
+  /* Reduced padding for more content space */
+  margin-top: 0;
+  background-color: var(--background-color);
+  transition: padding-left 0.3s ease;
+}
+
+.chatWrapper.adjustedForClosedSidebar {
+  padding-left: clamp(1rem, 4vw, 2.5rem);
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 1.5vw, 15px);
+  /* Slightly reduced gap */
+  padding-bottom: clamp(6px, 1.5vw, 12px);
+  /* Reduced header padding */
+  border-style: solid;
+  border-width: 0 0 1px 0;
+  border-image-slice: 1;
+  border-image-source: linear-gradient(to right,
+      transparent,
+      rgba(var(--accent-color-rgb), 0.5),
+      transparent);
+  width: 100%;
+}
+
+.chatTitle {
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--header-title-color);
+}
+
+.headerTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 12px);
+}
+
+.headerIcon {
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  color: var(--header-accent-color);
+  filter: drop-shadow(0 0 8px rgba(var(--header-accent-color), 0.4));
+  transition: filter 0.3s ease;
+}
+
+.chatBody {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-bottom: clamp(60px, 10vw, 100px);
+  display: flex;
+  flex-direction: column;
+  margin-top: clamp(8px, 2vw, 15px);
+  -webkit-mask-image: linear-gradient(to bottom,
+      black calc(100% - 100px),
+      transparent calc(100% - 20px));
+  mask-image: linear-gradient(to bottom,
+      black calc(100% - 100px),
+      transparent calc(100% - 20px));
+}
+
+.chatHistory {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.5vw, 10px);
+  width: 100%;
+  max-width: min(800px, 100%);
+  margin: 0 auto;
+  padding: 0 clamp(5px, 2vw, 15px);
+  box-sizing: border-box;
+}
+
+.messageWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.userMessageWrapper {
+  align-items: flex-end;
+}
+
+.botMessageWrapper {
+  align-items: flex-start;
+}
+
+.messageBubble {
+  padding: clamp(10px, 2vw, 15px) clamp(12px, 2.5vw, 20px);
+  border-radius: 12px;
+  width: fit-content;
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+}
+
+.userMessageBubble {
+  background-color: rgba(145, 85, 253, 0.10);
+  border: 1px solid rgba(145, 85, 253, 0.22);
+}
+
+.botMessageBubble {
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 3px 8px rgba(var(--background-color-rgb), 0.15);
+}
+
+.messageImageContainer {
+  margin-bottom: clamp(6px, 1.5vw, 10px);
+}
+
+.messageImage {
+  max-width: 100%;
+  max-height: clamp(150px, 30vw, 250px);
+  border-radius: 8px;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.messageImage:hover {
+  transform: scale(1.02);
+}
+
+.messageText {
+  font-size: clamp(14px, 2vw, 16px);
+  color: var(--text-color);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Paragraphs inside messages */
+.messageText p {
+  margin: 0 0 0.75em 0;
+}
+
+.messageText p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings inside messages */
+.messageText h1,
+.messageText h2,
+.messageText h3,
+.messageText h4 {
+  margin: 1em 0 0.5em 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.messageText h1:first-child,
+.messageText h2:first-child,
+.messageText h3:first-child,
+.messageText h4:first-child {
+  margin-top: 0;
+}
+
+/* Lists - proper inline display */
+.messageText ul,
+.messageText ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.messageText li {
+  margin-bottom: 0.25em;
+  padding-left: 0.25em;
+}
+
+.messageText li:last-child {
+  margin-bottom: 0;
+}
+
+.messageText li > p {
+  margin: 0;
+  display: inline;
+}
+
+/* Nested lists */
+.messageText li ul,
+.messageText li ol {
+  margin: 0.25em 0;
+}
+
+/* Strong/Bold text */
+.messageText hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 14px 0;
+  opacity: 0.55;
+}
+
+.messageText strong {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* Sources Section - Grounding references from Google Search */
+/* Sources/References Section - Academic Style */
+.sourcesSection {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.sourcesHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sourcesHeader svg {
+  font-size: 0.7rem;
+  color: var(--brand-primary);
+}
+
+.sourcesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sourceItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+/* Chip de citação inline (estilo artigo): mostra a BADGE do tipo da fonte, clicável. */
+.citeChip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: super;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0 2px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.14);
+  color: var(--accent-color, #a78bfa);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.citeChip:hover {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+/* Número da fonte dentro do chip inline ("Web 6"): rastreável até a lista de Referências. */
+.citeNum {
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid rgba(167, 139, 250, 0.35);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Realce breve da fonte ao clicar no chip de citação. */
+.refFlash {
+  background: rgba(167, 139, 250, 0.16);
+}
+
+.sourceNumber {
+  color: var(--brand-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 24px;
+  flex-shrink: 0;
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-color);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  line-height: 1.5;
+}
+
+.sourceLink:hover {
+  color: var(--brand-primary);
+}
+
+.sourceLink:hover .sourceTitle {
+  text-decoration: underline;
+}
+
+.sourceTitle {
+  font-weight: 500;
+  /* Title is now truncated via JS for better word boundary handling */
+}
+
+.sourceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(var(--brand-primary-rgb, var(--primary-color-rgb)), 0.12);
+  color: var(--brand-primary, var(--primary-color));
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sourceLinkIcon {
+  font-size: 0.7rem;
+  color: var(--text-color-secondary);
+  flex-shrink: 0;
+}
+
+.sourceLink:hover .sourceLinkIcon {
+  color: var(--brand-primary);
+}
+
+.sourceAuthor {
+  color: var(--text-color-secondary);
+  font-style: italic;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.sourceYear {
+  color: var(--text-color-tertiary);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.loadingAnimationContainer {
+  width: fit-content;
+  height: 1.875rem;
+  margin-top: 0.3125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neuralWaveAnimation {
+  width: 3.75rem;
+  height: 1.25rem;
+}
+
+.neuralWavePath1,
+.neuralWavePath2,
+.neuralWavePath3 {
+  fill: none;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.neuralWavePath1 {
+  stroke: var(--primary-light);
+  stroke-dasharray: 7 7;
+  animation: flow1 2.5s linear infinite;
+}
+
+.neuralWavePath2 {
+  stroke: var(--secondary-light);
+  stroke-dasharray: 8 8;
+  animation: flow2 3s linear infinite;
+  animation-delay: -0.5s;
+}
+
+.neuralWavePath3 {
+  stroke: var(--accent-color);
+  stroke-dasharray: 6 6;
+  animation: flow3 2s linear infinite;
+  animation-delay: -1s;
+  opacity: 0.8;
+}
+
+@keyframes flow1 {
+  0% {
+    stroke-dashoffset: 28;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes flow2 {
+  0% {
+    stroke-dashoffset: 32;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes flow3 {
+  0% {
+    stroke-dashoffset: 24;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.inputAreaFixedWrapper {
+  position: fixed;
+  bottom: 0;
+  width: auto;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  padding-bottom: 5px;
+  transition: left 0.3s ease;
+}
+
+.chatInputContainer {
+  position: relative;
+  width: 100%;
+  background-color: var(--card-background-color);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.5vw, 10px);
+  padding: clamp(8px, 2vw, 12px) clamp(10px, 2vw, 15px);
+  border-radius: 12px;
+  box-shadow: 0 -2px 15px rgba(var(--background-color-rgb), 0.25);
+  border: 1px solid var(--border-color);
+  min-height: clamp(50px, 8vw, 60px);
+  box-sizing: border-box;
+}
+
+.inputArea {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  gap: 10px;
+}
+
+.textareaWrapper {
+  flex-grow: 1;
+  display: flex;
+}
+
+.chatInputContainer textarea {
+  flex-grow: 1;
+  min-height: 24px;
+  max-height: clamp(100px, 20vw, 150px);
+  resize: none;
+  background-color: transparent;
+  color: var(--text-color);
+  border: none !important;
+  outline: none !important;
+  padding: clamp(4px, 1vw, 8px) 0;
+  font-size: clamp(14px, 2vw, 16px);
+  line-height: 1.5;
+  overflow-y: auto;
+  box-shadow: none !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) transparent;
+}
+
+.chatInputContainer textarea::placeholder {
+  color: var(--text-color-secondary);
+}
+
+.chatInputButtonsWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chatIconButton {
+  background-color: rgba(var(--text-color-rgb), 0.08);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: clamp(32px, 5vw, 40px);
+  height: clamp(32px, 5vw, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  padding: 0;
+}
+
+.chatIconButton svg {
+  stroke: var(--text-color-secondary);
+  width: clamp(16px, 3vw, 20px);
+  height: clamp(16px, 3vw, 20px);
+  transition: stroke 0.2s ease;
+}
+
+.chatIconButton:hover,
+.chatIconButton.active {
+  background-color: rgba(var(--text-color-rgb), 0.12);
+  transform: scale(1.1);
+}
+
+.chatIconButton:hover {
+  border-color: var(--accent-color);
+}
+
+/* Default hover border */
+.chatIconButton:hover svg {
+  stroke: var(--accent-color);
+}
+
+/* Default hover icon color */
+
+.sendButton:hover {
+  border-color: var(--primary-light);
+}
+
+.sendButton:hover svg {
+  stroke: var(--primary-light);
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  background-color: rgba(var(--text-color-rgb), 0.05);
+}
+
+.sendButton:disabled svg {
+  stroke: var(--text-color-secondary);
+}
+
+.fileUploadButton:hover,
+.fileUploadButton.active {
+  border-color: var(--secondary-color);
+  /* CORREÇÃO: Usa a cor turquesa */
+}
+
+.fileUploadButton:hover svg,
+.fileUploadButton.active svg {
+  stroke: var(--secondary-color);
+  /* CORREÇÃO: Usa a cor turquesa */
+}
+
+.fileUploadDropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.fileUploadDropdown .dropdownContent {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--card-background-color);
+  min-width: 240px;
+  /* AUMENTADO DE 160px */
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+/* SUBSTITUA a regra existente '.fileUploadDropdown .dropdownContent button' por esta */
+.fileUploadDropdown .dropdownContent button {
+  color: var(--text-color);
+  padding: 12px 16px;
+  text-decoration: none;
+  display: flex;
+  /* MUDANÇA: Alinha ícone e texto */
+  align-items: center;
+  /* MUDANÇA: Alinha ícone e texto */
+  gap: 12px;
+  /* MUDANÇA: Espaço entre ícone e texto */
+  background: none;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 14px;
+  white-space: nowrap;
+  /* MUDANÇA: Impede a quebra de linha */
+}
+
+.fileUploadDropdown .dropdownContent button:hover {
+  background-color: var(--secondary-color);
+  color: var(--background-color);
+}
+
+.fileUploadDropdown .dropdownContent button:active {
+  background-color: var(--secondary-light);
+}
+
+/* ADICIONE ESTA NOVA REGRA para a divisória */
+.fileUploadDropdown .dropdownContent button:not(:first-child) {
+  border-top: 1px solid var(--border-color);
+}
+
+/* ADICIONE ESTA NOVA REGRA para estilizar os ícones dentro do menu */
+.dropdownIcon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-color-secondary);
+  transition: color 0.2s ease;
+}
+
+/* Attachment badges shown inside sent user message bubbles */
+.attachmentBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.attachmentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(var(--accent-color-rgb, 187, 134, 252), 0.12);
+  border: 1px solid rgba(var(--accent-color-rgb, 187, 134, 252), 0.25);
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  max-width: 100%;
+}
+
+.attachmentIcon {
+  color: var(--accent-color, #bb86fc);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.attachmentName {
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+  max-width: 12rem;
+}
+
+html[data-theme='light'] .attachmentBadge {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+/* Multi-file preview row above the input area */
+.filePreviewRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.filePreviewChip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: rgba(var(--text-color-rgb), 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  max-width: 14rem;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.chipPreviewImage {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.25rem;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.chipFileIcon {
+  font-size: 1rem;
+  color: var(--text-color-secondary);
+  flex-shrink: 0;
+}
+
+.chipFileName {
+  font-size: 0.78rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 8rem;
+}
+
+.chipRemoveButton {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  border-radius: 50%;
+  line-height: 1;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.chipRemoveButton:hover {
+  color: var(--notification-error-bg);
+}
+
+.fileCount {
+  font-size: 0.72rem;
+  color: var(--text-color-secondary);
+  padding: 0.2rem 0.4rem;
+  background: rgba(var(--text-color-rgb), 0.04);
+  border-radius: 0.25rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chatInfoText {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+  padding: 0.625rem 0 0.3125rem 0;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.chatBody::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.chatBody::-webkit-scrollbar-track {
+  background: rgba(var(--background-color-rgb), 0.1);
+  border-radius: 0.625rem;
+}
+
+.chatBody::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 0.625rem;
+  border: 0.125rem solid transparent;
+  background-clip: content-box;
+}
+
+.chatBody::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color);
+}
+
+.chatBody {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) rgba(var(--background-color-rgb), 0.1);
+}
+
+.messageActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  opacity: 1;
+  position: relative;
+  visibility: visible;
+}
+
+.messageActions button:not(.shareMenuItem) {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  padding: 0.25rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.messageActions button:not(.shareMenuItem):hover {
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+}
+
+.messageActions button:not(.shareMenuItem) .successIcon {
+  color: var(--feedback-success, #10b981);
+  animation: pop-in 0.3s ease-out;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.editingBubble {
+  display: flex;
+  flex-direction: column;
+  padding: 0.9375rem 1.25rem;
+}
+
+.editingTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: rgba(var(--text-color-rgb), 0.03);
+  color: var(--text-color);
+  border: 0.0625rem dashed var(--border-color);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  resize: none;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  outline: none;
+  min-height: 3.125rem;
+  max-height: 12.5rem;
+  overflow-y: auto;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.editingTextarea:focus {
+  border-color: var(--primary-color);
+  background-color: transparent;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.editActionButton {
+  background-color: var(--card-background-color);
+  border: 0.0625rem solid var(--border-color);
+  color: var(--text-color-secondary);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.confirmButton:hover {
+  background-color: rgba(var(--notification-success-rgb), 0.1);
+  color: var(--notification-success-border);
+  border-color: rgba(var(--notification-success-rgb), 0.4);
+  transform: scale(1.1);
+}
+
+.cancelButton:hover {
+  background-color: rgba(var(--notification-error-rgb), 0.1);
+  color: var(--notification-error-border);
+  border-color: rgba(var(--notification-error-rgb), 0.4);
+  transform: scale(1.1);
+}
+
+.stopButton {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.stopButton svg {
+  color: #ef4444;
+}
+
+.stopButton:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: #dc2626;
+}
+
+.messageActions {
+  position: relative;
+}
+
+.shareMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  opacity: 0;
+  transform: translateX(calc(50% - 16px)) translateY(10px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.shareMenuOpen {
+  opacity: 1;
+  transform: translateX(calc(50% - 16px)) translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.messageActions .shareMenuItem {
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  width: 100%;
+  height: auto;
+}
+
+.messageActions .shareMenuItem:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.messageActions .shareMenuItem svg {
+  color: var(--text-color-secondary);
+  width: 1rem;
+  height: 1rem;
+  transition: color 0.2s ease;
+}
+
+.messageActions .shareMenuItem:hover svg {
+  color: var(--accent-color);
+}
+
+.libraryTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(var(--accent-color-rgb), 0.15);
+  color: var(--accent-color);
+  padding: 0.375rem 0.75rem;
+  border-radius: 1.25rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.625rem;
+  border: 0.0625rem solid rgba(var(--accent-color-rgb), 0.3);
+}
+
+.libraryTag span {
+  font-weight: 500;
+}
+
+.libraryTag button {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.25rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.libraryTag button:hover {
+  opacity: 1;
+}
+
+.fileUploadDropdown .dropdownContent button:hover .dropdownIcon {
+  color: var(--background-color);
+}
+/* --------------------------------------------------------------------------
+   Imagem dentro da resposta (vem da biblioteca do próprio usuário, resolvida
+   no backend a partir da diretiva [IMAGEM: ...]). Teto de altura para não
+   empurrar o texto da resposta para fora da tela; clique amplia em nova aba.
+-------------------------------------------------------------------------- */
+.answerImageLink {
+  display: block;
+  margin: 12px 0 4px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--background-secondary);
+  max-width: 520px;
+}
+
+.answerImage {
+  display: block;
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  transition: transform 0.25s ease;
+}
+
+.answerImageLink:hover .answerImage {
+  transform: scale(1.02);
+}

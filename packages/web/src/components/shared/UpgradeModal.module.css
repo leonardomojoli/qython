@@ -1,0 +1,225 @@
+/* frontend/src/components/shared/UpgradeModal.module.css */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  backdrop-filter: blur(8px);
+  padding: clamp(10px, 3vw, 20px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.modalContent {
+  background: var(--card-background-color);
+  padding: clamp(28px, 5vw, 36px);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px var(--shadow-color),
+    0 0 0 1px var(--glass-border);
+  width: 90%;
+  max-width: min(440px, 100%);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  text-align: center;
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient accent at top */
+.modalContent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa, #c4b5fd, #a78bfa, #8b5cf6);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Icon Container - Premium look */
+.iconContainer {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto clamp(18px, 3vw, 24px) auto;
+  font-size: 32px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(167, 139, 250, 0.25));
+  color: #8b5cf6;
+  border: 2px solid rgba(139, 92, 246, 0.35);
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Title with gradient text */
+.title {
+  margin-top: 0;
+  margin-bottom: clamp(10px, 2vw, 14px);
+  font-size: clamp(1.25rem, 2.5vw, 1.45rem);
+  font-weight: 700;
+  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+/* Feature badge */
+.featureBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b5cf6;
+  margin-bottom: clamp(14px, 3vw, 18px);
+}
+
+.featureBadge svg {
+  font-size: 0.75rem;
+}
+
+/* Message */
+.message {
+  margin-bottom: clamp(24px, 4vw, 30px);
+  font-size: clamp(0.95rem, 2vw, 1.05rem);
+  line-height: 1.7;
+  color: var(--text-color-secondary);
+}
+
+/* Benefits list */
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: clamp(24px, 4vw, 28px);
+  text-align: left;
+  padding: 0 10px;
+}
+
+.benefitItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.benefitItem svg {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+/* Button group */
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2vw, 12px);
+}
+
+.button {
+  padding: clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px);
+  border-radius: 12px;
+  font-size: clamp(0.95rem, 2vw, 1rem);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Primary upgrade button - gradient purple */
+.upgradeButton {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+}
+
+.upgradeButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.5);
+}
+
+/* Secondary/Cancel button */
+.cancelButton {
+  background-color: transparent;
+  color: var(--text-color-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  color: var(--text-color);
+  border-color: var(--text-color-secondary);
+}
+
+/* Close button (X) */
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.closeButton:hover {
+  opacity: 1;
+  background: rgba(var(--text-color-rgb), 0.08);
+  color: var(--text-color);
+}

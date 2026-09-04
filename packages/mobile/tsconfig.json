@@ -1,0 +1,13 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "types": ["jest"],
+    "baseUrl": ".",
+    "paths": {
+      "@qython/shared": ["../shared/src"],
+      "@qython/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../shared/src/**/*.ts"],
+  "exclude": ["**/node_modules", "**/Pods"]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "/",
+  "short_name": "Qython",
+  "name": "Qython - Clinical Intelligence",
+  "description": "AI-powered clinical copilot for healthcare professionals",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/images/branding/qython-isotipo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1e1e28",
+  "background_color": "#1e1e28",
+  "orientation": "any",
+  "scope": "/"
+}

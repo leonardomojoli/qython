@@ -1,0 +1,172 @@
+/* frontend/src/components/pharmacy/PharmacyManager.module.css */
+
+.pharmacyContainer {
+  padding: clamp(1rem, 3vw, 2rem);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header */
+.pharmacyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(1rem, 3vw, 2rem);
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.headerTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 12px);
+}
+
+.headerIcon {
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  color: var(--header-accent-color);
+  transition: color 0.2s ease;
+}
+
+.pharmacyTitle {
+  text-align: left;
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--header-title-color);
+}
+
+/* Tabs */
+.tabsContainer {
+  display: flex;
+  gap: 10px;
+  padding: 24px 20px;
+  margin-bottom: 24px;
+  margin-left: -20px;
+  margin-right: -20px;
+  overflow: visible;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+  z-index: 10;
+}
+
+.tabsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  min-width: 100px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background: var(--glass-bg-elevated);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-3px);
+}
+
+.tabActive {
+  background: linear-gradient(135deg,
+    rgba(var(--accent-color-rgb), 0.15) 0%,
+    rgba(var(--accent-color-rgb), 0.25) 100%);
+  border-color: rgba(var(--accent-color-rgb), 0.5);
+  box-shadow:
+    0 4px 20px rgba(var(--accent-color-rgb), 0.25),
+    0 0 40px rgba(var(--accent-color-rgb), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.tab.tabActive:hover {
+  background: linear-gradient(135deg,
+    rgba(var(--accent-color-rgb), 0.25) 0%,
+    rgba(var(--accent-color-rgb), 0.35) 100%);
+  border-color: var(--accent-color);
+  transform: translateY(-3px);
+  box-shadow:
+    0 6px 25px rgba(var(--accent-color-rgb), 0.35),
+    0 0 50px rgba(var(--accent-color-rgb), 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tabIcon {
+  font-size: 22px;
+  color: var(--text-muted);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.tab:hover .tabIcon {
+  color: var(--text-color);
+}
+
+.tabActive .tabIcon {
+  color: var(--accent-color);
+}
+
+.tabLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+  letter-spacing: 0.3px;
+}
+
+.tab:hover .tabLabel {
+  color: var(--text-color);
+}
+
+.tabActive .tabLabel {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+/* Content */
+.contentArea {
+  min-height: 400px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pharmacyContainer {
+    padding: 1rem;
+  }
+
+  .tabsContainer {
+    gap: 8px;
+    padding: 16px 12px;
+    margin-left: -12px;
+    margin-right: -12px;
+  }
+
+  .tab {
+    padding: 12px 14px;
+    min-width: 85px;
+  }
+
+  .tabIcon {
+    font-size: 18px;
+  }
+
+  .tabLabel {
+    font-size: 10px;
+  }
+}

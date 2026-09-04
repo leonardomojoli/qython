@@ -1,0 +1,199 @@
+/* VerificationStatus.module.css - Soft block screen for document verification */
+
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a14 0%, #121225 100%);
+    color: white;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.card {
+    background: linear-gradient(145deg, #1a1d2e 0%, #12151f 100%);
+    padding: 50px 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 480px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 60px rgba(3, 218, 198, 0.05);
+}
+
+.card h2 {
+    margin: 0 0 15px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.card p {
+    color: #a0a0b0;
+    line-height: 1.6;
+    margin: 0 0 10px 0;
+}
+
+/* Icons */
+.iconPending {
+    font-size: 3.5rem;
+    color: #ffc107;
+    margin-bottom: 25px;
+    animation: pulse 2s infinite;
+}
+
+.iconError {
+    font-size: 3.5rem;
+    color: #ff5252;
+    margin-bottom: 25px;
+}
+
+.iconSuccess {
+    font-size: 3.5rem;
+    color: #03dac6;
+    margin-bottom: 25px;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+/* Reason Box for Rejected Status */
+.reasonBox {
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.25);
+    border-left: 3px solid #ff5252;
+    padding: 15px 18px;
+    border-radius: 8px;
+    margin: 25px 0;
+    text-align: left;
+    font-size: 0.9rem;
+    color: #ff8a80;
+    line-height: 1.5;
+}
+
+.reasonBox strong {
+    color: #ffab91;
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Upload Area */
+.uploadArea {
+    margin-top: 30px;
+}
+
+.fileLabel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: all 0.25s ease;
+    color: #a0a0b0;
+    font-size: 0.95rem;
+}
+
+.fileLabel:hover {
+    border-color: #03dac6;
+    color: #03dac6;
+    background: rgba(3, 218, 198, 0.05);
+}
+
+.fileLabel.hasFile {
+    border-color: #03dac6;
+    border-style: solid;
+    color: #03dac6;
+    background: rgba(3, 218, 198, 0.08);
+}
+
+/* Buttons */
+.btnSubmit {
+    background: linear-gradient(135deg, #6200ea 0%, #7c4dff 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btnSubmit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(98, 0, 234, 0.4);
+}
+
+.btnSubmit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btnRefresh {
+    background: transparent;
+    color: #03dac6;
+    border: 2px solid #03dac6;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 20px;
+    transition: all 0.25s ease;
+}
+
+.btnRefresh:hover {
+    background: rgba(3, 218, 198, 0.1);
+}
+
+/* Help Text */
+.helpText {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 20px;
+}
+
+.subtext {
+    font-size: 0.9rem;
+    color: #777;
+    margin-top: 10px;
+}
+
+/* Loading spinner */
+.spinnerIcon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

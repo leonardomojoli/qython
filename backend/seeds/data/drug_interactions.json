@@ -1,0 +1,782 @@
+[
+  {
+    "active_principle_a": "nitrato de isossorbida",
+    "active_principle_b": "sildenafila",
+    "severity": "contraindicated",
+    "description": "Risco de hipotensão grave e potencialmente fatal.",
+    "mechanism": "Ambos causam vasodilatação via NO/GMPc. Efeito sinérgico pode causar colapso cardiovascular.",
+    "clinical_management": "NUNCA usar concomitantemente. Esperar 24h (sildenafila) ou 48h (tadalafila) após uso de nitrato.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "mononitrato de isossorbida",
+    "active_principle_b": "sildenafila",
+    "severity": "contraindicated",
+    "description": "Risco de hipotensão grave e potencialmente fatal.",
+    "mechanism": "Ambos causam vasodilatação via NO/GMPc. Efeito sinérgico pode causar colapso cardiovascular.",
+    "clinical_management": "NUNCA usar concomitantemente. Esperar 24h após uso de nitrato.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "nitrato de isossorbida",
+    "active_principle_b": "tadalafila",
+    "severity": "contraindicated",
+    "description": "Risco de hipotensão grave e potencialmente fatal.",
+    "mechanism": "Ambos causam vasodilatação via NO/GMPc. Tadalafila tem meia-vida longa (17,5h).",
+    "clinical_management": "NUNCA usar concomitantemente. Esperar no mínimo 48h.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "fluoxetina",
+    "active_principle_b": "selegilina",
+    "severity": "contraindicated",
+    "description": "Risco de síndrome serotoninérgica fatal.",
+    "mechanism": "ISRS + IMAO = acúmulo massivo de serotonina no SNC.",
+    "clinical_management": "Contraindicação absoluta. Washout de 5 semanas (fluoxetina) ou 14 dias (IMAO) entre as trocas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "selegilina",
+    "active_principle_b": "sertralina",
+    "severity": "contraindicated",
+    "description": "Risco de síndrome serotoninérgica fatal.",
+    "mechanism": "ISRS + IMAO = acúmulo massivo de serotonina no SNC.",
+    "clinical_management": "Contraindicação absoluta. Washout de 14 dias entre as trocas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "metotrexato",
+    "active_principle_b": "sulfametoxazol + trimetoprima",
+    "severity": "contraindicated",
+    "description": "Risco de supressão medular grave (pancitopenia).",
+    "mechanism": "TMP inibe a diidrofolato redutase e potencializa a toxicidade do metotrexato.",
+    "clinical_management": "Evitar completamente. Se necessário antibiótico, usar alternativa.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "voriconazol",
+    "severity": "contraindicated",
+    "description": "Falha terapêutica do antifúngico com risco de infecção descontrolada.",
+    "mechanism": "Carbamazepina é potente indutor de CYP3A4, metabolizando quase todo o voriconazol.",
+    "clinical_management": "Usar antifúngico alternativo ou trocar anticonvulsivante.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "miconazol",
+    "active_principle_b": "varfarina",
+    "severity": "contraindicated",
+    "description": "Risco de sangramento grave.",
+    "mechanism": "Miconazol inibe CYP2C9 e CYP3A4, aumentando drasticamente os níveis de varfarina.",
+    "clinical_management": "Evitar miconazol (inclusive tópico oral). Usar antifúngico alternativo.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "linezolida",
+    "active_principle_b": "sertralina",
+    "severity": "contraindicated",
+    "description": "Risco de síndrome serotoninérgica.",
+    "mechanism": "Linezolida é IMAO reversível não-seletivo. ISRS + IMAO = excesso de serotonina.",
+    "clinical_management": "Suspender ISRS 24h antes de iniciar linezolida. Reiniciar 24h após última dose.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "claritromicina",
+    "active_principle_b": "ergotamina",
+    "severity": "contraindicated",
+    "description": "Risco de ergotismo (vasoespasmo periférico grave, gangrena).",
+    "mechanism": "Claritromicina inibe CYP3A4, aumentando níveis plasmáticos de ergotamina.",
+    "clinical_management": "Contraindicação absoluta. Usar alternativa para enxaqueca ou antibiótico.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "captopril",
+    "active_principle_b": "losartana",
+    "severity": "severe",
+    "description": "Aumento do risco de hipercalemia, hipotensão e insuficiência renal.",
+    "mechanism": "Duplo bloqueio do SRAA (BRA + IECA) sem benefício adicional comprovado.",
+    "clinical_management": "Evitar combinação. Usar apenas um bloqueador do SRAA. Monitorar potássio e creatinina se inevitável.",
+    "source": "DrugBank",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "enalapril",
+    "active_principle_b": "losartana",
+    "severity": "severe",
+    "description": "Aumento do risco de hipercalemia, hipotensão e insuficiência renal.",
+    "mechanism": "Duplo bloqueio do SRAA (BRA + IECA) sem benefício adicional comprovado.",
+    "clinical_management": "Evitar combinação. Usar apenas um bloqueador do SRAA.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "espironolactona",
+    "active_principle_b": "losartana",
+    "severity": "severe",
+    "description": "Risco significativo de hipercalemia.",
+    "mechanism": "BRA retém potássio + espironolactona é diurético poupador de potássio.",
+    "clinical_management": "Se necessário, monitorar potássio sérico rigorosamente (semanal no início). Evitar suplementos de K+.",
+    "source": "DrugBank",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "enalapril",
+    "active_principle_b": "espironolactona",
+    "severity": "severe",
+    "description": "Risco significativo de hipercalemia.",
+    "mechanism": "IECA retém potássio + espironolactona é diurético poupador de potássio.",
+    "clinical_management": "Se necessário (ex: IC), monitorar potássio sérico rigorosamente. Iniciar espironolactona em dose baixa.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "amiodarona",
+    "active_principle_b": "digoxina",
+    "severity": "severe",
+    "description": "Risco de toxicidade digitálica (arritmias, náusea, distúrbios visuais).",
+    "mechanism": "Amiodarona inibe P-gp e CYP3A4, dobrando os níveis séricos de digoxina.",
+    "clinical_management": "Reduzir dose de digoxina em 50% ao iniciar amiodarona. Monitorar digoxinemia.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "amiodarona",
+    "active_principle_b": "varfarina",
+    "severity": "severe",
+    "description": "Risco aumentado de sangramento.",
+    "mechanism": "Amiodarona inibe CYP2C9 e CYP1A2, reduzindo o metabolismo da varfarina.",
+    "clinical_management": "Reduzir dose de varfarina em 30-50%. Monitorar INR semanalmente por 6-8 semanas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "fluconazol",
+    "active_principle_b": "varfarina",
+    "severity": "severe",
+    "description": "Risco aumentado de sangramento.",
+    "mechanism": "Fluconazol inibe CYP2C9, principal via de metabolismo da S-varfarina.",
+    "clinical_management": "Reduzir dose de varfarina. Monitorar INR a cada 2-3 dias durante uso concomitante.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "metronidazol",
+    "active_principle_b": "varfarina",
+    "severity": "severe",
+    "description": "Risco aumentado de sangramento.",
+    "mechanism": "Metronidazol inibe CYP2C9, reduzindo metabolismo da varfarina.",
+    "clinical_management": "Monitorar INR. Considerar redução de 25-50% da dose de varfarina.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ibuprofeno",
+    "active_principle_b": "metotrexato",
+    "severity": "severe",
+    "description": "Risco de toxicidade por metotrexato (mielossupressão, mucosite, nefrotoxicidade).",
+    "mechanism": "AINEs reduzem clearance renal do metotrexato e competem pela ligação proteica.",
+    "clinical_management": "Evitar AINEs em pacientes com metotrexato em dose alta. Usar paracetamol como alternativa.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "diclofenaco",
+    "active_principle_b": "metotrexato",
+    "severity": "severe",
+    "description": "Risco de toxicidade por metotrexato.",
+    "mechanism": "AINEs reduzem clearance renal do metotrexato.",
+    "clinical_management": "Evitar AINEs. Usar paracetamol se necessário analgesia.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de lítio",
+    "active_principle_b": "ibuprofeno",
+    "severity": "severe",
+    "description": "Aumento dos níveis séricos de lítio com risco de toxicidade (tremores, confusão, arritmias).",
+    "mechanism": "AINEs reduzem excreção renal de lítio em 15-25%.",
+    "clinical_management": "Evitar AINEs. Se necessário, monitorar litemia semanalmente. Preferir paracetamol.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de lítio",
+    "active_principle_b": "furosemida",
+    "severity": "severe",
+    "description": "Aumento dos níveis de lítio por depleção de sódio.",
+    "mechanism": "Diuréticos de alça causam perda de sódio, levando a reabsorção compensatória de lítio nos túbulos renais.",
+    "clinical_management": "Monitorar litemia ao iniciar/ajustar diurético. Manter hidratação adequada.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de lítio",
+    "active_principle_b": "hidroclorotiazida",
+    "severity": "severe",
+    "description": "Aumento dos níveis de lítio por depleção de sódio.",
+    "mechanism": "Tiazídicos reduzem excreção renal de lítio em 25-40%.",
+    "clinical_management": "Se necessário, reduzir dose de lítio em 25-50%. Monitorar litemia.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "eritromicina",
+    "severity": "severe",
+    "description": "Toxicidade por carbamazepina (ataxia, diplopia, nistagmo).",
+    "mechanism": "Eritromicina inibe CYP3A4, aumentando níveis de carbamazepina.",
+    "clinical_management": "Usar macrolídeo alternativo (azitromicina tem menor interação).",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "claritromicina",
+    "severity": "severe",
+    "description": "Toxicidade por carbamazepina.",
+    "mechanism": "Claritromicina inibe fortemente CYP3A4.",
+    "clinical_management": "Usar azitromicina como alternativa. Se inevitável, monitorar níveis de carbamazepina.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "fluoxetina",
+    "active_principle_b": "tramadol",
+    "severity": "severe",
+    "description": "Risco de síndrome serotoninérgica e convulsões.",
+    "mechanism": "Fluoxetina inibe CYP2D6 (reduz eficácia analgésica) e ambos aumentam serotonina.",
+    "clinical_management": "Evitar combinação. Usar analgésico não-opioide ou opioide sem ação serotoninérgica.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "sertralina",
+    "active_principle_b": "tramadol",
+    "severity": "severe",
+    "description": "Risco de síndrome serotoninérgica.",
+    "mechanism": "Ambos aumentam serotonina no SNC. ISRS inibe CYP2D6.",
+    "clinical_management": "Se necessário, usar dose baixa e monitorar. Preferir analgésico alternativo.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "clopidogrel",
+    "active_principle_b": "omeprazol",
+    "severity": "severe",
+    "description": "Redução da eficácia antiplaquetária do clopidogrel.",
+    "mechanism": "Omeprazol inibe CYP2C19, enzima necessária para ativar o pró-fármaco clopidogrel.",
+    "clinical_management": "Usar pantoprazol (menor inibição de CYP2C19) ou rabeprazol como alternativa.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "digoxina",
+    "active_principle_b": "verapamil",
+    "severity": "severe",
+    "description": "Risco de toxicidade digitálica e bradiarritmias.",
+    "mechanism": "Verapamil inibe P-gp (aumenta absorção de digoxina) e ambos reduzem condução AV.",
+    "clinical_management": "Reduzir digoxina em 33-50%. Monitorar digoxinemia e ECG.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "atenolol",
+    "active_principle_b": "verapamil",
+    "severity": "severe",
+    "description": "Risco de bradicardia severa, bloqueio AV e insuficiência cardíaca.",
+    "mechanism": "Ambos deprimem condução AV e contratilidade miocárdica.",
+    "clinical_management": "Evitar combinação. Se necessário, usar com extrema cautela e monitorização contínua.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "propranolol",
+    "active_principle_b": "verapamil",
+    "severity": "severe",
+    "description": "Risco de bradicardia severa, bloqueio AV e IC descompensada.",
+    "mechanism": "Efeito aditivo depressor sobre condução AV e inotropismo.",
+    "clinical_management": "Contraindicado IV. Oral: apenas se absolutamente necessário com monitorização.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "clonazepam",
+    "active_principle_b": "álcool etílico",
+    "severity": "severe",
+    "description": "Depressão respiratória e do SNC potencialmente fatal.",
+    "mechanism": "Efeito sinérgico GABA-A. Ambos são depressores do SNC.",
+    "clinical_management": "Orientar paciente a evitar álcool completamente durante tratamento.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "contraste iodado",
+    "active_principle_b": "metformina",
+    "severity": "severe",
+    "description": "Risco de acidose láctica.",
+    "mechanism": "Contraste pode causar nefropatia, reduzindo clearance de metformina e acúmulo de lactato.",
+    "clinical_management": "Suspender metformina 48h antes do contraste. Reiniciar após verificar função renal.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "cloreto de potássio",
+    "active_principle_b": "espironolactona",
+    "severity": "severe",
+    "description": "Risco de hipercalemia grave (arritmias cardíacas).",
+    "mechanism": "Espironolactona retém potássio. Suplemento adiciona mais potássio.",
+    "clinical_management": "Evitar suplementação de K+. Monitorar potássio sérico.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "clorpromazina",
+    "active_principle_b": "fluoxetina",
+    "severity": "severe",
+    "description": "Risco de prolongamento QT e arritmias.",
+    "mechanism": "Fluoxetina inibe CYP2D6, aumentando níveis de clorpromazina. Ambos prolongam QT.",
+    "clinical_management": "Monitorar ECG. Considerar antipsicótico com menor efeito no QT.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ciprofloxacino",
+    "active_principle_b": "tizanidina",
+    "severity": "severe",
+    "description": "Toxicidade por tizanidina (hipotensão, sedação, bradicardia).",
+    "mechanism": "Ciprofloxacino inibe fortemente CYP1A2, aumentando AUC da tizanidina em 10x.",
+    "clinical_management": "Contraindicação. Usar outro antibiótico ou suspender tizanidina.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "claritromicina",
+    "active_principle_b": "sinvastatina",
+    "severity": "severe",
+    "description": "Risco de rabdomiólise.",
+    "mechanism": "Claritromicina inibe CYP3A4, aumentando níveis de sinvastatina até 10x.",
+    "clinical_management": "Suspender sinvastatina durante tratamento com claritromicina. Usar azitromicina como alternativa.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "atorvastatina",
+    "active_principle_b": "claritromicina",
+    "severity": "severe",
+    "description": "Risco de miopatia e rabdomiólise.",
+    "mechanism": "Claritromicina inibe CYP3A4, aumentando exposição à atorvastatina.",
+    "clinical_management": "Limitar atorvastatina a 20mg/dia ou usar azitromicina.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ibuprofeno",
+    "active_principle_b": "losartana",
+    "severity": "moderate",
+    "description": "Redução do efeito anti-hipertensivo e risco renal.",
+    "mechanism": "AINEs antagonizam o efeito hipotensor via inibição de prostaglandinas renais.",
+    "clinical_management": "Monitorar PA e função renal. Uso curto (<5 dias) geralmente tolerado.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "diclofenaco",
+    "active_principle_b": "losartana",
+    "severity": "moderate",
+    "description": "Redução do efeito anti-hipertensivo.",
+    "mechanism": "AINEs inibem prostaglandinas vasodilatadoras renais.",
+    "clinical_management": "Monitorar PA. Preferir paracetamol para dor.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "enalapril",
+    "active_principle_b": "ibuprofeno",
+    "severity": "moderate",
+    "description": "Redução do efeito anti-hipertensivo e risco de IRA.",
+    "mechanism": "Tríplice whammy (IECA + AINE + diurético) = alto risco renal.",
+    "clinical_management": "Evitar uso prolongado de AINE. Monitorar creatinina e potássio.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "diclofenaco",
+    "active_principle_b": "enalapril",
+    "severity": "moderate",
+    "description": "Redução do efeito anti-hipertensivo.",
+    "mechanism": "AINEs antagonizam efeito de IECA via prostaglandinas.",
+    "clinical_management": "Uso breve tolerado. Monitorar PA e função renal.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "anlodipino",
+    "active_principle_b": "atenolol",
+    "severity": "moderate",
+    "description": "Risco de bradicardia e hipotensão.",
+    "mechanism": "Efeito aditivo sobre frequência cardíaca e pressão arterial.",
+    "clinical_management": "Combinação frequentemente usada, mas iniciar com doses baixas. Monitorar FC.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "insulina nph",
+    "active_principle_b": "propranolol",
+    "severity": "moderate",
+    "description": "Mascaramento de sintomas de hipoglicemia e prolongamento da recuperação.",
+    "mechanism": "Beta-bloqueadores mascaram taquicardia e tremores da hipoglicemia.",
+    "clinical_management": "Orientar paciente a monitorar glicemia frequentemente. Reconhecer sinais como sudorese.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "insulina regular",
+    "active_principle_b": "propranolol",
+    "severity": "moderate",
+    "description": "Mascaramento de sintomas de hipoglicemia.",
+    "mechanism": "Beta-bloqueadores mascaram taquicardia da hipoglicemia.",
+    "clinical_management": "Monitorar glicemia. Preferir beta-bloqueadores cardiosseletivos (bisoprolol).",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "furosemida",
+    "active_principle_b": "metformina",
+    "severity": "moderate",
+    "description": "Aumento do risco de acidose láctica.",
+    "mechanism": "Furosemida pode causar desidratação e redução da função renal, acumulando metformina.",
+    "clinical_management": "Manter hidratação adequada. Monitorar função renal. Ajustar dose se TFG reduzir.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "anlodipino",
+    "active_principle_b": "sinvastatina",
+    "severity": "moderate",
+    "description": "Aumento do risco de miopatia.",
+    "mechanism": "Anlodipino inibe levemente CYP3A4, aumentando níveis de sinvastatina.",
+    "clinical_management": "Limitar sinvastatina a 20mg/dia quando combinada com anlodipino.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "fenofibrato",
+    "active_principle_b": "sinvastatina",
+    "severity": "moderate",
+    "description": "Aumento do risco de miopatia e rabdomiólise.",
+    "mechanism": "Fibratos aumentam risco muscular independentemente das estatinas.",
+    "clinical_management": "Se necessário, preferir fenofibrato (menor risco que genfibrozila). Monitorar CK.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "amiodarona",
+    "active_principle_b": "sinvastatina",
+    "severity": "moderate",
+    "description": "Aumento do risco de miopatia.",
+    "mechanism": "Amiodarona inibe CYP3A4, aumentando níveis de sinvastatina.",
+    "clinical_management": "Limitar sinvastatina a 20mg/dia.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "paracetamol",
+    "active_principle_b": "varfarina",
+    "severity": "moderate",
+    "description": "Aumento leve do INR com uso prolongado.",
+    "mechanism": "Paracetamol em doses >2g/dia pode interferir no metabolismo da varfarina.",
+    "clinical_management": "Uso ocasional é seguro. Em doses >2g/dia por >3 dias, monitorar INR.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "varfarina",
+    "active_principle_b": "ácido acetilsalicílico",
+    "severity": "moderate",
+    "description": "Aumento do risco de sangramento.",
+    "mechanism": "AAS inibe plaquetas + varfarina inibe coagulação = dupla antitrombose.",
+    "clinical_management": "Combinação pode ser indicada em próteses valvares. Monitorar INR e sinais de sangramento.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de cálcio + colecalciferol",
+    "active_principle_b": "levotiroxina",
+    "severity": "moderate",
+    "description": "Redução da absorção de levotiroxina.",
+    "mechanism": "Cálcio quelado levotiroxina no TGI, reduzindo absorção em até 25%.",
+    "clinical_management": "Separar administração por pelo menos 4 horas. Tomar levotiroxina em jejum.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "levotiroxina",
+    "active_principle_b": "omeprazol",
+    "severity": "moderate",
+    "description": "Possível redução da absorção de levotiroxina.",
+    "mechanism": "IBPs reduzem acidez gástrica necessária para dissolução de levotiroxina.",
+    "clinical_management": "Monitorar TSH ao iniciar/suspender IBP. Ajustar dose se necessário.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "levotiroxina",
+    "active_principle_b": "sulfato ferroso",
+    "severity": "moderate",
+    "description": "Redução da absorção de levotiroxina.",
+    "mechanism": "Ferro forma complexo insolúvel com levotiroxina no TGI.",
+    "clinical_management": "Separar administração por pelo menos 4 horas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "clonazepam",
+    "active_principle_b": "fluoxetina",
+    "severity": "moderate",
+    "description": "Aumento dos níveis de clonazepam e sedação.",
+    "mechanism": "Fluoxetina inibe CYP3A4, reduzindo metabolismo de clonazepam.",
+    "clinical_management": "Monitorar sedação. Pode ser necessário reduzir dose de clonazepam.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "fluoxetina",
+    "active_principle_b": "risperidona",
+    "severity": "moderate",
+    "description": "Aumento dos níveis de risperidona com risco de efeitos extrapiramidais.",
+    "mechanism": "Fluoxetina inibe CYP2D6, principal via de metabolismo da risperidona.",
+    "clinical_management": "Monitorar sintomas extrapiramidais. Considerar redução de dose da risperidona.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "etinilestradiol + levonorgestrel",
+    "severity": "moderate",
+    "description": "Falha contraceptiva.",
+    "mechanism": "Carbamazepina induz CYP3A4, acelerando metabolismo dos contraceptivos orais.",
+    "clinical_management": "Usar método contraceptivo adicional (barreira). Considerar DIU ou injetável trimestral.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de cálcio + colecalciferol",
+    "active_principle_b": "ciprofloxacino",
+    "severity": "moderate",
+    "description": "Redução da absorção do ciprofloxacino.",
+    "mechanism": "Cátions divalentes (Ca2+) quelam quinolonas no TGI.",
+    "clinical_management": "Separar administração por pelo menos 2 horas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ciprofloxacino",
+    "active_principle_b": "sulfato ferroso",
+    "severity": "moderate",
+    "description": "Redução da absorção do ciprofloxacino.",
+    "mechanism": "Ferro quelado quinolona no TGI, formando complexo insolúvel.",
+    "clinical_management": "Separar administração por pelo menos 2 horas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "haloperidol",
+    "active_principle_b": "metoclopramida",
+    "severity": "moderate",
+    "description": "Risco aumentado de efeitos extrapiramidais.",
+    "mechanism": "Ambos são antagonistas dopaminérgicos - efeito aditivo.",
+    "clinical_management": "Evitar combinação. Se necessário antiemético, usar ondansetrona.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "liraglutida",
+    "active_principle_b": "metformina",
+    "severity": "moderate",
+    "description": "Aumento do risco de hipoglicemia quando combinados com sulfonilureia.",
+    "mechanism": "Efeito aditivo na redução de glicemia.",
+    "clinical_management": "Ajustar dose de sulfonilureia se prescrita. Combinação metformina+GLP1 é segura.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "digoxina",
+    "active_principle_b": "furosemida",
+    "severity": "moderate",
+    "description": "Risco de toxicidade digitálica por hipocalemia.",
+    "mechanism": "Furosemida depleta potássio, aumentando sensibilidade à digoxina.",
+    "clinical_management": "Monitorar potássio sérico e digoxinemia. Suplementar K+ se necessário.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "glibenclamida",
+    "active_principle_b": "propranolol",
+    "severity": "moderate",
+    "description": "Mascaramento de hipoglicemia e possível potencialização.",
+    "mechanism": "Beta-bloqueadores mascaram sinais adrenérgicos e podem reduzir glicogenólise.",
+    "clinical_management": "Preferir beta-bloqueadores cardiosseletivos. Monitorar glicemia.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "dexametasona",
+    "active_principle_b": "ibuprofeno",
+    "severity": "moderate",
+    "description": "Aumento do risco de úlcera gástrica e sangramento.",
+    "mechanism": "Efeito aditivo na lesão da mucosa gástrica.",
+    "clinical_management": "Usar gastroprotetor (IBP). Evitar combinação prolongada.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ibuprofeno",
+    "active_principle_b": "prednisona",
+    "severity": "moderate",
+    "description": "Aumento do risco de úlcera gástrica.",
+    "mechanism": "Corticosteroides + AINEs = risco aditivo de lesão gastrointestinal.",
+    "clinical_management": "Associar IBP se uso prolongado necessário.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "ibuprofeno",
+    "active_principle_b": "ácido acetilsalicílico",
+    "severity": "moderate",
+    "description": "Redução do efeito cardioprotetor do AAS.",
+    "mechanism": "Ibuprofeno compete pelo sítio COX-1, bloqueando a acetilação irreversível pelo AAS.",
+    "clinical_management": "Tomar AAS 30min antes do ibuprofeno. Ou usar outro AINE (diclofenaco não interfere).",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "rivaroxabana",
+    "active_principle_b": "ácido acetilsalicílico",
+    "severity": "moderate",
+    "description": "Aumento do risco de sangramento.",
+    "mechanism": "Dupla antitrombose: anticoagulante + antiplaquetário.",
+    "clinical_management": "Combinação pode ser indicada pós-SCA. Avaliar risco/benefício. Monitorar sangramento.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "amiodarona",
+    "active_principle_b": "levotiroxina",
+    "severity": "moderate",
+    "description": "Alteração da função tireoidiana.",
+    "mechanism": "Amiodarona contém 37% de iodo e inibe conversão periférica de T4 em T3.",
+    "clinical_management": "Monitorar TSH a cada 3-6 meses durante uso de amiodarona.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "quetiapina",
+    "severity": "moderate",
+    "description": "Redução dos níveis de quetiapina.",
+    "mechanism": "Carbamazepina induz CYP3A4, acelerando metabolismo da quetiapina.",
+    "clinical_management": "Pode necessitar aumento da dose de quetiapina. Monitorar resposta clínica.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbamazepina",
+    "active_principle_b": "risperidona",
+    "severity": "moderate",
+    "description": "Redução dos níveis de risperidona.",
+    "mechanism": "Carbamazepina induz CYP3A4 e P-gp.",
+    "clinical_management": "Pode necessitar aumento da dose de risperidona. Monitorar resposta clínica.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "carbonato de cálcio + colecalciferol",
+    "active_principle_b": "omeprazol",
+    "severity": "mild",
+    "description": "Possível redução da absorção de cálcio.",
+    "mechanism": "IBPs reduzem acidez gástrica necessária para absorção de cálcio.",
+    "clinical_management": "Preferir citrato de cálcio (não depende de acidez). Suplementar vitamina D.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "metformina",
+    "active_principle_b": "omeprazol",
+    "severity": "mild",
+    "description": "Possível redução da absorção de vitamina B12.",
+    "mechanism": "Ambos reduzem absorção de B12 por mecanismos diferentes.",
+    "clinical_management": "Monitorar B12 anualmente em uso crônico de ambos.",
+    "source": "DrugBank",
+    "evidence_level": "theoretical"
+  },
+  {
+    "active_principle_a": "losartana",
+    "active_principle_b": "paracetamol",
+    "severity": "mild",
+    "description": "Interação mínima em uso ocasional.",
+    "mechanism": "Paracetamol tem mínimo efeito sobre prostaglandinas renais.",
+    "clinical_management": "Preferir paracetamol sobre AINEs para pacientes hipertensos. Seguro em doses terapêuticas.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "anlodipino",
+    "active_principle_b": "omeprazol",
+    "severity": "mild",
+    "description": "Leve aumento dos níveis de anlodipino.",
+    "mechanism": "Omeprazol inibe levemente CYP3A4.",
+    "clinical_management": "Geralmente sem significância clínica. Monitorar PA.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "sinvastatina",
+    "active_principle_b": "verapamil",
+    "severity": "mild",
+    "description": "Leve aumento do risco de miopatia.",
+    "mechanism": "Verapamil inibe levemente CYP3A4.",
+    "clinical_management": "Limitar sinvastatina a 20mg/dia. Monitorar sintomas musculares.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  },
+  {
+    "active_principle_a": "captopril",
+    "active_principle_b": "dipirona",
+    "severity": "mild",
+    "description": "Possível redução leve do efeito anti-hipertensivo.",
+    "mechanism": "Dipirona pode ter leve efeito anti-prostaglandina.",
+    "clinical_management": "Uso ocasional seguro. Em uso crônico, monitorar PA.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "paracetamol",
+    "active_principle_b": "propranolol",
+    "severity": "mild",
+    "description": "Leve aumento dos níveis de paracetamol.",
+    "mechanism": "Propranolol reduz fluxo hepático, diminuindo metabolismo de primeira passagem.",
+    "clinical_management": "Sem significância clínica em doses terapêuticas.",
+    "source": "DrugBank",
+    "evidence_level": "probable"
+  },
+  {
+    "active_principle_a": "cetirizina",
+    "active_principle_b": "loratadina",
+    "severity": "mild",
+    "description": "Efeito sedativo aditivo leve.",
+    "mechanism": "Ambos são anti-histamínicos H1. Cetirizina tem mais sedação que loratadina.",
+    "clinical_management": "Evitar combinação (sem benefício). Usar apenas um anti-histamínico.",
+    "source": "Micromedex",
+    "evidence_level": "established"
+  }
+]

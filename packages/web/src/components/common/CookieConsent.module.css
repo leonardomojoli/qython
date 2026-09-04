@@ -1,0 +1,163 @@
+/* frontend/src/components/common/CookieConsent.module.css */
+
+.overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 16px;
+  pointer-events: none;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.banner {
+  max-width: 720px;
+  margin: 0 auto;
+  background: rgba(30, 30, 40, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
+}
+
+.text {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.privacyLink {
+  color: #bb86fc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.privacyLink:hover {
+  color: #d4b4fc;
+  text-decoration: underline;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.acceptButton {
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(187, 134, 252, 0.35);
+  white-space: nowrap;
+}
+
+.acceptButton:hover {
+  box-shadow: 0 6px 20px rgba(187, 134, 252, 0.5);
+  transform: translateY(-1px);
+}
+
+.essentialButton {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.essentialButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Light mode overrides */
+html[data-theme='light'] .banner {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .text {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme='light'] .privacyLink {
+  color: #7c3aed;
+}
+
+html[data-theme='light'] .privacyLink:hover {
+  color: #6d28d9;
+}
+
+html[data-theme='light'] .acceptButton {
+  background: linear-gradient(135deg, #9a67ea 0%, #7c3aed 100%);
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+}
+
+html[data-theme='light'] .acceptButton:hover {
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
+}
+
+html[data-theme='light'] .essentialButton {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.6);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='light'] .essentialButton:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* Responsive - stack on mobile */
+@media (max-width: 600px) {
+  .banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 18px 20px;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .acceptButton,
+  .essentialButton {
+    flex: 1;
+    text-align: center;
+  }
+}

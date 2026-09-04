@@ -1,0 +1,42 @@
+# Embedding + Reranking Service for Qython (RAG v2)
+# Location: /etc/systemd/system/embedder.service
+#
+# Runs the e5 embedder (intfloat/multilingual-e5-base) + cross-encoder reranker
+# (cross-encoder/mmarco-mMiniLMv2-L12-H384-v1) as a SINGLE process so the models load once
+# — not once per gunicorn worker (4× would OOM the 8 GB box alongside whisper). The backend
+# calls it via EMBED_SERVER_URL in /opt/qython/.env (embedding_client.py). Listens on
+# 127.0.0.1:8003 (localhost only).
+#
+# Ativar o RAG v2 (depois de subir este serviço):
+#   1) no /opt/qython/.env: EMBED_SERVER_URL=http://127.0.0.1:8003
+#   2) migrar as bibliotecas: python3 backend/scripts/reindex_to_v2.py
+#   3) reiniciar o backend (qython.service) p/ reler o .env
+# Rollback: remover EMBED_SERVER_URL do .env + reiniciar o backend (coleções legadas intactas).
+#
+# After modifying this file:
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart embedder
+
+[Unit]
+Description=Embedding + reranking service for Qython (RAG v2)
+After=network.target
+
+[Service]
+User=linuxuser
+Group=www-data
+WorkingDirectory=/opt/qython
+EnvironmentFile=/opt/qython/.env
+Environment="PATH=/opt/qython/venv/bin:/usr/local/bin:/usr/bin:/bin"
+# Limita threads de CPU dos modelos (não brigar com whisper/gunicorn no box de 4 vCPU).
+Environment="OMP_NUM_THREADS=4"
+# Modelos (~0,5 GB embedder + ~0,5 GB reranker) baixam/carregam na 1ª subida — tempo generoso.
+TimeoutStartSec=1200
+ExecStart=/opt/qython/venv/bin/uvicorn backend.embed_server:app --host 127.0.0.1 --port 8003 --timeout-keep-alive 75
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=embedder
+
+[Install]
+WantedBy=multi-user.target

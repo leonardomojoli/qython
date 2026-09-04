@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qython — Inteligência clínica com IA, open source</title>
+<meta name="description" content="Plataforma de inteligência clínica com IA para médicos e estudantes: copiloto com RAG, biblioteca médica semântica, gerador de materiais e simulados. Open source, Apache-2.0, autohospedável.">
+<link rel="icon" href="favicon.png">
+<meta property="og:title" content="Qython — Inteligência clínica com IA, open source">
+<meta property="og:description" content="Copiloto clínico, biblioteca semântica e gerador de materiais. Rode na sua própria infraestrutura. Apache-2.0.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://qython.ai">
+<style>
+  :root{
+    --bg:#0d0d12; --bg-2:#12121a;
+    --surface:rgba(30,30,40,.75); --border:rgba(255,255,255,.09);
+    --text:#eceaf2; --muted:#a9a5b8; --faint:#7a7689;
+    --accent:#bb86fc; --accent-2:#9a67ea; --teal:#03dac6;
+    --radius:16px;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  /* Profundidade no escuro vem de luz emitida, nunca de brilho especular.
+     O glow fica no background do próprio body — uma camada `position:fixed` de
+     tela cheia vira camada de composição que não repinta no scroll em alguns
+     navegadores, deixando o conteúdo abaixo da dobra em branco. */
+  body{
+    margin:0; color:var(--text);
+    font-family:var(--sans); line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(56rem 30rem at 18% -8%, rgba(187,134,252,.16), transparent 62%),
+      radial-gradient(44rem 26rem at 88% 4%, rgba(3,218,198,.10), transparent 60%),
+      var(--bg);
+    background-repeat:no-repeat;
+  }
+  .wrap{position:relative; max-width:960px; margin:0 auto; padding:0 24px}
+
+  header{padding:72px 0 8px}
+  .logo{height:44px; width:auto; display:block; margin-bottom:34px}
+  h1{
+    font-size:clamp(2.1rem,5.4vw,3.5rem); line-height:1.12; margin:0 0 18px;
+    letter-spacing:-.022em; font-weight:700;
+  }
+  h1 .grad{
+    background:linear-gradient(135deg,var(--accent) 0%,var(--teal) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .lede{font-size:clamp(1.05rem,2.3vw,1.24rem); color:var(--muted); max-width:60ch; margin:0 0 14px}
+  .pivot{
+    font-size:.97rem; color:var(--faint); max-width:62ch; margin:0 0 34px;
+    border-left:2px solid rgba(187,134,252,.35); padding-left:16px;
+  }
+
+  .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px}
+  .btn{
+    display:inline-flex; align-items:center; gap:9px;
+    padding:13px 24px; border-radius:12px; font-weight:600; font-size:.97rem;
+    text-decoration:none; border:1px solid transparent; cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);
+    color:#fff; box-shadow:0 4px 18px rgba(187,134,252,.34);
+  }
+  .btn-primary:hover{transform:translateY(-2px); box-shadow:0 9px 28px rgba(187,134,252,.5)}
+  .btn-ghost{background:rgba(255,255,255,.045); color:var(--text); border-color:var(--border)}
+  .btn-ghost:hover{transform:translateY(-2px); border-color:rgba(3,218,198,.4); box-shadow:0 6px 22px rgba(3,218,198,.15)}
+
+  .install{
+    margin:30px 0 8px; background:rgba(0,0,0,.34); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden; backdrop-filter:blur(12px);
+  }
+  .install-head{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:11px 16px; border-bottom:1px solid var(--border);
+    font-size:.78rem; color:var(--faint); letter-spacing:.05em; text-transform:uppercase;
+  }
+  .copy{
+    background:rgba(255,255,255,.06); color:var(--text); border:1px solid var(--border);
+    border-radius:7px; padding:5px 11px; font:inherit; font-size:.74rem; cursor:pointer;
+    letter-spacing:.04em; transition:background .15s ease, border-color .15s ease;
+  }
+  .copy:hover{background:rgba(3,218,198,.14); border-color:rgba(3,218,198,.4)}
+  .install pre{
+    margin:0; padding:16px; overflow-x:auto;
+    font-family:var(--mono); font-size:.87rem; line-height:1.75; color:#d6d2e4;
+  }
+  .install .c{color:var(--faint)}
+  .install .p{color:var(--teal)}
+  .note{font-size:.86rem; color:var(--faint); margin:0 0 56px}
+
+  h2{
+    font-size:1.42rem; margin:60px 0 20px; letter-spacing:-.012em; font-weight:650;
+  }
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:14px}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card:hover{
+    transform:translateY(-3px); border-color:rgba(187,134,252,.3);
+    box-shadow:0 12px 30px rgba(187,134,252,.13);
+  }
+  .card h3{margin:0 0 7px; font-size:1rem; font-weight:650}
+  .card p{margin:0; font-size:.9rem; color:var(--muted); line-height:1.6}
+
+  .req{list-style:none; padding:0; margin:0; display:grid; gap:9px}
+  .req li{
+    display:flex; gap:11px; align-items:baseline;
+    font-size:.94rem; color:var(--muted);
+  }
+  .req b{color:var(--text); font-weight:600; min-width:8.5rem; flex-shrink:0}
+
+  .warn{
+    margin:26px 0 0; padding:18px 20px; border-radius:var(--radius);
+    background:rgba(255,176,32,.055); border:1px solid rgba(255,176,32,.24);
+    font-size:.9rem; color:#e4d9c2;
+  }
+  .warn strong{color:#ffc860; font-weight:650}
+
+  footer{
+    margin-top:72px; padding:26px 0 60px; border-top:1px solid var(--border);
+    font-size:.86rem; color:var(--faint);
+    display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center;
+  }
+  footer a{color:var(--muted); text-decoration:none; border-bottom:1px solid transparent}
+  footer a:hover{color:var(--teal); border-bottom-color:rgba(3,218,198,.45)}
+
+  @media (max-width:560px){
+    header{padding-top:44px}
+    .req b{min-width:auto; display:block}
+    .req li{flex-direction:column; gap:1px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img class="logo" src="logo.png" alt="Qython">
+    <h1>Inteligência clínica com IA,<br><span class="grad">rodando na sua máquina</span></h1>
+    <p class="lede">
+      Copiloto clínico com embasamento por evidência, biblioteca médica com busca
+      semântica, gerador de materiais de estudo e simulados. Para médicos e
+      estudantes de medicina.
+    </p>
+    <p class="pivot">
+      O Qython era um SaaS por assinatura. Em setembro de 2026 o código foi aberto
+      sob Apache-2.0 e o serviço hospedado foi desligado. Agora você roda por conta
+      própria: seus dados na sua infraestrutura, suas chaves de API, sem mensalidade
+      e sem intermediário.
+    </p>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/leonardomojoli/qython">
+        Baixar no GitHub
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/leonardomojoli/qython#começando">
+        Como instalar
+      </a>
+    </div>
+  </header>
+
+  <div class="install">
+    <div class="install-head">
+      <span>Instalação completa</span>
+      <button class="copy" id="copy">copiar</button>
+    </div>
+<pre id="cmd"><span class="c"># clone, configure a chave da IA e suba a stack</span>
+<span class="p">git</span> clone https://github.com/leonardomojoli/qython.git
+<span class="p">cd</span> qython
+<span class="p">cp</span> .env.example .env   <span class="c"># preencha GEMINI_API_KEY e JWT_SECRET_KEY</span>
+<span class="p">docker</span> compose up -d</pre>
+  </div>
+  <p class="note">Sobe em <code>localhost:8080</code>. As migrations rodam sozinhas no primeiro boot.</p>
+
+  <h2>O que vem junto</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Copiloto clínico</h3>
+      <p>Chat com embasamento por busca, citações inline numeradas e hierarquia de
+      evidência — meta-análise e diretriz pesam mais que relato de caso; artigo
+      retratado é penalizado.</p>
+    </div>
+    <div class="card">
+      <h3>Biblioteca semântica</h3>
+      <p>Ingestão de PDF, áudio e vídeo com OCR e transcrição. Busca híbrida:
+      embeddings multilíngues, BM25 e reranking por cross-encoder.</p>
+    </div>
+    <div class="card">
+      <h3>Produtor de materiais</h3>
+      <p>Resumos, mapas mentais, flashcards, podcasts e videoaulas gerados a partir
+      da sua própria biblioteca.</p>
+    </div>
+    <div class="card">
+      <h3>Arena acadêmica</h3>
+      <p>Simulados com memória anti-repetição, provas de concurso customizadas,
+      ranking e gamificação.</p>
+    </div>
+    <div class="card">
+      <h3>Consultas</h3>
+      <p>Anamnese guiada por especialidade — 33 delas —, evolução clínica e
+      prescrição com orientações ao paciente.</p>
+    </div>
+    <div class="card">
+      <h3>App mobile</h3>
+      <p>React Native para Android e iOS, com modo offline e sincronização
+      incremental com o backend.</p>
+    </div>
+  </div>
+
+  <h2>O que você precisa</h2>
+  <ul class="req">
+    <li><b>Docker</b><span>É o único pré-requisito obrigatório. A stack sobe em um comando.</span></li>
+    <li><b>Chave Gemini</b><span>Gratuita no Google AI Studio para testar. Uso individual custa centavos por mês.</span></li>
+    <li><b>4 GB de RAM</b><span>Suficiente na configuração padrão. 8 GB se quiser rodar os modelos de transcrição e embedding localmente.</span></li>
+  </ul>
+
+  <div class="warn">
+    <strong>Aviso clínico.</strong> Ferramenta auxiliar de estudo e documentação.
+    Não é dispositivo médico, não passou por ANVISA nem FDA, e não substitui
+    julgamento clínico. Modelos de linguagem erram — inclusive de forma confiante e
+    plausível. Verifique toda informação clínica contra a fonte primária.
+  </div>
+
+  <footer>
+    <span>Apache-2.0</span>
+    <a href="https://github.com/leonardomojoli/qython">Código</a>
+    <a href="https://github.com/leonardomojoli/qython/blob/main/docs/ARCHITECTURE.md">Arquitetura</a>
+    <a href="https://github.com/leonardomojoli/qython/issues">Issues</a>
+  </footer>
+
+</div>
+
+<script>
+  document.getElementById('copy').addEventListener('click', function () {
+    // textContent do <pre> já vem sem as tags de destaque, com as quebras certas.
+    var text = document.getElementById('cmd').textContent;
+    var done = (function (btn) {
+      return function () { btn.textContent = 'copiado'; setTimeout(function () { btn.textContent = 'copiar'; }, 1600); };
+    })(this);
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done);
+    } else {
+      // http:// e navegadores antigos não expõem a Clipboard API.
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } finally { document.body.removeChild(ta); }
+    }
+  });
+</script>
+</body>
+</html>

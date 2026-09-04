@@ -1,0 +1,21 @@
+{
+  "name": "qython",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "workspaces": ["packages/*"],
+  "comment:overrides": "pdfjs-dist TRAVADO numa única versão (== a que o react-pdf fixa) p/ o worker do pdf.js casar com a API. Mismatch = viewer de PDF quebra ('Erro ao carregar o documento'). Ao subir o react-pdf, alinhar esta versão com a que ele depende. Ver packages/web/src/utils/pdfWorker.js.",
+  "overrides": {
+    "pdfjs-dist": "5.4.296"
+  },
+  "scripts": {
+    "dev:web": "turbo run dev --filter=@qython/web",
+    "dev:mobile": "turbo run dev --filter=@qython/mobile",
+    "build:web": "turbo run build --filter=@qython/web",
+    "build:mobile": "turbo run build --filter=@qython/mobile",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  }
+}

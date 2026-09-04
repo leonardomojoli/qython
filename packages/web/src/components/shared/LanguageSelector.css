@@ -1,0 +1,88 @@
+/* frontend/src/components/shared/LanguageSelector.css */
+
+.language-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.language-selector-button {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.language-selector-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-color);
+}
+
+.current-flag-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}
+
+.language-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  list-style: none;
+  padding: 8px;
+  margin: 0;
+  width: 160px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 110;
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Dark mode override for glassmorphism effect */
+html[data-theme='dark'] .language-dropdown {
+  background-color: rgba(18, 21, 31, 0.8);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.language-dropdown li {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.language-dropdown li:hover {
+  background-color: var(--hover-bg);
+}
+
+html[data-theme='dark'] .language-dropdown li:hover {
+  background-color: rgba(3, 218, 198, 0.15);
+}
+
+html[data-theme='light'] .language-dropdown li:hover {
+  background-color: rgba(124, 58, 237, 0.1);
+}
+
+.language-dropdown .flag-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}

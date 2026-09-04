@@ -1,0 +1,257 @@
+.user-manager {
+    background-color: #1e2130;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.manager-header h3 {
+    display: flex;
+    align-items: center;
+    color: #fff;
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-controls button {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #a0a0a0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.filter-controls button:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.filter-controls button.active {
+    background: rgba(3, 218, 198, 0.1);
+    color: #03dac6;
+    border-color: #03dac6;
+}
+
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 1rem;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.admin-table th:nth-child(1),
+.admin-table td:nth-child(1) { width: 26%; }   /* Nome */
+.admin-table th:nth-child(2),
+.admin-table td:nth-child(2) { width: 14%; }   /* Ocupação */
+.admin-table th:nth-child(3),
+.admin-table td:nth-child(3) { width: 6%; }    /* País */
+.admin-table th:nth-child(4),
+.admin-table td:nth-child(4) { width: 10%; }   /* Status */
+.admin-table th:nth-child(5),
+.admin-table td:nth-child(5) { width: 10%; }   /* KYC */
+.admin-table th:nth-child(6),
+.admin-table td:nth-child(6) { width: 8%; padding-right: 12px; }    /* Doc */
+.admin-table th:nth-child(7),
+.admin-table td:nth-child(7) { width: 26%; padding-left: 8px; }     /* Ações */
+
+.admin-table th {
+    text-align: left;
+    color: #666;
+    font-size: 0.85rem;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table td {
+    padding: 15px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    color: #e0e0e0;
+    font-size: 0.95rem;
+}
+
+.admin-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.user-cell {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-email {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badges */
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-active {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.status-waitlist {
+    color: #facc15;
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.status-pending {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+.kyc-verified {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.kyc-manual_review {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.kyc-rejected {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.kyc-pending {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+/* Buttons */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-icon,
+.btn-approve,
+.btn-reject {
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-approve {
+    background: rgba(74, 222, 128, 0.1);
+    color: #4ade80;
+}
+
+.btn-approve:hover {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+.btn-reject {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.btn-reject:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .manager-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        table-layout: auto;
+    }
+}
+
+/* Admin Form Inputs */
+.admin-select,
+.admin-textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    background-color: #1a1d2e;
+    border: 1px solid #444;
+    color: white;
+    font-family: inherit;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.admin-select:focus,
+.admin-textarea:focus {
+    border-color: #03dac6;
+    outline: none;
+}
+
+.admin-textarea {
+    resize: vertical;
+}

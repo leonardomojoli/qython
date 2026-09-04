@@ -1,0 +1,652 @@
+/* frontend/src/components/consultation/PatientPickerModal.module.css */
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(5, 5, 10, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Garante que o modal sempre apareça na viewport visível */
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal {
+    /* Deep Tech Glass Base - Theme Responsive */
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+        0 20px 60px var(--shadow-color),
+        0 0 0 1px var(--inset-shadow) inset;
+
+    border-radius: 20px;
+    width: 90%;
+    max-width: 650px;
+    max-height: calc(100vh - 40px);
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--text-color);
+    /* Garante que o modal seja posicionado corretamente */
+    position: relative;
+    flex-shrink: 0;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(40px) scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.closeButton {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+    background: rgba(255, 82, 82, 0.15);
+    color: #ff5252;
+    border-color: rgba(255, 82, 82, 0.3);
+    box-shadow: 0 0 15px rgba(255, 82, 82, 0.2);
+}
+
+.searchContainer {
+    position: relative;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.searchIcon {
+    position: absolute;
+    left: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 14px 14px 14px 48px;
+    /* Efeito "Cut-out" (Incrustado) */
+    background: var(--input-background-color);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px var(--shadow-color);
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    background: var(--input-background-color);
+    box-shadow:
+        inset 0 2px 4px var(--shadow-color),
+        0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.patientList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Scrollbar Estilizada */
+.patientList::-webkit-scrollbar,
+.newPatientForm::-webkit-scrollbar {
+    width: 6px;
+}
+
+.patientList::-webkit-scrollbar-track,
+.newPatientForm::-webkit-scrollbar-track {
+    background: var(--glass-bg);
+}
+
+.patientList::-webkit-scrollbar-thumb,
+.newPatientForm::-webkit-scrollbar-thumb {
+    background: var(--glass-border-hover);
+    border-radius: 3px;
+}
+
+.patientCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.patientCard:hover {
+    background: var(--glass-bg-elevated);
+    border-color: var(--glass-border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--shadow-color);
+}
+
+/* Efeito de destaque na seleção */
+.patientCard:active {
+    transform: scale(0.99);
+}
+
+.patientName {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.patientDetail {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.patientAlerts {
+    display: flex;
+    gap: 8px;
+}
+
+.alertBadge,
+.conditionBadge {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alertBadge {
+    background: rgba(255, 82, 82, 0.15);
+    color: #ff8686;
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    box-shadow: 0 0 10px rgba(255, 82, 82, 0.1);
+}
+
+.conditionBadge {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffda6c;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.newPatientButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: calc(100% - 64px);
+    margin: 24px 32px;
+    padding: 16px;
+    /* Gradiente Neon Suave */
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.8), rgba(98, 0, 238, 0.8));
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(150, 80, 250, 0.3);
+}
+
+.newPatientButton:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(150, 80, 250, 0.4);
+}
+
+/* Formulário de Novo Paciente */
+.newPatientForm {
+    padding: 24px 32px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.formGroup label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.formGroup input,
+.formGroup select {
+    width: 100%;
+    padding: 12px;
+    background: var(--input-background-color);
+    /* Inset Dark */
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+    outline: none;
+    background: var(--input-background-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+}
+
+/* Calendar icon color for dark mode */
+.formGroup input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.formGroup input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+.clinicalSection {
+    background: var(--glass-bg);
+    border: 1px dashed var(--glass-border-hover);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.clinicalSection h4 {
+    color: #ffb74d;
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clinicalHelperText {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+    margin: 0 0 18px 0;
+    font-style: italic;
+}
+
+/* Espaçamento entre grupos de formulário na seção clínica */
+.clinicalSection .formGroup {
+    margin-bottom: 16px;
+}
+
+.clinicalSection .formGroup:last-child {
+    margin-bottom: 0;
+}
+
+.clinicalSection .formGroup label {
+    margin-bottom: 8px;
+}
+
+/* Smart History Import Section */
+.importSection {
+    margin-bottom: 24px;
+}
+
+.importToggleButton {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--glass-bg);
+    border: 1px dashed var(--accent-color, #bb86fc);
+    border-radius: 12px;
+    color: var(--accent-color, #bb86fc);
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.importToggleButton:hover {
+    background: rgba(var(--accent-color-rgb, 187, 134, 252), 0.08);
+    border-style: solid;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 187, 134, 252), 0.15);
+}
+
+.importChevron {
+    margin-left: auto;
+    font-size: 0.8rem;
+}
+
+.importContent {
+    margin-top: 16px;
+}
+
+.importHelper {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+.importTextarea {
+    width: 100%;
+    padding: 12px;
+    min-height: 120px;
+    background: var(--input-background-color);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.importTextarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.importTextarea:disabled {
+    opacity: 0.6;
+}
+
+.organizeButton {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.8), rgba(1, 135, 134, 0.8));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(3, 218, 198, 0.25);
+}
+
+.organizeButton:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(3, 218, 198, 0.35);
+}
+
+.organizeButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.importSuccess {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(3, 218, 198, 0.1);
+    border: 1px solid rgba(3, 218, 198, 0.3);
+    border-radius: 10px;
+    color: #03dac6;
+    font-size: 0.9rem;
+}
+
+html[data-theme='light'] .importSuccess {
+    background: rgba(4, 120, 87, 0.08);
+    border-color: rgba(4, 120, 87, 0.3);
+    color: #047857;
+}
+
+/* Import History Button (edit mode) */
+.importHistoryButton {
+    width: 100%;
+    padding: 12px 16px;
+    margin-top: 16px;
+    background: var(--glass-bg);
+    border: 1px dashed var(--accent-color, #bb86fc);
+    border-radius: 10px;
+    color: var(--accent-color, #bb86fc);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.importHistoryButton:hover:not(:disabled) {
+    background: rgba(var(--accent-color-rgb, 187, 134, 252), 0.1);
+    border-style: solid;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 187, 134, 252), 0.15);
+}
+
+.importHistoryButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.formActions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.cancelButton {
+    padding: 12px 24px;
+    background: transparent;
+    border: 1px solid var(--glass-border-hover);
+    border-radius: 10px;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancelButton:hover {
+    background: var(--glass-border-hover);
+    color: var(--text-primary);
+    border-color: var(--glass-border-hover);
+}
+
+.saveButton {
+    padding: 12px 32px;
+    background: var(--brand-primary, #7c5ce0);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: var(--brand-primary-light, #8d6fe8);
+    box-shadow: 0 4px 16px rgba(124, 92, 224, 0.25);
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.emptyIcon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+/* Patient Actions Container */
+.patientActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Edit Button */
+.editButton {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.editButton:hover {
+    background: rgba(124, 92, 224, 0.15);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px rgba(124, 92, 224, 0.2);
+}
+
+/* Delete Button */
+.deleteButton {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.deleteButton:hover {
+    background: rgba(255, 82, 82, 0.15);
+    color: #ff5252;
+    border-color: rgba(255, 82, 82, 0.3);
+    box-shadow: 0 0 10px rgba(255, 82, 82, 0.2);
+}
+
+.deleteButton.deleteConfirm {
+    background: rgba(255, 82, 82, 0.2);
+    color: #ff5252;
+    border-color: rgba(255, 82, 82, 0.5);
+    box-shadow: 0 0 12px rgba(255, 82, 82, 0.25);
+    animation: pulseDelete 1s ease-in-out infinite;
+}
+
+@keyframes pulseDelete {
+    0%, 100% { box-shadow: 0 0 12px rgba(255, 82, 82, 0.25); }
+    50% { box-shadow: 0 0 18px rgba(255, 82, 82, 0.4); }
+}
+
+.deleteButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Error Message */
+.errorMessage {
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #ff8686;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}

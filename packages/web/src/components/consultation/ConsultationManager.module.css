@@ -1,0 +1,2201 @@
+/* frontend/src/components/consultation/ConsultationManager.module.css */
+.consultationManager {
+  padding: clamp(1rem, 3vw, 2rem);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: padding-left 0.3s ease;
+}
+
+.consultationManager.adjustedForClosedSidebar {
+  padding-left: clamp(1rem, 4vw, 2.5rem);
+}
+
+.consultationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(1rem, 3vw, 2rem);
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.consultationManagerTitle {
+  text-align: left;
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--header-title-color);
+}
+
+.headerTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 12px);
+}
+
+.headerIcon {
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  color: var(--header-accent-color);
+  transition: color 0.2s ease;
+}
+
+/* ========================================
+   TABS GLASSMORPHISM - Navegação Unificada
+   ======================================== */
+
+.tabsContainer {
+  display: flex;
+  gap: 10px;
+  /* Mesma correção das abas do Centro Acadêmico: com `overflow-x: auto`, o eixo
+     vertical deixa de ser `visible` e passa a CLIPAR — o glow da aba ativa (blur
+     de até 50px) era cortado numa reta em cima e embaixo. A folga vertical entra
+     DENTRO da caixa de clipe e sai da margem, para o layout não se mexer. */
+  padding: 56px 20px;
+  margin: -32px -20px -8px;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+  z-index: 10;
+  pointer-events: none; /* a folga transparente não pode roubar clique de quem está atrás */
+}
+
+.tabsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  min-width: 100px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  pointer-events: auto; /* reativa o clique/toque (ver .tabsContainer) */
+}
+
+.tab:hover {
+  background: var(--glass-bg-elevated);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-3px);
+}
+
+.tabActive {
+  background: rgba(var(--accent-color-rgb), 0.12);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+  box-shadow: 0 2px 12px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.tab.tabActive:hover {
+  background: rgba(var(--accent-color-rgb), 0.18);
+  border-color: rgba(var(--accent-color-rgb), 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.tabIcon {
+  font-size: 22px;
+  color: var(--text-muted);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.tab:hover .tabIcon {
+  color: var(--text-color);
+}
+
+.tabActive .tabIcon {
+  color: var(--accent-color);
+}
+
+.tabLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+  letter-spacing: 0.3px;
+}
+
+.tab:hover .tabLabel {
+  color: var(--text-color);
+}
+
+.tabActive .tabLabel {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+/* Placeholder para funcionalidades "Em breve" */
+.placeholderContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background: var(--card-background-color);
+  border-radius: 16px;
+  border: 1px dashed var(--color-border);
+}
+
+.placeholderIcon {
+  font-size: 48px;
+  color: rgba(var(--accent-color-rgb), 0.4);
+  margin-bottom: 16px;
+}
+
+.placeholderContent h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--text-color);
+}
+
+.placeholderContent p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .tabsContainer {
+    gap: 8px;
+    /* mantém a folga vertical do glow (ver .tabsContainer acima); só o eixo
+       horizontal encolhe no mobile */
+    padding: 56px 16px;
+    margin: -36px -16px -12px;
+  }
+
+  .tab {
+    min-width: 80px;
+    padding: 12px 14px;
+  }
+
+  .tabIcon {
+    font-size: 20px;
+  }
+
+  .tabLabel {
+    font-size: 10px;
+  }
+}
+
+/* ========================================
+   FIM TABS GLASSMORPHISM
+   ======================================== */
+
+.contentArea {
+  width: 100%;
+}
+
+.formSectionCard,
+.listSectionCard {
+  /* Deep Tech Glass Base - Theme Responsive */
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 32px var(--shadow-color),
+    inset 0 1px 0 var(--inset-shadow);
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto 24px auto;
+  box-sizing: border-box;
+}
+
+.cardTitle {
+  font-family: 'Inter', Arial, sans-serif;
+  margin-top: 0;
+  margin-bottom: 0;
+  text-align: left;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+  /* Cut-out Input Style */
+  background: var(--input-background-color);
+  color: var(--text-color);
+  border: 1px solid var(--glass-border);
+  padding: 14px 16px;
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 15px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 2px 4px var(--shadow-color);
+}
+
+.formInput:focus,
+.formSelect:focus,
+.formTextarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background: var(--input-background-color);
+  box-shadow:
+    inset 0 2px 4px var(--shadow-color),
+    0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.formSelect {
+  appearance: none;
+  /* Seta branca para modo escuro (padrão) */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="%23ffffff"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  padding-right: 40px;
+}
+
+/* Seta escura para modo claro */
+:global(html[data-theme='light']) .formSelect {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="%23333333"/></svg>');
+}
+
+.formTextarea {
+  resize: vertical;
+  line-height: 1.6;
+  min-height: 120px;
+}
+
+.formLabel {
+  color: var(--text-color);
+  font-family: 'Inter', Arial, sans-serif;
+  margin-bottom: 8px;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.formLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.formLabelRow .formLabel {
+  margin-bottom: 0;
+}
+
+.formRadioGroup {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.formRadioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.formRadioInput {
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.formRadioCustom {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  display: inline-block;
+  position: relative;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.formRadioLabel:hover .formRadioCustom {
+  border-color: var(--accent-color);
+}
+
+.formRadioInput:checked+.formRadioCustom {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+}
+
+.formRadioInput:checked+.formRadioCustom::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--card-background-color);
+}
+
+.formActionsContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+  margin-top: 20px;
+  margin-bottom: 24px;
+}
+
+.consultationListTable {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.consultationListThead th {
+  padding: 14px 16px;
+  text-align: center;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Table Row - Glass Card Style */
+.consultationListTr {
+  background: var(--glass-bg);
+  border-radius: 14px;
+  transition: all 0.25s ease;
+}
+
+.consultationListTr:hover {
+  background: var(--glass-bg-elevated);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.consultationListTd {
+  padding: 16px;
+  vertical-align: middle;
+  color: var(--color-text);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  text-align: center;
+}
+
+.consultationListTr td:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+
+.consultationListTr td:last-child {
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.consultationListTdWrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: 200px;
+}
+
+.expandButton {
+  background: rgba(var(--accent-color-rgb), 0.12);
+  color: var(--accent-color);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.25);
+  padding: 10px 16px;
+  cursor: pointer;
+  font-family: 'Inter', Arial, sans-serif;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.expandButton:hover {
+  background: rgba(var(--accent-color-rgb), 0.2);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Search Input - Cut-out Style */
+.searchInput {
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 14px 18px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-color, #bb86fc);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(187, 134, 252, 0.15);
+}
+
+.listSectionCard td div {
+  text-align: left;
+}
+
+.listSectionCard td div p,
+.listSectionCard td div li,
+.listSectionCard td div strong,
+.listSectionCard td div em {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.listSectionCard td div h1,
+.listSectionCard td div h2,
+.listSectionCard td div h3,
+.listSectionCard td div h4,
+.listSectionCard td div h5,
+.listSectionCard td div h6 {
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+  font-weight: bold;
+}
+
+.listSectionCard td div h1 {
+  font-size: 1.5em;
+}
+
+.listSectionCard td div h2 {
+  font-size: 1.3em;
+}
+
+.listSectionCard td div h3 {
+  font-size: 1.1em;
+}
+
+.listSectionCard td div strong {
+  font-weight: bold;
+}
+
+.listSectionCard td div em {
+  font-style: italic;
+}
+
+.listSectionCard td div ul,
+.listSectionCard td div ol {
+  margin-left: 20px;
+  padding-left: 10px;
+}
+
+.listSectionCard td div li {
+  margin-bottom: 0.2em;
+}
+
+.formSectionCard .w-md-editor {
+  background-color: var(--input-background-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  color: var(--text-color) !important;
+  margin-bottom: 15px !important;
+}
+
+.formSectionCard .cm-s-react-md-editor .CodeMirror-lines,
+.formSectionCard .w-md-editor-text-input {
+  font-family: 'Inter', Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  color: var(--text-color) !important;
+  background-color: var(--input-background-color) !important;
+}
+
+.formSectionCard .w-md-editor-toolbar {
+  background-color: var(--card-background-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 4px 8px !important;
+}
+
+.consultationListThCheckbox,
+.consultationListTdCheckbox {
+  width: 40px;
+  text-align: center;
+}
+
+.consultationListTdPreview {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.previewContent {
+  max-height: 60px;
+  overflow: hidden;
+}
+
+/* ========================================
+   CONSULTATION CARDS LAYOUT
+   ======================================== */
+
+.cardGridHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  margin-bottom: 8px;
+}
+
+.cardGridHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.selectAllLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.selectAllText {
+  font-size: 0.9rem;
+  color: var(--text-secondary-color);
+  font-weight: 500;
+}
+
+.deleteSelectedButtonInline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: transparent;
+  color: #ef5350;
+  border: 1px solid rgba(239, 83, 80, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.deleteSelectedButtonInline:hover:not(:disabled) {
+  background: rgba(239, 83, 80, 0.1);
+  border-color: #ef5350;
+}
+
+.deleteSelectedButtonInline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.consultationCount {
+  font-size: 0.85rem;
+  color: var(--text-secondary-color);
+  opacity: 0.8;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.consultationCard {
+  background: var(--card-background-color);
+  border-radius: 16px;
+  border: 1px solid transparent;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.consultationCard:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+}
+
+.selectedCard {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color), 0 8px 24px rgba(100, 181, 246, 0.15);
+}
+
+.consultationCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.cardCheckboxLabel {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.cardSpecialty {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  flex-shrink: 0;
+}
+
+.cardPatientRow {
+  padding: 8px 20px;
+  background: rgba(100, 181, 246, 0.05);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardPatientName {
+  font-size: 0.85rem;
+  color: var(--accent-color);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardPatientName::before {
+  content: "👤";
+  margin-right: 6px;
+  font-size: 0.75rem;
+}
+
+.cardTypeBadge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(100, 181, 246, 0.15);
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+
+.cardDate {
+  font-size: 0.8rem;
+  color: var(--text-secondary-color);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.cardPreview {
+  padding: 0 20px 20px 20px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-secondary-color);
+  min-height: 80px;
+  max-height: 110px;
+  overflow: hidden;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.cardFooter {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.viewDetailsButton {
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-secondary-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.viewDetailsButton:hover {
+  background: rgba(100, 181, 246, 0.1);
+  color: var(--accent-color);
+}
+
+/* Responsive adjustments for cards */
+@media (max-width: 768px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .consultationCardHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cardDate {
+    order: -1;
+    width: 100%;
+    margin-bottom: 4px;
+    opacity: 0.6;
+  }
+
+  .cardSpecialty {
+    flex: 1;
+  }
+}
+
+/* ========================================
+   END CONSULTATION CARDS LAYOUT
+   ======================================== */
+
+.expandedRow td {
+  padding: 15px;
+  background-color: var(--card-background-color);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.expandedSection {
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-background-color);
+}
+
+.markdownContent h1,
+.markdownContent h2,
+.markdownContent h3 {
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+}
+
+.deleteSelectedButton {
+  background-color: var(--button-danger-bg);
+  color: var(--button-danger-text);
+  border: 1px solid var(--button-danger-border);
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.formStyledButtonPrimary,
+.formStyledButtonSave {
+  padding: 12px 24px;
+  font-size: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Primary Button - Subtle Outline Style (less prominent than Save) */
+.formStyledButtonPrimary {
+  background: transparent;
+  color: #a893d9;
+  border: 1px solid rgba(168, 147, 217, 0.4);
+  box-shadow: none;
+}
+
+.formStyledButtonPrimary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(168, 147, 217, 0.1);
+  border-color: rgba(168, 147, 217, 0.6);
+  color: #bfaee6;
+  box-shadow: 0 2px 8px rgba(168, 147, 217, 0.15);
+}
+
+/* Save Button - Clean Teal */
+.formStyledButtonSave {
+  background: var(--brand-secondary);
+  color: var(--landing-text-dark, #0f1118);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.formStyledButtonSave:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--brand-secondary-dark);
+  box-shadow: 0 4px 16px rgba(45, 212, 191, 0.25);
+}
+
+/* Save without enhancement confirmation state */
+.formStyledButtonSave.confirmSaveWarning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  animation: pulseWarning 1.5s ease-in-out infinite;
+}
+
+.formStyledButtonSave.confirmSaveWarning:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+}
+
+@keyframes pulseWarning {
+  0%, 100% { box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5); }
+}
+
+html[data-theme='light'] .formStyledButtonSave.confirmSaveWarning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+
+html[data-theme='light'] .formStyledButtonSave.confirmSaveWarning:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+}
+
+.formStyledButtonPrimary:disabled,
+.formStyledButtonSave:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.deleteSelectedButton:hover:not(:disabled) {
+  background-color: var(--button-danger-hover-bg);
+  color: var(--button-danger-hover-text);
+  border-color: var(--button-danger-hover-border);
+}
+
+.deleteSelectedButton:disabled {
+  background-color: rgba(108, 117, 125, 0.2);
+  border-color: #6c757d;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.deleteSelectedButton svg {
+  margin-right: 8px;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.contentActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.contentActions button:not(.shareMenuItem) {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  padding: 4px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.contentActions button:not(.shareMenuItem):hover:not(:disabled) {
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+}
+
+.contentActions button:not(.shareMenuItem) .successIcon {
+  color: var(--feedback-success, #10b981);
+  animation: pop-in 0.3s ease-out;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.shareMenu {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  right: 0;
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 2010;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+
+  opacity: 0;
+  transform: translateX(calc(50% - 16px)) translateY(10px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.shareMenuOpen {
+  opacity: 1;
+  transform: translateX(calc(50% - 16px)) translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.contentActions .shareMenuItem {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-align: left;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  width: 100%;
+  height: auto;
+}
+
+.contentActions .shareMenuItem:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+/* Redo Dropdown */
+.redoDropdownContainer {
+  position: relative;
+  display: inline-flex;
+}
+
+.redoDropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 100;
+  min-width: 240px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: fadeInUp 0.15s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.redoOption {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.redoOption:hover {
+  background: rgba(187, 134, 252, 0.2);
+}
+
+html[data-theme='light'] .redoDropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .redoOption {
+  color: #333;
+}
+
+html[data-theme='light'] .redoOption:hover {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.selectedRow {
+  background-color: rgba(var(--accent-color-rgb), 0.15) !important;
+}
+
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.customCheckboxContainer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  padding: 5px;
+  width: 20px;
+  height: 20px;
+  box-sizing: content-box;
+}
+
+.hiddenCheckboxInput {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.customCheckboxStyled {
+  position: relative;
+  top: 0;
+  left: 0;
+  height: 18px;
+  width: 18px;
+  background-color: var(--checkbox-bg-unchecked);
+  border: 2px solid var(--checkbox-border-unchecked);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.customCheckboxContainer:hover .customCheckboxStyled {
+  border-color: var(--checkbox-hover-border);
+}
+
+.hiddenCheckboxInput:checked+.customCheckboxStyled {
+  background-color: var(--checkbox-bg-checked);
+  border-color: var(--checkbox-border-checked);
+}
+
+.customCheckboxStyled::after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--checkbox-checkmark-color);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.hiddenCheckboxInput:checked+.customCheckboxStyled::after {
+  display: block;
+}
+
+.consultationListTr td {
+  vertical-align: middle;
+}
+
+.consultationListTdCheckbox {
+  vertical-align: middle;
+}
+
+/* Patient Selector Styles */
+.patientSelectorRow {
+  margin-bottom: 15px;
+}
+
+.selectPatientBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--input-background-color);
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.selectPatientBtn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.05);
+}
+
+.selectPatientBtn svg {
+  font-size: 1.1em;
+}
+
+.selectedPatientCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--input-background-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.patientInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patientName {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 15px;
+}
+
+.patientMeta {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.clearPatientBtn {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.clearPatientBtn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  opacity: 1;
+}
+
+.patientCardActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historyBtn {
+  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.1) 0%, rgba(var(--accent-color-rgb), 0.05) 100%);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.18);
+  color: var(--accent-color);
+  padding: 7px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.historyBtn:hover {
+  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.2) 0%, rgba(var(--accent-color-rgb), 0.1) 100%);
+  border-color: rgba(var(--accent-color-rgb), 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.historyBtn:active {
+  transform: translateY(0);
+}
+
+.patientInfoBtn {
+  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.1) 0%, rgba(var(--accent-color-rgb), 0.05) 100%);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.18);
+  color: var(--accent-color);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.patientInfoBtn:hover {
+  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.2) 0%, rgba(var(--accent-color-rgb), 0.1) 100%);
+  border-color: rgba(var(--accent-color-rgb), 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.patientInfoBtn:active {
+  transform: translateY(0);
+}
+
+/* === Patient Details Modal - Clinical Glassmorphism === */
+.patientDetailsOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(5, 5, 10, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  animation: patientDetailsFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes patientDetailsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.patientDetailsModal {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px var(--shadow-color),
+    0 0 0 1px var(--inset-shadow) inset;
+  animation: patientDetailsSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  color: var(--text-color);
+  position: relative;
+}
+
+@keyframes patientDetailsSlideUp {
+  from {
+    transform: translateY(40px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.patientDetailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.patientDetailsHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-color);
+}
+
+.patientDetailsCloseBtn {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary, #a0a0a0);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.patientDetailsCloseBtn:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff5252;
+  border-color: rgba(255, 82, 82, 0.3);
+  box-shadow: 0 0 15px rgba(255, 82, 82, 0.2);
+}
+
+.patientDetailsContent {
+  padding: 24px 32px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.patientDetailsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 20px;
+}
+
+.patientDetailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.patientDetailIcon {
+  color: var(--accent-color);
+  font-size: 16px;
+  width: 20px;
+  margin-top: 2px;
+}
+
+.patientDetailItem > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patientDetailLabel {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.patientDetailValue {
+  font-size: 15px;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.patientDetailsClinical {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.patientClinicalItem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.patientClinicalHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.patientClinicalIconDanger {
+  color: #ef4444;
+  font-size: 16px;
+}
+
+.patientClinicalIconWarning {
+  color: #f59e0b;
+  font-size: 16px;
+}
+
+.patientClinicalIconInfo {
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+.patientClinicalTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagDanger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tagWarning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tagInfo {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.patientNoClinicalData {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-color-secondary);
+  font-size: 14px;
+}
+
+.patientNoClinicalData p {
+  margin: 0;
+}
+
+/* Patient Details Header with Actions */
+.patientDetailsHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patientDetailsEditBtn {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--accent-color);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.patientDetailsEditBtn:hover {
+  background: rgba(var(--accent-color-rgb), 0.15);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+  box-shadow: 0 0 15px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.patientDetailsModalEditing {
+  max-width: 560px;
+}
+
+/* Patient Edit Form */
+.patientEditForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.patientEditSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patientEditSectionTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.patientEditField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.patientEditField label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.patientEditRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.patientEditInput {
+  background: var(--input-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-color);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.patientEditInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
+}
+
+.patientEditInputWithIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.patientEditInputIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.patientEditInputWithIcon .patientEditInput {
+  padding-left: 36px;
+}
+
+.patientEditTextarea {
+  background: var(--input-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-color);
+  transition: all 0.2s ease;
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.patientEditTextarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
+}
+
+/* Editable Tags */
+.patientEditTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tagDangerEditable,
+.tagWarningEditable,
+.tagInfoEditable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.tagDangerEditable {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.tagWarningEditable {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.tagInfoEditable {
+  background: rgba(99, 132, 255, 0.12);
+  color: #6384ff;
+  border: 1px solid rgba(99, 132, 255, 0.25);
+}
+
+.tagRemoveBtn {
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 2px;
+  cursor: pointer;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+}
+
+.tagRemoveBtn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.patientEditAddItem {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.patientEditAddItem .patientEditInput {
+  flex: 1;
+}
+
+.patientEditAddBtn {
+  background: rgba(var(--accent-color-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.25);
+  color: var(--accent-color);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patientEditAddBtn:hover {
+  background: rgba(var(--accent-color-rgb), 0.22);
+  border-color: rgba(var(--accent-color-rgb), 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 2px 10px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.patientEditAddBtn:active {
+  transform: scale(0.95);
+}
+
+/* Action Buttons */
+.patientEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(var(--accent-color-rgb), 0.08);
+}
+
+.patientEditCancelBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.01em;
+}
+
+.patientEditCancelBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-color);
+}
+
+.patientEditCancelBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.patientEditSaveBtn {
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  border: none;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 3px 12px rgba(187, 134, 252, 0.3);
+  letter-spacing: 0.01em;
+}
+
+.patientEditSaveBtn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(187, 134, 252, 0.45);
+}
+
+.patientEditSaveBtn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.patientEditSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Light mode overrides for patient edit actions */
+html[data-theme='light'] .patientEditCancelBtn {
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #666;
+}
+
+html[data-theme='light'] .patientEditCancelBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #333;
+}
+
+html[data-theme='light'] .patientEditSaveBtn {
+  background: linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%);
+  box-shadow: 0 3px 12px rgba(var(--accent-color-rgb), 0.25);
+  color: #fff;
+}
+
+html[data-theme='light'] .patientEditSaveBtn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(var(--accent-color-rgb), 0.4);
+}
+
+html[data-theme='light'] .patientEditAddBtn {
+  background: rgba(var(--accent-color-rgb), 0.08);
+  border-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+html[data-theme='light'] .patientEditAddBtn:hover {
+  background: rgba(var(--accent-color-rgb), 0.15);
+}
+
+html[data-theme='light'] .tagRemoveBtn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .patientEditActions {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Light mode overrides for patient details modal */
+html[data-theme='light'] .patientDetailsOverlay {
+  background: rgba(100, 100, 120, 0.5);
+}
+
+html[data-theme='light'] .patientDetailsModal {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .patientDetailsHeader {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .patientDetailsCloseBtn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #888;
+}
+
+html[data-theme='light'] .patientDetailsCloseBtn:hover {
+  background: rgba(255, 82, 82, 0.1);
+  color: #e53935;
+  border-color: rgba(255, 82, 82, 0.25);
+  box-shadow: 0 0 12px rgba(255, 82, 82, 0.15);
+}
+
+html[data-theme='light'] .patientDetailsEditBtn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .patientDetailsEditBtn:hover {
+  background: rgba(var(--accent-color-rgb), 0.1);
+  border-color: rgba(var(--accent-color-rgb), 0.25);
+  box-shadow: 0 0 12px rgba(var(--accent-color-rgb), 0.15);
+}
+
+html[data-theme='light'] .patientDetailsSection {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.savingSpinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Add Clinical Info Button */
+.patientAddInfoBtn {
+  background: var(--accent-color);
+  border: none;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  transition: all 0.2s ease;
+}
+
+.patientAddInfoBtn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* Patient Notes in View Mode */
+.patientNotes {
+  font-size: 14px;
+  color: var(--text-color);
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* === AI-Suggested ICD-10 Diagnosis Section === */
+.suggestedDiagnosisSection {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.05) 0%, rgba(var(--accent-rgb), 0.02) 100%);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  border-radius: 12px;
+}
+
+.diagnosisHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.icdFeedbackActions {
+  display: flex;
+  gap: 8px;
+}
+
+.icdFeedbackBtn {
+  background: rgba(var(--text-color-rgb), 0.05);
+  border: 1px solid rgba(var(--text-color-rgb), 0.15);
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.icdFeedbackBtn:hover {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.suggestedIcdContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  min-height: 40px;
+}
+
+.icdChip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 20px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.icdChip:hover {
+  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.15);
+}
+
+.icdChip.highConfidence {
+  border-color: var(--success-color);
+  background: rgba(var(--success-rgb, 76, 175, 80), 0.1);
+}
+
+.icdCode {
+  font-weight: 600;
+  color: var(--accent-color);
+  font-family: 'Courier New', monospace;
+}
+
+.icdDesc {
+  color: var(--text-color);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icdRemove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.icdRemove:hover {
+  color: var(--danger-color);
+}
+
+.noIcdHint {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.loadingDots {
+  animation: loadingDots 1.4s infinite;
+  margin-left: 0.25rem;
+}
+
+@keyframes loadingDots {
+
+  0%,
+  20% {
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  80%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   UNSAVED CHANGES WARNING MODAL
+   ======================================== */
+.unsavedChangesOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.unsavedChangesModal {
+  background: var(--card-background, #1a1a2e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px 32px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: slideUp 0.3s ease;
+}
+
+.unsavedChangesModal h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color, #fff);
+}
+
+.unsavedChangesModal p {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.unsavedChangesNote {
+  font-size: 0.85rem !important;
+  color: var(--accent-color, #03dac6) !important;
+  background: rgba(3, 218, 198, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-color, #03dac6);
+}
+
+.unsavedChangesActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.unsavedChangesLeaveBtn,
+.unsavedChangesStayBtn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.unsavedChangesLeaveBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 82, 82, 0.5);
+  color: #ff5252;
+}
+
+.unsavedChangesLeaveBtn:hover {
+  background: rgba(255, 82, 82, 0.15);
+  border-color: #ff5252;
+}
+
+.unsavedChangesStayBtn {
+  background: var(--accent-color, #03dac6);
+  border: none;
+  color: #000;
+}
+
+.unsavedChangesStayBtn:hover {
+  background: var(--accent-color-hover, #00c4b4);
+  transform: translateY(-1px);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

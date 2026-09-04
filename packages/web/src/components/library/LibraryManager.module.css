@@ -1,0 +1,308 @@
+/* frontend/src/components/library/LibraryManager.module.css */
+.managerContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(12px, 2.5vw, 20px);
+  margin-bottom: clamp(15px, 4vw, 30px);
+  padding-bottom: clamp(10px, 2vw, 15px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  gap: clamp(12px, 2.5vw, 20px);
+}
+
+.libraryCard {
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: clamp(15px, 3vw, 25px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(8px, 1.5vw, 12px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.libraryCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(var(--accent-color-rgb), 0.15);
+  /* Sombra de destaque no hover */
+  border-color: var(--accent-color);
+  /* Borda de destaque no hover */
+}
+
+.libraryIcon {
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  /* Um pouco maior para mais impacto */
+  color: var(--accent-color);
+  margin-bottom: clamp(6px, 1.5vw, 10px);
+  /* Espaço abaixo do ícone */
+}
+
+.libraryName {
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.libraryDescription {
+  font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+  color: var(--text-color-secondary);
+  line-height: 1.5;
+  margin: 5px 0 0 0;
+  flex-grow: 1;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  /* Adicione esta linha */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardActions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.libraryCard:hover .cardActions {
+  opacity: 1;
+}
+
+.editButton,
+.deleteButton {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background-color 0.2s, transform 0.2s ease;
+}
+
+.editButton:hover {
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  transform: scale(1.1);
+}
+
+.deleteButton:hover {
+  color: #dc3545;
+  background-color: rgba(var(--text-color-rgb), 0.06);
+  transform: scale(1.1);
+}
+
+.noLibrariesMessage {
+  color: var(--text-color-secondary);
+  font-style: italic;
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 0;
+}
+
+.backButton {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-color-secondary);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  color: var(--text-color);
+  border-color: var(--text-color-secondary);
+}
+
+.documentSection {
+  margin-top: 20px;
+}
+
+.uploadButton {
+  background-color: var(--secondary-color);
+  color: var(--background-color);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.2s, transform 0.1s;
+  margin-bottom: 20px;
+}
+
+.uploadButton:hover {
+  background-color: var(--secondary-light);
+  transform: translateY(-1px);
+}
+
+.documentList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.documentItem {
+  background-color: transparent;
+  /* Fundo mais sutil */
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  /* Bordas um pouco mais arredondadas */
+  padding: 15px 20px;
+  /* Mais espaçamento interno */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  /* Adiciona transição */
+}
+
+.documentItem:hover {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  /* Efeito de hover sutil */
+  border-color: var(--text-color-secondary);
+}
+
+.documentName {
+  color: var(--text-color);
+  flex-grow: 1;
+  margin-right: 15px;
+}
+
+.documentStatus {
+  font-size: 1.2rem;
+  color: var(--text-color-secondary);
+}
+
+.noDocumentsMessage {
+  color: var(--text-color-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 30px 0;
+}
+
+.formContainer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+/* Busca da lista de bibliotecas — espelha o input de "Buscar documentos" do LibraryDetail. */
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 420px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 11px 14px 11px 40px;
+  border: 1px solid var(--glass-border, var(--border-color));
+  border-radius: 10px;
+  background: var(--input-background-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.searchInput::placeholder {
+  color: var(--text-color-secondary);
+  opacity: 0.7;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
+}
+
+/* Estilo para o novo botão, idêntico ao newChatButton */
+.addLibraryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  /* Garante que o ícone fique centralizado */
+  width: 45px;
+  height: 45px;
+  border-radius: 30px;
+  /* Igual ao newChatButton */
+  cursor: pointer;
+  flex-shrink: 0;
+
+  /* Estilo visual idêntico ao newChatButton */
+  border: 1px dashed var(--primary-light);
+  color: var(--primary-color);
+  background-color: rgba(var(--background-color-rgb), 0.5);
+
+  transition: all 0.2s ease-in-out;
+}
+
+.addLibraryButton:hover {
+  border-style: solid;
+  color: var(--primary-light);
+  background-color: rgba(var(--primary-color-rgb), 0.15);
+}
+
+.addLibraryButton .svg-inline--fa {
+  font-size: 1.2em;
+}

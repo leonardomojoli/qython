@@ -1,0 +1,252 @@
+/* frontend/src/components/academic/RankingLeague.module.css */
+/* XP-based ranking with podium and rank medals */
+
+.leagueContainer {
+    padding: 10px;
+    background-color: var(--background-secondary);
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+/* Preview compacto (top 3 + vizinhança) não rola — altura natural */
+.rankingListPreview {
+    overflow: visible;
+}
+
+.gapRow {
+    text-align: center;
+    color: var(--text-color-secondary);
+    opacity: 0.6;
+    font-size: 0.8rem;
+    padding: 2px 0;
+    list-style: none;
+}
+
+.overtakeButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    margin-right: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.overtakeButton:hover {
+    background: rgba(var(--accent-color-rgb), 0.2);
+    transform: translateY(-1px);
+}
+
+.emptyRanking {
+    text-align: center;
+    color: var(--text-color-secondary);
+    padding: 30px 20px;
+    font-size: 0.9rem;
+}
+
+/* --- Podium --- */
+.podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 10px 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.podiumItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(var(--text-color-rgb), 0.03);
+    min-width: 90px;
+    transition: transform 0.2s ease;
+}
+
+.podiumItem:hover {
+    transform: translateY(-2px);
+}
+
+.podiumFirst {
+    order: 2;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 193, 7, 0.06) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    padding: 14px 16px;
+    min-width: 100px;
+}
+
+.podiumSecond {
+    order: 1;
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.12) 0%, rgba(158, 158, 158, 0.06) 100%);
+    border: 1px solid rgba(192, 192, 192, 0.25);
+}
+
+.podiumThird {
+    order: 3;
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.12) 0%, rgba(205, 127, 50, 0.06) 100%);
+    border: 1px solid rgba(205, 127, 50, 0.25);
+}
+
+.podiumCurrentUser {
+    border-color: rgba(var(--secondary-color-rgb), 0.5);
+    background: rgba(var(--secondary-color-rgb), 0.1);
+}
+
+.podiumMedal {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.podiumFirst .podiumMedal {
+    font-size: 2rem;
+}
+
+.podiumName {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: center;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.podiumXp {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    font-family: 'monospace', monospace;
+}
+
+.podiumLeague {
+    font-size: 0.85rem;
+}
+
+/* --- Ranking List --- */
+.rankingList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.playerRow {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.playerRow:hover {
+    background-color: var(--hover-color);
+}
+
+.topThree {
+    font-weight: 600;
+}
+
+.realUser {
+    background-color: rgba(var(--accent-color-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.15);
+}
+
+.currentUser {
+    background-color: rgba(var(--secondary-color-rgb), 0.12);
+    border: 1px solid rgba(var(--secondary-color-rgb), 0.3);
+    font-weight: 600;
+}
+
+.currentUser .playerName {
+    color: var(--secondary-color);
+}
+
+.youBadge {
+    margin-left: 8px;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: var(--secondary-color);
+    color: var(--color-text-on-secondary, #000);
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.playerRank {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-color-secondary);
+    width: 36px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.playerLeagueIcon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.playerName {
+    flex-grow: 1;
+    color: var(--text-color);
+    padding: 0 10px;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.playerScore {
+    font-weight: 600;
+    color: var(--accent-color);
+    font-family: 'monospace', monospace;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 500px) {
+    .podium {
+        gap: 4px;
+    }
+
+    .podiumItem {
+        min-width: 70px;
+        padding: 8px;
+    }
+
+    .podiumFirst {
+        min-width: 80px;
+        padding: 10px;
+    }
+
+    .podiumName {
+        max-width: 70px;
+        font-size: 0.7rem;
+    }
+}
+
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.leagueContainer::-webkit-scrollbar { width: 6px; }
+.leagueContainer::-webkit-scrollbar-track { background: transparent; }
+.leagueContainer::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.leagueContainer::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .leagueContainer::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .leagueContainer::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

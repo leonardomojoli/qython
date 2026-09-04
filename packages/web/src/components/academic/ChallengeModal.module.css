@@ -1,0 +1,423 @@
+/* frontend/src/components/academic/ChallengeModal.module.css */
+/* Challenge Modal - Premium Deep Tech Styles */
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modalContent {
+    background: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 25px 80px var(--shadow-color);
+}
+
+.closeButton {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.closeButton:hover {
+    background: rgba(255, 82, 82, 0.1);
+    border-color: rgba(255, 82, 82, 0.5);
+    color: #ff5252;
+}
+
+/* Header */
+.modalHeader {
+    text-align: center;
+    padding: 40px 40px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.headerIcon {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    margin-bottom: 15px;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.modalHeader p {
+    margin: 8px 0 0;
+    color: var(--text-color-secondary);
+    font-size: 1rem;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tabButton {
+    flex: 1;
+    padding: 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tabButton:hover {
+    color: var(--text-color);
+    background: rgba(var(--text-color-rgb), 0.05);
+}
+
+.tabButton.active {
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.badge {
+    background: var(--accent-color);
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+/* Tab Content */
+.tabContent {
+    padding: 25px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Matchmaking Button */
+.matchmakingButton {
+    width: 100%;
+    padding: 16px 25px;
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.matchmakingButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 193, 7, 0.4);
+}
+
+.matchmakingButton:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.xpRewardHint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.15);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    color: var(--accent-color);
+    font-weight: 500;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+/* Create Form */
+.createForm {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.createForm label {
+    font-size: 0.9rem;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+}
+
+.inputGroup {
+    display: flex;
+    align-items: center;
+    background: rgba(var(--text-color-rgb), 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+}
+
+.inputGroup:focus-within {
+    border-color: var(--accent-color);
+}
+
+.atSymbol {
+    padding: 14px;
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.usernameInput {
+    flex: 1;
+    padding: 14px 14px 14px 0;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 1rem;
+    outline: none;
+}
+
+.usernameInput::placeholder {
+    color: var(--text-color-secondary);
+    opacity: 0.6;
+}
+
+.sendButton {
+    padding: 14px 25px;
+    background: linear-gradient(135deg, var(--accent-color) 0%, #bb86fc 100%);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.sendButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(var(--accent-color-rgb), 0.4);
+}
+
+.sendButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hint {
+    font-size: 0.85rem;
+    color: var(--text-color-secondary);
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Challenge List */
+.challengeList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.emptyText {
+    text-align: center;
+    color: var(--text-color-secondary);
+    padding: 40px 20px;
+    font-size: 0.95rem;
+}
+
+.challengeCard {
+    background: rgba(var(--text-color-rgb), 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.challengeInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.challengeInfo strong {
+    color: var(--text-color);
+}
+
+.examName {
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+}
+
+/* Status Badges */
+.statusBadge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.statusBadge.pending {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+.statusBadge.accepted {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+}
+
+.statusBadge.declined {
+    background: rgba(255, 82, 82, 0.15);
+    color: #ff5252;
+}
+
+.statusBadge.completed {
+    background: rgba(var(--text-color-rgb), 0.1);
+    color: var(--text-color-secondary);
+}
+
+.statusBadge.won {
+    background: rgba(var(--accent-color-rgb), 0.15);
+    color: var(--accent-color);
+}
+
+.statusBadge.expired {
+    background: rgba(158, 158, 158, 0.15);
+    color: #9e9e9e;
+}
+
+/* Challenge Actions */
+.challengeActions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.acceptButton,
+.declineButton {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.acceptButton {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.acceptButton:hover {
+    background: rgba(76, 175, 80, 0.25);
+}
+
+.declineButton {
+    background: transparent;
+    color: var(--text-color-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.declineButton:hover {
+    background: rgba(255, 82, 82, 0.1);
+    color: #ff5252;
+    border-color: rgba(255, 82, 82, 0.3);
+}
+
+.scores {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-color-secondary);
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    .modalContent {
+        margin: 10px;
+        border-radius: 16px;
+    }
+
+    .modalHeader {
+        padding: 30px 20px 15px;
+    }
+
+    .tabContent {
+        padding: 20px;
+    }
+}
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.tabContent::-webkit-scrollbar { width: 6px; }
+.tabContent::-webkit-scrollbar-track { background: transparent; }
+.tabContent::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.tabContent::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .tabContent::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .tabContent::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

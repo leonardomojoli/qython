@@ -1,0 +1,191 @@
+/* frontend/src/components/consultation/ICD10Autocomplete.module.css */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.chipsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+    background: rgba(var(--accent-color-rgb), 0.15);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+    border-radius: 16px;
+    font-size: 0.8rem;
+    max-width: 100%;
+}
+
+.chipCode {
+    font-weight: 600;
+    color: var(--accent-color);
+    white-space: nowrap;
+}
+
+.chipDesc {
+    color: var(--text-color-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.chipRemove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.chipRemove:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    color: rgb(239, 68, 68);
+}
+
+.chipRemove:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.inputWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.input {
+    width: 100%;
+    padding: 10px 36px 10px 36px;
+    background: var(--input-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.15);
+}
+
+.input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.input::placeholder {
+    color: var(--text-color-muted);
+}
+
+.loadingIcon {
+    position: absolute;
+    right: 12px;
+    color: var(--accent-color);
+}
+
+.dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px var(--shadow-color);
+    z-index: 1000;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.dropdownItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.dropdownItem:hover,
+.dropdownItem.highlighted {
+    background: rgba(var(--accent-color-rgb), 0.1);
+}
+
+.dropdownItem:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.itemCode {
+    font-weight: 600;
+    color: var(--accent-color);
+    font-size: 0.85rem;
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+.itemDesc {
+    color: var(--text-color);
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+.noResults {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    padding: 12px 14px;
+    background: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    z-index: 1000;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chipDesc {
+        max-width: 120px;
+    }
+
+    .chip {
+        font-size: 0.75rem;
+    }
+}

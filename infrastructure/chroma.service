@@ -1,0 +1,32 @@
+# ChromaDB Vector Store Server for Qython
+# Location: /etc/systemd/system/chroma.service
+#
+# Runs ChromaDB as a SINGLE standalone process so the backend (4 gunicorn workers +
+# the APScheduler in each) talks to it over HTTP via chromadb.HttpClient, instead of
+# each worker opening its own PersistentClient on the same ./chroma_db — which is NOT
+# multi-process-safe and segfaulted the worker (signal 139 → 502) and risks corruption.
+#
+# After modifying this file:
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart chroma
+#
+# The backend connects via CHROMA_SERVER_HOST / CHROMA_SERVER_PORT in /opt/qython/.env.
+
+[Unit]
+Description=ChromaDB vector store server for Qython
+After=network.target
+
+[Service]
+User=linuxuser
+Group=www-data
+WorkingDirectory=/opt/qython
+Environment="PATH=/opt/qython/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/qython/venv/bin/chroma run --path /opt/qython/chroma_db --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=chroma
+
+[Install]
+WantedBy=multi-user.target

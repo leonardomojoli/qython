@@ -1,0 +1,288 @@
+/* frontend/src/components/academic/AcademicManager.module.css */
+/* Refactored to match Ambulatory/ConsultationManager aesthetic */
+
+.academicManager {
+  padding: clamp(1rem, 3vw, 2rem);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: padding-left 0.3s ease;
+}
+
+.academicManager.adjustedForClosedSidebar {
+  padding-left: clamp(1rem, 4vw, 2.5rem);
+}
+
+/* ========================================
+   HEADER - Título e Ícone
+   ======================================== */
+
+.academicHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(0.5rem, 2vw, 1rem);
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.headerTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 12px);
+}
+
+.headerIcon {
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  color: var(--header-accent-color);
+  filter: drop-shadow(0 0 8px rgba(var(--header-accent-color), 0.4));
+  transition: filter 0.3s ease;
+}
+
+.academicManagerTitle {
+  text-align: left;
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--header-title-color);
+}
+
+.headerSpacer {
+  flex-grow: 1;
+}
+
+/* ========================================
+   TABS GLASSMORPHISM - Navegação Elegante
+   ======================================== */
+
+.tabsContainer {
+  display: flex;
+  gap: 12px;
+  /* ⚠️ O eixo X é rolável (abas em tela estreita). Pelo CSS, quando um eixo é
+     `auto` o outro NÃO consegue ficar `visible`: ele computa para `auto` e passa
+     a CLIPAR. Com 24px de folga vertical e um glow de 40-50px de blur, a luz da
+     aba ativa era cortada numa reta em cima e embaixo, sem encerramento natural.
+     Solução: dar folga VERTICAL suficiente DENTRO da caixa de clipe (56px cobre
+     o maior glow, 0 0 50px, mais o translateY(-3px) do hover) e descontar a
+     mesma folga na margem, para o layout ficar exatamente onde estava. */
+  padding: 56px 20px;
+  margin: -32px -20px -8px;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+  z-index: 10;
+  /* A folga transparente invade o header (acima) e o conteúdo (abaixo); sem isto
+     ela roubaria o clique deles, já que o contêiner tem z-index. O toque continua
+     rolando as abas porque começa sobre um `.tab`, que reativa os eventos. */
+  pointer-events: none;
+}
+
+.tabsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  min-width: 110px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  pointer-events: auto; /* reativa o clique/toque (o contêiner os desliga — ver .tabsContainer) */
+}
+
+.tab:hover {
+  background: var(--glass-bg-elevated);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.tabActive {
+  background: linear-gradient(135deg,
+      rgba(var(--accent-color-rgb), 0.15) 0%,
+      rgba(var(--accent-color-rgb), 0.25) 100%);
+  border-color: rgba(var(--accent-color-rgb), 0.5);
+  box-shadow:
+    0 4px 20px rgba(var(--accent-color-rgb), 0.25),
+    0 0 40px rgba(var(--accent-color-rgb), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.tab.tabActive:hover {
+  background: linear-gradient(135deg,
+      rgba(var(--accent-color-rgb), 0.25) 0%,
+      rgba(var(--accent-color-rgb), 0.35) 100%);
+  border-color: var(--accent-color);
+  transform: translateY(-3px);
+  box-shadow:
+    0 6px 25px rgba(var(--accent-color-rgb), 0.35),
+    0 0 50px rgba(var(--accent-color-rgb), 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tabIcon {
+  font-size: 22px;
+  color: var(--text-muted);
+  transition: color 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+}
+
+.tab:hover .tabIcon {
+  color: var(--text-color);
+  transform: scale(1.1);
+}
+
+.tabActive .tabIcon {
+  color: var(--accent-color);
+  filter: drop-shadow(0 0 8px rgba(var(--accent-color-rgb), 0.5));
+}
+
+.tabLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.tab:hover .tabLabel {
+  color: var(--text-color);
+}
+
+.tabActive .tabLabel {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+/* ========================================
+   CONTENT AREA - Área de Conteúdo
+   ======================================== */
+
+.contentArea {
+  width: 100%;
+  /* Deep Tech Glass Base - matching Ambulatory style */
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  padding: 28px;
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 32px var(--shadow-color),
+    inset 0 1px 0 var(--inset-shadow);
+  transition: box-shadow 0.3s ease;
+}
+
+.contentArea:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   LEGACY NAV BUTTONS - Fallback
+   (mantidos para compatibilidade)
+   ======================================== */
+
+.academicManagerNavButtons {
+  display: none;
+  /* Hidden - use tabsContainer instead */
+}
+
+.navButton {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: clamp(6px, 1.5vw, 10px) clamp(10px, 2vw, 15px);
+  font-size: clamp(14px, 2vw, 16px);
+  transition: color 0.3s ease, border-bottom-color 0.3s ease, background-color 0.3s ease;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px 6px 0 0;
+}
+
+.navButton:hover {
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+}
+
+.navButtonActive {
+  color: var(--accent-color);
+  font-weight: bold;
+  border-bottom: 3px solid var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.12);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .tabsContainer {
+    gap: 8px;
+    /* mantém a folga vertical do glow (ver .tabsContainer acima); só o eixo
+       horizontal encolhe no mobile */
+    padding: 56px 16px;
+    margin: -36px -16px -12px;
+  }
+
+  .tab {
+    min-width: 90px;
+    padding: 12px 14px;
+  }
+
+  .tabIcon {
+    font-size: 20px;
+  }
+
+  .tabLabel {
+    font-size: 10px;
+  }
+
+  .contentArea {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .academicManager {
+    padding: 0.75rem;
+  }
+
+  .tab {
+    min-width: 80px;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .tabIcon {
+    font-size: 18px;
+  }
+}
+
+/* Tab loader for lazy-loaded content */
+.tabLoader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  width: 100%;
+}

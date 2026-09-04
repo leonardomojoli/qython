@@ -1,0 +1,114 @@
+/* frontend/src/components/admin/InvitationManager.css */
+
+.invitation-manager {
+    background-color: var(--card-background-color);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+
+.manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.manager-header h3 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-generate,
+.btn-refresh {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-generate {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-generate:hover {
+    background-color: var(--primary-light);
+}
+
+.btn-refresh {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.invites-list {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+th {
+    color: var(--text-color-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.token-cell {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-badge.green {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.status-badge.red {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.btn-copy {
+    background: none;
+    border: none;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.btn-copy:hover {
+    color: var(--secondary-color);
+}
+
+tr.used {
+    opacity: 0.6;
+}

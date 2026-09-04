@@ -1,0 +1,194 @@
+/* frontend/src/components/consultation/QuickInsertBar.module.css */
+
+.quickInsertBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.label {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+    margin-right: 4px;
+}
+
+.insertButton {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+    border-radius: 6px;
+    color: var(--text-color);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.insertButton:hover:not(:disabled) {
+    background: rgba(var(--accent-color-rgb), 0.2);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.insertButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.insertButton.active {
+    background: rgba(var(--accent-color-rgb), 0.25);
+    border-color: var(--accent-color);
+}
+
+.insertButton svg {
+    font-size: 0.9rem;
+    color: var(--accent-color);
+}
+
+.chevron {
+    font-size: 0.7rem !important;
+    margin-left: 2px;
+}
+
+/* Protocol dropdown container */
+.protocolContainer {
+    position: relative;
+}
+
+/* Subtemplate dropdown menu */
+.subtemplateMenu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    min-width: 260px;
+    max-width: 340px;
+    max-height: 420px;
+    overflow-y: auto;
+    background: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px var(--shadow-color);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+/* Scrollbar styling */
+.subtemplateMenu::-webkit-scrollbar {
+    width: 5px;
+}
+
+.subtemplateMenu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.subtemplateMenu::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-color-rgb), 0.3);
+    border-radius: 3px;
+}
+
+.subtemplateMenu::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-color-rgb), 0.5);
+}
+
+/* Category group */
+.categoryGroup {
+    /* No extra styling needed, just grouping */
+}
+
+.categoryGroup:not(:first-child) {
+    border-top: 1px solid var(--border-color);
+}
+
+/* Category header (non-clickable) */
+.categoryHeader {
+    padding: 8px 14px 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-color);
+    opacity: 0.8;
+    user-select: none;
+}
+
+/* Subtemplate clickable item */
+.subtemplateItem {
+    display: block;
+    width: 100%;
+    padding: 8px 14px 8px 24px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 0.82rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.subtemplateItem:hover {
+    background: rgba(var(--accent-color-rgb), 0.12);
+}
+
+.subtemplateItem:active {
+    background: rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Last item in menu gets bottom padding */
+.categoryGroup:last-child .subtemplateItem:last-child {
+    padding-bottom: 10px;
+}
+
+/* Empty state */
+.emptyState {
+    padding: 20px 16px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .quickInsertBar {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+
+    .label {
+        display: none;
+    }
+
+    .insertButton {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    .insertButton span {
+        display: none;
+    }
+
+    .insertButton svg {
+        font-size: 1rem;
+    }
+
+    .subtemplateMenu {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        bottom: 60px;
+        top: auto;
+        max-height: 50vh;
+        min-width: unset;
+        max-width: unset;
+    }
+}

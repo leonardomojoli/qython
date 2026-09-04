@@ -1,0 +1,575 @@
+.billingContainer {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(15px, 4vw, 30px);
+    width: 100%;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cardsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: clamp(15px, 3vw, 25px);
+}
+
+.card {
+    background: rgba(30, 30, 40, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: clamp(18px, 4vw, 30px);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    min-height: clamp(180px, 25vw, 220px);
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: clamp(15px, 3vw, 25px);
+}
+
+.iconWrapper {
+    width: clamp(42px, 8vw, 54px);
+    height: clamp(42px, 8vw, 54px);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    transition: transform 0.3s ease;
+}
+
+.card:hover .iconWrapper {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.iconSubscription {
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.2), rgba(3, 218, 198, 0.05));
+    color: #03dac6;
+    border: 1px solid rgba(3, 218, 198, 0.2);
+}
+
+.iconDracmas {
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.2), rgba(187, 134, 252, 0.05));
+    color: #bb86fc;
+    border: 1px solid rgba(187, 134, 252, 0.2);
+}
+
+.iconStorage {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.05));
+    color: #2196f3;
+    border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+.cardTitle {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    font-weight: 600;
+    color: #e0e0e0;
+    margin: 0;
+    text-align: right;
+    opacity: 0.9;
+}
+
+.cardContent {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    margin-bottom: clamp(15px, 3vw, 25px);
+}
+
+.planLabel,
+.balanceLabel {
+    font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.planValue {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.balanceValue {
+    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    font-weight: 800;
+    color: #bb86fc;
+    margin: 0;
+    text-shadow: 0 0 20px rgba(187, 134, 252, 0.3);
+}
+
+.bonusBreakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.planBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.2), rgba(187, 134, 252, 0.05));
+    border: 1px solid rgba(187, 134, 252, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #bb86fc;
+}
+
+.bonusBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(3, 218, 198, 0.2), rgba(3, 218, 198, 0.05));
+    border: 1px solid rgba(3, 218, 198, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #03dac6;
+}
+
+.actionButton {
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+}
+
+.btnSubscription {
+    background: rgba(3, 218, 198, 0.1);
+    color: #03dac6;
+    border: 1px solid rgba(3, 218, 198, 0.3);
+}
+
+.btnSubscription:hover {
+    background: rgba(3, 218, 198, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(3, 218, 198, 0.15);
+}
+
+.btnDracmas {
+    background: linear-gradient(135deg, #bb86fc, #9a67ea);
+    color: #121212;
+    box-shadow: 0 5px 15px rgba(187, 134, 252, 0.25);
+}
+
+.btnDracmas:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(187, 134, 252, 0.35);
+}
+
+.historySection {
+    background: rgba(30, 30, 40, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 25px;
+    margin-top: 10px;
+}
+
+.historyHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.historyTitle {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.refreshButton {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.refreshButton:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.emptyHistory {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.emptyIcon {
+    font-size: 2.5rem;
+    opacity: 0.3;
+    margin-bottom: 10px;
+}
+
+/* ========== Dracmas Statement ========== */
+.statementList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.statementItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.statementInfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.statementIcon {
+    font-size: 1.4rem;
+}
+
+.statementDesc {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.statementDate {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.statementAmount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #bb86fc;
+}
+
+.statementAmountBonus {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #03dac6;
+}
+
+/* ========== Light Mode Overrides ========== */
+html[data-theme='light'] .card {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .cardTitle {
+    color: #333;
+}
+
+html[data-theme='light'] .planLabel,
+html[data-theme='light'] .balanceLabel {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme='light'] .iconSubscription {
+    background: linear-gradient(135deg, rgba(0, 150, 136, 0.15), rgba(0, 150, 136, 0.05));
+    color: #00897b;
+    border-color: rgba(0, 150, 136, 0.3);
+}
+
+html[data-theme='light'] .iconDracmas {
+    background: linear-gradient(135deg, rgba(103, 58, 183, 0.15), rgba(103, 58, 183, 0.05));
+    color: #7c4dff;
+    border-color: rgba(103, 58, 183, 0.3);
+}
+
+html[data-theme='light'] .iconStorage {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
+    color: #1976d2;
+    border-color: rgba(33, 150, 243, 0.3);
+}
+
+html[data-theme='light'] .storageValue {
+    color: #1976d2;
+}
+
+html[data-theme='light'] .balanceValue {
+    color: #7c4dff;
+    text-shadow: none;
+}
+
+html[data-theme='light'] .planBadge {
+    background: linear-gradient(135deg, rgba(103, 58, 183, 0.15), rgba(103, 58, 183, 0.05));
+    border-color: rgba(103, 58, 183, 0.3);
+    color: #7c4dff;
+}
+
+html[data-theme='light'] .bonusBadge {
+    background: linear-gradient(135deg, rgba(0, 150, 136, 0.15), rgba(0, 150, 136, 0.05));
+    border-color: rgba(0, 150, 136, 0.3);
+    color: #00897b;
+}
+
+html[data-theme='light'] .btnSubscription {
+    background: rgba(0, 150, 136, 0.1);
+    color: #00897b;
+    border-color: rgba(0, 150, 136, 0.3);
+}
+
+html[data-theme='light'] .btnSubscription:hover {
+    background: rgba(0, 150, 136, 0.2);
+    box-shadow: 0 5px 15px rgba(0, 150, 136, 0.2);
+}
+
+html[data-theme='light'] .btnDracmas {
+    background: linear-gradient(135deg, #7c4dff, #651fff);
+    color: #fff;
+    box-shadow: 0 5px 15px rgba(103, 58, 183, 0.3);
+}
+
+html[data-theme='light'] .btnDracmas:hover {
+    box-shadow: 0 8px 20px rgba(103, 58, 183, 0.4);
+}
+
+html[data-theme='light'] .historySection {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .historyHeader {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .historyTitle {
+    color: #333;
+}
+
+html[data-theme='light'] .refreshButton {
+    color: rgba(0, 0, 0, 0.6);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .refreshButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+html[data-theme='light'] .emptyHistory {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme='light'] .emptyIcon {
+    opacity: 0.4;
+}
+
+html[data-theme='light'] .statementItem {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='light'] .statementDesc {
+    color: #333;
+}
+
+html[data-theme='light'] .statementDate {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme='light'] .statementAmount {
+    color: #7c4dff;
+}
+
+html[data-theme='light'] .statementAmountBonus {
+    color: #00897b;
+}
+
+/* ========== Storage Styles ========== */
+.storageValue {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 700;
+    color: #2196f3;
+    margin: 0;
+}
+
+.storageTotal {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-theme='light'] .storageTotal {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.storageBarWrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.storageBar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+html[data-theme='light'] .storageBar {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.storageBarFill {
+    height: 100%;
+    background: linear-gradient(90deg, #2196f3, #42a5f5);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.storageBarFill.storageWarning {
+    background: linear-gradient(90deg, #ff9800, #ffa726);
+}
+
+.storageBarFill.storageCritical {
+    background: linear-gradient(90deg, #f44336, #ef5350);
+}
+
+.storagePercent {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 35px;
+    text-align: right;
+}
+
+html[data-theme='light'] .storagePercent {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.storageLimits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-theme='light'] .storageLimits {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+/* ========== Expiration Styles ========== */
+.expirationWarning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #ff9800;
+}
+
+.warningIcon {
+    font-size: 1rem;
+}
+
+.expiringSoon {
+    border-color: rgba(255, 152, 0, 0.4) !important;
+    background: rgba(255, 152, 0, 0.08) !important;
+}
+
+.expiresWarningText {
+    color: #ff9800;
+    font-weight: 500;
+}
+
+.loadingState {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Light Mode Overrides for Expiration */
+html[data-theme='light'] .expirationWarning {
+    background: rgba(255, 152, 0, 0.1);
+    border-color: rgba(255, 152, 0, 0.4);
+    color: #e65100;
+}
+
+html[data-theme='light'] .expiringSoon {
+    border-color: rgba(255, 152, 0, 0.5) !important;
+    background: rgba(255, 152, 0, 0.06) !important;
+}
+
+html[data-theme='light'] .expiresWarningText {
+    color: #e65100;
+}
+
+html[data-theme='light'] .loadingState {
+    color: rgba(0, 0, 0, 0.5);
+}

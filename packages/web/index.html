@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>Qython</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet"
+        crossorigin="anonymous" />
+
+    <style>
+        /* Garante que html e body ocupem 100% da tela */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* O #root ocupará 100% da altura */
+        #root {
+            height: 100%;
+        }
+    </style>
+
+    <!-- Apply saved theme BEFORE React loads to prevent flash -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('qython_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+
+    <!-- Em janela de app instalado (PWA standalone), o ambiente já exibe o nome
+         do app ("Qython — Copiloto Clínico") na barra de título. Manter o <title>
+         "Qython" fazia a barra mostrar "Qython — Copiloto Clínico - Qython"
+         (Qython duplicado). Esvaziamos o título nesse modo para sobrar só o nome
+         do app. Em aba de navegador comum o título "Qython" é mantido. -->
+    <script>
+        (function() {
+            try {
+                var inApp = (window.matchMedia && (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                    window.matchMedia('(display-mode: minimal-ui)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches
+                )) || window.navigator.standalone === true;
+                if (inApp) {
+                    document.title = '';
+                }
+            } catch (e) {}
+        })();
+    </script>
+</head>
+
+<body>
+    <div id="root"></div>
+    <div id="modal-portal"></div>
+    <script type="module" src="/src/index.js"></script>
+</body>
+
+</html>

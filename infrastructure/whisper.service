@@ -1,0 +1,33 @@
+# faster-whisper Transcription Service for Qython
+# Location: /etc/systemd/system/whisper.service
+#
+# Runs faster-whisper (large-v3-turbo, CTranslate2 INT8) as a SINGLE process so the
+# model is loaded once — not once per gunicorn worker (which would multiply RAM and OOM
+# the box). The backend posts audio here via transcription_service when WHISPER_SERVER_URL
+# is set in /opt/qython/.env. Listens on 127.0.0.1:8002 (localhost only).
+#
+# After modifying this file:
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart whisper
+
+[Unit]
+Description=faster-whisper transcription service for Qython
+After=network.target
+
+[Service]
+User=linuxuser
+Group=www-data
+WorkingDirectory=/opt/qython
+EnvironmentFile=/opt/qython/.env
+Environment="PATH=/opt/qython/venv/bin:/usr/local/bin:/usr/bin:/bin"
+# O modelo (~1,6 GB) é baixado/carregado na 1ª subida — dá tempo generoso.
+TimeoutStartSec=900
+ExecStart=/opt/qython/venv/bin/uvicorn backend.whisper_server:app --host 127.0.0.1 --port 8002 --timeout-keep-alive 75
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=whisper
+
+[Install]
+WantedBy=multi-user.target

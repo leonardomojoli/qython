@@ -1,0 +1,94 @@
+/* frontend/src/components/LibrarySelectionModal.module.css */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modalContent {
+  background: var(--card-background-color);
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalContent h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  color: var(--feedback-error);
+  transform: scale(1.1);
+}
+
+.libraryList {
+  overflow-y: auto;
+  padding-right: 10px; /* Espaço para a scrollbar */
+}
+
+.libraryItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: 1px solid var(--border-color);
+}
+
+.libraryItem:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  border-color: var(--accent-color);
+}
+
+.libraryIcon {
+  margin-right: 15px;
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+.loadingContainer, .noLibrariesMessage {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+.loadingContainer .svg-inline--fa {
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+}

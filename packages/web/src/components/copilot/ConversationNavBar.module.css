@@ -1,0 +1,214 @@
+/* frontend/src/components/copilot/ConversationNavBar.module.css */
+
+.navBarContainer {
+  display: flex;
+  /* Garante que todos os filhos (botão + e conversas) fiquem em linha */
+  align-items: center;
+  flex-grow: 1;
+  /* Permite que a barra use o espaço disponível */
+  max-width: 55%;
+  /* Limita a largura à metade direita da tela (ajuste se necessário) */
+  min-width: 0;
+
+  /* Scroll e aparência */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  /* Para Firefox */
+  scrollbar-color: var(--border-color) transparent;
+  /* Cor da scrollbar para Firefox, usando as variáveis corretas */
+  scroll-behavior: smooth;
+  padding: 0.5rem 1.25rem;
+  /* Adiciona um padding horizontal para o snap funcionar bem nas pontas */
+
+  /* EFEITO DE SOMBRA PARA INDICAR SCROLL */
+  -webkit-mask-image: linear-gradient(to right, transparent 0.3125rem, black 1.25rem, black 95%, transparent 99%);
+  mask-image: linear-gradient(to right, transparent 0.3125rem, black 1.25rem, black 95%, transparent 99%);
+
+  /* EFEITO ROLETA (SNAP) */
+  scroll-snap-type: x mandatory;
+  /* Habilita o snap horizontal obrigatório */
+
+  /* Efeito de Vidro (Glassmorphism) - com base na sua pesquisa */
+  border-radius: 3.125rem;
+  background: rgba(var(--card-background-color-rgb), 0.25);
+  /* Fundo semitransparente com cor do tema */
+  backdrop-filter: blur(0.625rem);
+  -webkit-backdrop-filter: blur(0.625rem);
+  border: 0.0625rem solid rgba(var(--text-color-rgb), 0.15);
+  /* Borda leve com cor do tema */
+  box-shadow: 0 0.25rem 1.875rem rgba(0, 0, 0, 0.1);
+}
+
+/* ESTILIZAÇÃO DO POLEGAR (SCROLLBAR THUMB) PARA CHROME/SAFARI/EDGE */
+.navBarContainer::-webkit-scrollbar {
+  height: 0.3125rem;
+}
+
+.navBarContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.navBarContainer::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 0.625rem;
+  border: 0.0625rem solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+.navBarContainer::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color);
+  /* Usa a cor de destaque global no hover */
+}
+
+/* Estilo base para TODOS os itens dentro da barra */
+.baseItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.25rem;
+  margin: 0 0.3125rem;
+  border-radius: 1.875rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 0.0625rem solid transparent;
+  position: relative;
+  color: var(--text-color-secondary);
+  background-color: rgba(var(--background-color-rgb), 0.5);
+  transition: all 0.2s ease-in-out;
+  scroll-snap-align: center;
+}
+
+.baseItem:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.2);
+  color: var(--accent-color);
+  transform: translateY(-0.125rem);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Botão de Novo Chat */
+.newChatButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 0.3125rem;
+  border-radius: 1.875rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 0.0625rem dashed var(--primary-light);
+  position: relative;
+  color: var(--primary-color);
+  background-color: rgba(var(--background-color-rgb), 0.5);
+  transition: all 0.2s ease-in-out;
+  width: 2.8125rem;
+  height: 2.8125rem;
+  margin-right: 0.625rem;
+  scroll-snap-align: center;
+}
+
+.newChatButton:hover {
+  border-style: solid;
+  color: var(--primary-light);
+  background-color: rgba(var(--primary-color-rgb), 0.15);
+}
+
+.newChatIcon {
+  font-size: 1.2em;
+}
+
+/* Itens de Conversa */
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1.25rem;
+  margin: 0 0.3125rem;
+  border-radius: 1.875rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 0.0625rem solid transparent;
+  position: relative;
+  color: var(--text-color-secondary);
+  background-color: rgba(var(--background-color-rgb), 0.5);
+  scroll-snap-align: center;
+
+  /* --- NEW ANIMATION STYLES --- */
+  opacity: 0;
+  transform: scale(0.8) translateY(0.625rem);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+
+/* State when the item becomes visible */
+.navItem.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.navItem.active {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 0 0.9375rem rgba(var(--primary-color-rgb), 0.5);
+  transform: translateY(-0.125rem) scale(1.05);
+}
+
+/* Ensure active items are also visible */
+.navItem.active.visible {
+  opacity: 1;
+  transform: translateY(-0.125rem) scale(1.05);
+}
+
+.navItem:hover:not(.active) {
+  background-color: rgba(var(--accent-color-rgb), 0.2);
+  color: var(--accent-color);
+  transform: translateY(-0.125rem) scale(1.02);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+.icon {
+  margin-right: 0.625rem;
+}
+
+.title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9.375rem;
+}
+
+.deleteButton {
+  position: absolute;
+  top: -0.3125rem;
+  right: -0.3125rem;
+  /* Usando o mesmo gradiente do botão "Excluir" do modal */
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+}
+
+.navItem:hover .deleteButton {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.deleteButton:hover {
+  transform: scale(1.15);
+  /* Hover mais claro, igual ao modal */
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.45);
+}

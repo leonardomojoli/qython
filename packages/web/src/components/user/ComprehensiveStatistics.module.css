@@ -1,0 +1,409 @@
+/* frontend/src/components/user/ComprehensiveStatistics.module.css */
+/* Deep Tech Glassmorphism - Dashboard de Estatisticas */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem 0;
+}
+
+/* ========================================
+   LOADING & ERROR STATES
+   ======================================== */
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem;
+    color: var(--text-muted);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--glass-border);
+    border-top-color: var(--secondary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem;
+    color: var(--feedback-error);
+    text-align: center;
+}
+
+.error svg {
+    font-size: 2rem;
+}
+
+/* ========================================
+   SECTIONS
+   ======================================== */
+
+.section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px var(--shadow-color);
+    overflow: hidden;
+}
+
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.5rem 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.sectionTitle svg {
+    color: var(--secondary-color);
+    filter: drop-shadow(0 0 6px rgba(3, 218, 198, 0.4));
+}
+
+/* ========================================
+   OVERVIEW CARDS
+   ======================================== */
+
+.overviewGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    overflow: hidden;
+}
+
+.overviewCard {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.overviewCard:hover {
+    border-color: var(--glass-border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.overviewIcon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 0 8px currentColor);
+}
+
+.overviewInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.overviewValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'Roboto Mono', monospace;
+}
+
+.overviewLabel {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ========================================
+   STATUS CARDS (Surgical)
+   ======================================== */
+
+.statusGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.statusCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    text-align: center;
+}
+
+.statusValue {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.statusLabel {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ========================================
+   CHARTS
+   ======================================== */
+
+.chartsRow {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.chartCard {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.25rem;
+}
+
+.chartTitle {
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.chartContainer {
+    width: 100%;
+    min-height: 200px;
+}
+
+/* ========================================
+   METRICS CARDS
+   ======================================== */
+
+.metricsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.metricCard {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+}
+
+.metricIcon {
+    font-size: 1.25rem;
+    filter: drop-shadow(0 0 6px currentColor);
+}
+
+.metricInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.metricValue {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    font-family: 'Roboto Mono', monospace;
+}
+
+.metricLabel {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ========================================
+   ACADEMIC SECTION
+   ======================================== */
+
+.academicGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.academicCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    text-align: center;
+}
+
+.academicValue {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'Roboto Mono', monospace;
+}
+
+.academicLabel {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.progressBar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.percentileBadge {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #ffc107;
+    font-weight: 600;
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 3rem;
+    color: var(--text-muted);
+    opacity: 0.4;
+}
+
+.emptyState h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-color);
+}
+
+.emptyState p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1024px) {
+    .overviewGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .academicGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        gap: 1.5rem;
+    }
+
+    .section {
+        padding: 1.25rem;
+        border-radius: 16px;
+    }
+
+    .overviewGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .overviewCard {
+        padding: 1rem;
+    }
+
+    .statusGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .chartsRow {
+        grid-template-columns: 1fr;
+    }
+
+    .metricsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .academicGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .overviewValue {
+        font-size: 1.25rem;
+    }
+
+    .statusValue {
+        font-size: 1.5rem;
+    }
+
+    .academicValue {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .academicGrid {
+        grid-template-columns: 1fr;
+    }
+}

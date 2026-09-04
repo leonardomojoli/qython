@@ -1,0 +1,125 @@
+.contact-page {
+    min-height: 100vh;
+    background: linear-gradient(170deg, #12151f 0%, rgba(15, 15, 25, 0.95) 100%);
+    padding: 120px 40px 80px;
+}
+
+.contact-hero {
+    text-align: center;
+    margin-bottom: 80px;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.contact-hero h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    background: linear-gradient(to right, #ffffff, #40e0d0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.contact-hero p {
+    font-size: 1.2rem;
+    color: #d1d1d1;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.contact-card {
+    background-color: rgba(15, 20, 35, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(3, 218, 198, 0.1);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    transition: all 0.3s ease;
+    animation: slideUp 0.6s ease-out;
+}
+
+.contact-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(3, 218, 198, 0.3);
+    box-shadow: 0 15px 40px rgba(3, 218, 198, 0.2);
+}
+
+.contact-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 10px rgba(3, 218, 198, 0.3));
+}
+
+.contact-card h3 {
+    font-size: 1.5rem;
+    color: #03dac6;
+    margin-bottom: 15px;
+}
+
+.contact-card p {
+    font-size: 1rem;
+    color: #d1d1d1;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.contact-email {
+    display: inline-block;
+    color: #03dac6;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 10px 20px;
+    border: 2px solid rgba(3, 218, 198, 0.3);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.contact-email:hover {
+    background-color: rgba(3, 218, 198, 0.1);
+    border-color: #03dac6;
+    transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .contact-page {
+        padding: 100px 20px 60px;
+    }
+
+    .contact-hero h1 {
+        font-size: 2.2rem;
+    }
+
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+}

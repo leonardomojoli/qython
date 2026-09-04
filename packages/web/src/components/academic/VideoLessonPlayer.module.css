@@ -1,0 +1,855 @@
+/* frontend/src/components/academic/VideoLessonPlayer.module.css */
+
+.videoPlayer {
+  position: relative;
+  width: 100%;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  outline: none;
+}
+
+.videoPlayer:focus {
+  border-color: rgba(3, 218, 198, 0.3);
+}
+
+/* Fullscreen mode */
+.videoPlayer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+  background: #000;
+}
+
+.videoPlayer.fullscreen .videoWrapper {
+  height: calc(100vh - 140px);
+}
+
+.videoPlayer.fullscreen .video {
+  object-fit: contain;
+}
+
+/* Video wrapper */
+.videoWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  cursor: pointer;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Play overlay */
+.playOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.playOverlayButton {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #03dac6 0%, #018786 100%);
+  border: none;
+  color: #000;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(3, 218, 198, 0.4);
+}
+
+.playOverlayButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 48px rgba(3, 218, 198, 0.5);
+}
+
+/* Loading overlay */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #03dac6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Controls overlay */
+.controlsOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7) 0%,
+    transparent 30%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  padding: 16px;
+  pointer-events: none;
+}
+
+.controlsOverlay.visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Header section */
+.controlsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.videoIcon {
+  font-size: 20px;
+  color: #03dac6;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.watchedBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(3, 218, 198, 0.2), rgba(3, 218, 198, 0.1));
+  border: 1px solid rgba(3, 218, 198, 0.3);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #03dac6;
+}
+
+.currentChapter {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+}
+
+/* Progress container */
+.progressContainer {
+  padding: 0 4px;
+  margin-top: auto;
+  margin-bottom: 8px;
+}
+
+.watchedProgress {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.watchedProgress span {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Progress bar */
+.progressBar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: height 0.2s ease;
+}
+
+.progressBar:hover {
+  height: 8px;
+}
+
+.progressBar:hover .progressHandle {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.watchedBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(3, 218, 198, 0.3);
+  border-radius: 2px;
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #03dac6, #018786);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.progressHandle {
+  width: 14px;
+  height: 14px;
+  background: #03dac6;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(3, 218, 198, 0.5);
+  transform: scale(0);
+  opacity: 0;
+  transition: all 0.15s ease;
+  margin-right: -7px;
+}
+
+/* Chapter markers */
+.chapterMarker {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: #bb86fc;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.chapterMarker:hover {
+  background: #fff;
+}
+
+/* Bookmark markers */
+.bookmarkMarker {
+  position: absolute;
+  top: -4px;
+  width: 10px;
+  height: calc(100% + 8px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 3;
+}
+
+.bookmarkMarker::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #f59e0b;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
+}
+
+/* Time preview tooltip */
+.timePreview {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Time display */
+.timeDisplay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.timeSeparator {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Main controls */
+.controlsMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.controlsLeft,
+.controlsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controlButton {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.controlButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.controlButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.controlButton.active {
+  background: rgba(3, 218, 198, 0.3);
+  color: #03dac6;
+}
+
+.skipLabel {
+  position: absolute;
+  bottom: 2px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.rateLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Volume control */
+.volumeControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeSlider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.volumeControl:hover .volumeSlider {
+  opacity: 1;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #03dac6;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(3, 218, 198, 0.4);
+}
+
+.volumeSlider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #03dac6;
+  cursor: pointer;
+  border: none;
+}
+
+/* Settings dropdown */
+.settingsDropdown,
+.chaptersDropdown {
+  position: relative;
+}
+
+.settingsMenu,
+.chaptersMenu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  min-width: 140px;
+  background: rgba(30, 30, 40, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.settingsMenu h5,
+.chaptersMenu h5 {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settingsItem,
+.chapterItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.settingsItem:hover,
+.chapterItem:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settingsItem.active,
+.chapterItem.active {
+  color: #03dac6;
+}
+
+.chapterTime {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-right: 12px;
+}
+
+.chapterTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Action bar */
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(20, 20, 30, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  background: rgba(3, 218, 198, 0.1);
+  border-color: rgba(3, 218, 198, 0.3);
+  color: #03dac6;
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionButton.active {
+  background: rgba(3, 218, 198, 0.15);
+  border-color: rgba(3, 218, 198, 0.4);
+  color: #03dac6;
+}
+
+.actionSpacer {
+  flex: 1;
+}
+
+/* Bookmarks panel */
+.bookmarksPanel {
+  background: rgba(20, 20, 30, 0.95);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panelHeader h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.panelClose:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.bookmarksList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bookmarkItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.bookmarkItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bookmarkTime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(3, 218, 198, 0.1);
+  border: 1px solid rgba(3, 218, 198, 0.2);
+  border-radius: 6px;
+  color: #03dac6;
+  cursor: pointer;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.bookmarkTime:hover {
+  background: rgba(3, 218, 198, 0.2);
+}
+
+.bookmarkLabel {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.bookmarkDelete {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bookmarkDelete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Metadata footer */
+.metadataFooter {
+  padding: 12px 16px;
+  background: rgba(15, 15, 25, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metadata {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.metaItem svg {
+  color: #03dac6;
+  font-size: 0.85rem;
+}
+
+/* Light mode */
+html[data-theme='light'] .videoPlayer {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .actionBar {
+  background: rgba(248, 250, 252, 0.9);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .actionButton {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: var(--text-secondary);
+}
+
+html[data-theme='light'] .actionButton:hover:not(:disabled) {
+  background: rgba(3, 218, 198, 0.08);
+  border-color: rgba(3, 218, 198, 0.3);
+  color: #018786;
+}
+
+html[data-theme='light'] .actionButton.active {
+  background: rgba(3, 218, 198, 0.12);
+  border-color: rgba(3, 218, 198, 0.4);
+  color: #018786;
+}
+
+html[data-theme='light'] .bookmarksPanel {
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .bookmarkItem {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .bookmarkItem:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme='light'] .metadataFooter {
+  background: rgba(248, 250, 252, 0.9);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .settingsMenu,
+html[data-theme='light'] .chaptersMenu {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .settingsItem,
+html[data-theme='light'] .chapterItem {
+  color: var(--text-primary);
+}
+
+html[data-theme='light'] .settingsItem:hover,
+html[data-theme='light'] .chapterItem:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .controlsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .controlsMain {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .controlsLeft,
+  .controlsRight {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .volumeSlider {
+    opacity: 1;
+    width: 60px;
+  }
+
+  .actionBar {
+    justify-content: center;
+  }
+
+  .actionButton span {
+    display: none;
+  }
+
+  .actionButton {
+    padding: 10px 12px;
+  }
+
+  .playOverlayButton {
+    width: 60px;
+    height: 60px;
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .controlButton {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .title {
+    font-size: 0.95rem;
+  }
+
+  .metadata {
+    gap: 12px;
+  }
+
+  .metaItem {
+    font-size: 0.75rem;
+  }
+
+  .chaptersMenu,
+  .settingsMenu {
+    min-width: 200px;
+    right: -60px;
+  }
+}
+
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.bookmarksPanel::-webkit-scrollbar { width: 6px; }
+.bookmarksPanel::-webkit-scrollbar-track { background: transparent; }
+.bookmarksPanel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.bookmarksPanel::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .bookmarksPanel::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .bookmarksPanel::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

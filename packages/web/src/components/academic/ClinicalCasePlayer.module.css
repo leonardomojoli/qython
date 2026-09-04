@@ -1,0 +1,482 @@
+/* frontend/src/components/academic/ClinicalCasePlayer.module.css */
+
+.container {
+  padding: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.caseTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.caseTitle svg {
+  color: var(--secondary-color);
+  font-size: 1.2rem;
+}
+
+.caseTitle h3 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.15rem;
+}
+
+.progress {
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+  transition: width 0.4s ease;
+  border-radius: 3px;
+}
+
+.currentScore {
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--secondary-color);
+  font-weight: 600;
+}
+
+.patientCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.patientInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.patientIcon {
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.patientDetails {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.complaint {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.scenario {
+  background: var(--background-elevated);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.scenarioText {
+  margin: 0 0 16px;
+  line-height: 1.7;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.vitals,
+.examResults {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.vitalsHeader,
+.examHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vitalsHeader svg {
+  color: #f44336;
+}
+
+.examHeader svg {
+  color: #9c27b0;
+}
+
+.vitalsGrid,
+.examGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vitalItem,
+.examItem {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-background-color);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  min-width: 80px;
+}
+
+.vitalLabel,
+.examLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.vitalValue,
+.examValue {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.decision {
+  margin-top: 24px;
+}
+
+.decisionQuestion {
+  margin: 0 0 16px;
+  color: var(--secondary-color);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.optionBtn {
+  padding: 16px 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--card-background-color);
+  color: var(--text-color);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.optionBtn:hover:not(:disabled) {
+  border-color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.05);
+}
+
+.optionBtn:disabled {
+  cursor: default;
+}
+
+.optionBtn.selected:not(.correct):not(.wrong) {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.08);
+}
+
+.optionBtn.correct {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.12);
+}
+
+.optionBtn.wrong {
+  border-color: #f44336;
+  background: rgba(244, 67, 54, 0.12);
+}
+
+.optionText {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.resultIcon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.optionBtn.correct .resultIcon {
+  color: #4caf50;
+}
+
+.optionBtn.wrong .resultIcon {
+  color: #f44336;
+}
+
+.feedback {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 12px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feedback.positive {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+}
+
+.feedback.negative {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+}
+
+.feedbackHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.feedback.positive .feedbackHeader svg {
+  color: #4caf50;
+}
+
+.feedback.negative .feedbackHeader svg {
+  color: #ffc107;
+}
+
+.pointsEarned {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.15);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.feedbackText {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.continueBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--secondary-color);
+  color: var(--background-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.continueBtn:hover {
+  background: var(--secondary-color-dark, #02c4b0);
+  transform: translateX(2px);
+}
+
+/* Conclusion Screen */
+.conclusion {
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.trophyContainer {
+  margin-bottom: 20px;
+}
+
+.trophy {
+  font-size: 56px;
+  color: #ffc107;
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.conclusion h3 {
+  margin: 0 0 24px;
+  color: var(--text-color);
+  font-size: 1.5rem;
+}
+
+.scoreCard {
+  display: inline-flex;
+  flex-direction: column;
+  background: var(--card-background-color);
+  padding: 24px 48px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 28px;
+}
+
+.scoreHeader {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.scoreValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-bottom: 4px;
+}
+
+.scoreGrade {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.summary {
+  text-align: left;
+  max-width: 560px;
+  margin: 0 auto 28px;
+  background: var(--background-elevated);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.summary p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+  color: var(--text-color);
+}
+
+.caseSummary {
+  font-style: italic;
+  color: var(--text-secondary) !important;
+}
+
+.learningPoints {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.learningPoints h4 {
+  margin: 0 0 12px;
+  color: var(--secondary-color);
+  font-size: 0.95rem;
+}
+
+.learningPoints ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.learningPoints li {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.learningPoints li:last-child {
+  margin-bottom: 0;
+}
+
+.restartBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background: transparent;
+  border: 2px solid var(--secondary-color);
+  color: var(--secondary-color);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.restartBtn:hover {
+  background: var(--secondary-color);
+  color: var(--background-color);
+}
+
+.noData {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .container {
+    padding: 16px;
+  }
+
+  .patientCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complaint {
+    margin-top: 4px;
+  }
+
+  .scoreCard {
+    padding: 20px 32px;
+  }
+
+  .scoreValue {
+    font-size: 2rem;
+  }
+
+  .optionBtn {
+    padding: 14px 16px;
+  }
+}
+
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.container::-webkit-scrollbar { width: 6px; }
+.container::-webkit-scrollbar-track { background: transparent; }
+.container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.container::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .container::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .container::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

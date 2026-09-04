@@ -1,0 +1,449 @@
+/* frontend/src/components/academic/MaterialProducer.module.css */
+
+.materialProducer {
+  padding: 0 20px 20px 0;
+  width: 100%;
+  box-sizing: border-box;
+  transition: padding-left 0.3s ease;
+}
+
+.materialProducer.adjustedForClosedSidebar {
+  padding-left: 10px;
+}
+
+.mainContainer {
+  display: flex;
+  gap: 30px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.leftPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.rightPanel {
+  flex-basis: 40%;
+  max-width: 500px;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+}
+
+.sourceSelectionContainer {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.sourceSelectionContainer:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-color: var(--glass-border-hover);
+}
+
+.fileContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: var(--input-background-color);
+}
+
+.fileUploadButton {
+  background-color: transparent;
+  border: 1px solid var(--secondary-color);
+  color: var(--secondary-color);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease-in-out;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.fileUploadButton:hover {
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
+  color: var(--secondary-light);
+  transform: translateY(-1px);
+  border-color: var(--secondary-light);
+}
+
+.fileContainer.fileSelected .fileUploadButton {
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
+  color: var(--secondary-light);
+  transform: translateY(-1px);
+  border-color: var(--secondary-light);
+}
+
+.fileName {
+  color: var(--text-color);
+  font-size: 0.9rem;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.removeFileButton {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.removeFileButton:hover {
+  color: var(--notification-error-bg);
+  background-color: rgba(244, 67, 54, 0.15);
+}
+
+.orSeparator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+}
+
+.orSeparator::before,
+.orSeparator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.orSeparator span {
+  padding: 0 10px;
+}
+
+.themeSelect {
+  background-color: var(--input-background-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 12px 15px;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="currentColor"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+}
+
+.themeSelect:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.3);
+}
+
+.materialGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.materialCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 28px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.materialCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-color), var(--secondary-color));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.materialCard:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 12px 40px rgba(var(--accent-color-rgb), 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: rgba(var(--accent-color-rgb), 0.4);
+}
+
+.materialCard:hover::before {
+  opacity: 1;
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.cardDescription {
+  font-size: 0.95rem;
+  color: var(--text-color-secondary);
+  line-height: 1.6;
+  flex-grow: 1;
+}
+
+.previewWrapper {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.previewContent {
+  /* AJUSTE: Definir uma altura máxima para o contêiner de conteúdo */
+  max-height: 75vh;
+  /* Ex: 75% da altura da tela */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* Alinha as páginas do PDF verticalmente */
+  /* align-items: center; */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+/* Estilização da barra de rolagem para navegadores Webkit */
+.previewContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.previewContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.previewContent::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+  border: 2px solid var(--card-background-color);
+  background-clip: padding-box;
+}
+
+.previewContent::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color);
+}
+
+.previewContent .react-pdf__Page__canvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* AJUSTE: Adicionar uma margem entre as páginas do PDF */
+.pdfPage:not(:last-child) {
+  margin-bottom: 15px;
+}
+
+.textPreview {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  width: 100%;
+  /* AJUSTE: O próprio .previewContent agora controla a rolagem */
+}
+
+.previewPlaceholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  height: 100%;
+  color: var(--text-color-secondary);
+  text-align: center;
+  font-style: italic;
+  flex-grow: 1;
+  /* Faz o placeholder ocupar o espaço disponível */
+}
+
+.previewPlaceholder p {
+  margin: 0 0 5px 0;
+  font-size: 1rem;
+  font-style: normal;
+}
+
+.loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(var(--background-color-rgb), 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-color);
+}
+
+.loadingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 60px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.loadingContent p {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+/* Premium Typing Indicator */
+.typingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.typingDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary-light) 100%);
+  box-shadow: 0 2px 10px rgba(187, 134, 252, 0.5);
+  animation: typingWave 1.4s ease-in-out infinite;
+}
+
+.typingDot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typingDot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typingDot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingWave {
+  0%, 60%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-12px) scale(1.1);
+    opacity: 1;
+    box-shadow: 0 6px 20px rgba(187, 134, 252, 0.7);
+  }
+}
+
+.mediaPreview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.audioPreview {
+  width: 100%;
+  align-self: center;
+}
+
+/* File format hint text */
+.fileHint {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Incompatible card state - visually disabled */
+.materialCard.incompatibleCard {
+  opacity: 0.4;
+  filter: grayscale(30%);
+  pointer-events: auto; /* Keep pointer events for tooltip */
+}
+
+.materialCard.incompatibleCard::before {
+  opacity: 0 !important;
+}
+
+.materialCard.incompatibleCard:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--glass-border);
+}
+
+.materialCard.incompatibleCard .cardTitle {
+  color: var(--text-color-secondary);
+}
+
+/* Active job card highlight */
+.materialCard.activeJobCard {
+  border-color: rgba(var(--secondary-color-rgb), 0.6);
+  box-shadow: 0 0 20px rgba(var(--secondary-color-rgb), 0.2);
+}
+
+.materialCard.activeJobCard::before {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--secondary-color), var(--accent-color));
+  animation: activeJobPulse 2s ease-in-out infinite;
+}
+
+@keyframes activeJobPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}

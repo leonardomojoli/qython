@@ -1,0 +1,304 @@
+/* frontend/src/components/pharmacy/PartnerPharmacies.module.css */
+
+.container {
+  width: 100%;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.locationButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #03dac6 0%, #018786 100%);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(3, 218, 198, 0.3);
+  white-space: nowrap;
+}
+
+.locationButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(3, 218, 198, 0.4);
+}
+
+.locationButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.citySearch {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.cityInput {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-color);
+  font-size: 13px;
+  outline: none;
+}
+
+.cityInput:focus {
+  border-color: var(--accent-color);
+}
+
+.cityInput::placeholder {
+  color: var(--text-muted);
+}
+
+.stateSelect {
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-color);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  min-width: 60px;
+}
+
+.searchCityButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.searchCityButton:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+/* Empty */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  opacity: 0.3;
+}
+
+/* Chain card */
+.chainCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.chainHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: background 0.15s ease;
+}
+
+.chainHeader:hover {
+  background: var(--glass-bg-elevated);
+}
+
+.chainInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chainLogo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.chainName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chainUnits {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chainRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tierBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tierEnterprise {
+  background: linear-gradient(135deg, rgba(187, 134, 252, 0.2), rgba(154, 103, 234, 0.2));
+  color: #bb86fc;
+  border: 1px solid rgba(187, 134, 252, 0.3);
+}
+
+.tierRegional {
+  background: rgba(3, 218, 198, 0.15);
+  color: #03dac6;
+  border: 1px solid rgba(3, 218, 198, 0.3);
+}
+
+.tierIndividual {
+  display: none;
+}
+
+.expandIcon {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Chain units container */
+.chainUnitsContainer {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Unit card */
+.unitCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+
+.unitInfo {
+  flex: 1;
+}
+
+.unitName {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.unitAddress, .unitPhone {
+  margin: 0 0 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unitIcon {
+  font-size: 11px;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.phoneLink {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+
+.phoneLink:hover {
+  text-decoration: underline;
+}
+
+.unitActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mapsLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.mapsLink:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Independent section */
+.independentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+  }
+
+  .citySearch {
+    min-width: unset;
+  }
+}

@@ -1,0 +1,452 @@
+/* frontend/src/components/pharmacy/PublicPrescription.module.css */
+/* Mobile-first design for patient prescription viewing */
+
+.page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  color: #1a1a2e;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e8edf2;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  height: 28px;
+}
+
+.ctaLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c3aed;
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.ctaLink:hover {
+  background: #7c3aed;
+  color: #fff;
+}
+
+/* Loading */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e8edf2;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.errorContainer {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.errorContainer h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+
+.errorContainer p {
+  color: #666;
+  font-size: 14px;
+}
+
+/* Prescription Card */
+.rxCard {
+  margin: 20px 16px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.rxCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 20px 0;
+}
+
+.rxTitle {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a2e;
+}
+
+.rxDate {
+  font-size: 13px;
+  color: #888;
+}
+
+/* Meta */
+.rxMeta {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metaLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  font-weight: 600;
+}
+
+.metaValue {
+  font-size: 15px;
+  color: #1a1a2e;
+  font-weight: 500;
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #fef3cd;
+  color: #856404;
+}
+
+/* Medications */
+.medsSection {
+  padding: 0 20px 20px;
+}
+
+.medsTitle {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #1a1a2e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.medItem {
+  padding: 14px;
+  background: #f8f9fb;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  border-left: 3px solid #7c3aed;
+}
+
+.medHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.medName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.fpBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #d4edda;
+  color: #155724;
+  white-space: nowrap;
+}
+
+.medDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.medDetails span {
+  padding: 2px 8px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e8edf2;
+}
+
+.medQuantity {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.medInstructions {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+}
+
+/* Notes */
+.notesSection {
+  padding: 0 20px 20px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.notesTitle {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.notesText {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Pharmacies */
+.pharmaciesSection {
+  margin: 0 16px 20px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: #1a1a2e;
+}
+
+.locationPrompt {
+  text-align: center;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+.locationPrompt p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #666;
+}
+
+.locationBtn {
+  padding: 10px 20px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.locationBtn:hover {
+  background: #6d28d9;
+}
+
+.locationBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.noPharmacies {
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.pharmacyList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pharmacyCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+.pharmacyInfo {
+  flex: 1;
+}
+
+.pharmacyName {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.unitCount {
+  font-size: 12px;
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+.pharmacyAddress {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.distance {
+  font-size: 12px;
+  color: #888;
+}
+
+.pharmacyActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.callBtn, .directionsBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.callBtn {
+  background: #d4edda;
+  color: #155724;
+  border: none;
+}
+
+.callBtn:hover {
+  background: #c3e6cb;
+}
+
+.directionsBtn {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: none;
+}
+
+.directionsBtn:hover {
+  background: #bbdefb;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 24px 16px;
+  color: #888;
+  font-size: 12px;
+}
+
+.footer p {
+  margin: 0 0 4px;
+}
+
+.footerLink {
+  color: #7c3aed;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.footerMeta {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.footerPrivacyLink {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #7c3aed;
+  text-decoration: none;
+}
+
+.footerPrivacyLink:hover {
+  text-decoration: underline;
+}
+
+/* Location consent */
+.locationConsent {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.privacyLink {
+  color: #7c3aed;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.privacyLink:hover {
+  text-decoration: underline;
+}
+
+/* Government program disclaimer */
+.govDisclaimer {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+}
+
+/* Dark mode not needed for public page - keep it light and clean */

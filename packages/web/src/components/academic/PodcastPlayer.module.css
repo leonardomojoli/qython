@@ -1,0 +1,684 @@
+/* frontend/src/components/academic/PodcastPlayer.module.css */
+
+.podcastPlayer {
+  width: 100%;
+  padding: 24px;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen mode */
+.podcastPlayer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(15, 15, 20, 0.98);
+}
+
+.podcastPlayer.fullscreen .waveform {
+  max-width: 800px;
+  margin: 0 auto 24px;
+}
+
+.closeFullscreen {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.closeFullscreen:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* Header */
+.header {
+  margin-bottom: 20px;
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.podcastIcon {
+  font-size: 1.5rem;
+  color: var(--secondary-color);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-color);
+  font-weight: 600;
+  flex: 1;
+}
+
+.listenedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(3, 218, 198, 0.15);
+  border: 1px solid rgba(3, 218, 198, 0.3);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #03dac6;
+  font-weight: 500;
+}
+
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.metaItem svg {
+  color: var(--secondary-color);
+  font-size: 0.9rem;
+}
+
+/* Listen progress */
+.listenProgress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.listenProgressBar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.listenProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #03dac6 0%, #00b4a0 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.listenProgressText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Waveform */
+.waveform {
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Time display */
+.timeDisplay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.timeSeparator {
+  color: var(--text-muted);
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.mainControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.playButton {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #03dac6 0%, #00a89a 100%);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(3, 218, 198, 0.4);
+}
+
+.playButton:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(3, 218, 198, 0.5);
+}
+
+.playButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.skipButton {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.skipButton:hover:not(:disabled) {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.08);
+}
+
+.skipButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.skipLabel {
+  position: absolute;
+  bottom: -2px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.secondaryControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.rateButton {
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 50px;
+}
+
+.rateButton:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.08);
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.volumeButton:hover {
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.08);
+}
+
+.volumeSlider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border-color);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.volumeSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.volumeSlider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  cursor: pointer;
+  border: none;
+}
+
+/* Action bar */
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(3, 218, 198, 0.08);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionButton.active {
+  background: rgba(3, 218, 198, 0.15);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.actionButton svg {
+  font-size: 0.9rem;
+}
+
+/* Export bar */
+.exportBar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exportButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(3, 218, 198, 0.15) 0%, rgba(3, 218, 198, 0.05) 100%);
+  border: 1px solid rgba(3, 218, 198, 0.3);
+  color: #03dac6;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.exportButton:hover {
+  background: linear-gradient(135deg, rgba(3, 218, 198, 0.25) 0%, rgba(3, 218, 198, 0.1) 100%);
+  box-shadow: 0 4px 12px rgba(3, 218, 198, 0.2);
+  transform: translateY(-1px);
+}
+
+.exportButton svg {
+  font-size: 0.9rem;
+}
+
+/* Bookmarks panel */
+.bookmarksPanel {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bookmarksPanel h5 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookmarksList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bookmarkItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.bookmarkItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bookmarkTime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(3, 218, 198, 0.15);
+  border: none;
+  border-radius: 6px;
+  color: #03dac6;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bookmarkTime:hover {
+  background: rgba(3, 218, 198, 0.25);
+}
+
+.bookmarkTime svg {
+  font-size: 0.75rem;
+}
+
+.bookmarkLabel {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.bookmarkDelete {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.bookmarkDelete:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff5252;
+}
+
+/* Script panel */
+.scriptPanel {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.scriptHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scriptHeader h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scriptHeader h5 svg {
+  color: var(--secondary-color);
+}
+
+.scriptExportBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scriptExportBtn:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.scriptContent {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.scriptContent p {
+  margin: 0 0 12px;
+}
+
+.scriptContent p:last-child {
+  margin-bottom: 0;
+}
+
+/* Light mode adjustments */
+html[data-theme='light'] .podcastPlayer {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .podcastPlayer.fullscreen {
+  background: rgba(250, 250, 252, 0.98);
+}
+
+html[data-theme='light'] .closeFullscreen {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .actionButton,
+html[data-theme='light'] .rateButton {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html[data-theme='light'] .bookmarksPanel,
+html[data-theme='light'] .scriptPanel {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='light'] .bookmarkItem {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html[data-theme='light'] .bookmarkItem:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .podcastPlayer {
+    padding: 16px;
+  }
+
+  .podcastPlayer.fullscreen {
+    padding: 20px;
+  }
+
+  .titleSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .metadata {
+    gap: 12px;
+  }
+
+  .metaItem {
+    font-size: 0.8rem;
+  }
+
+  .timeDisplay {
+    font-size: 1rem;
+  }
+
+  .playButton {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
+
+  .skipButton {
+    width: 38px;
+    height: 38px;
+    font-size: 12px;
+  }
+
+  .actionBar {
+    gap: 8px;
+  }
+
+  .actionButton {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .actionButton span {
+    display: none;
+  }
+
+  .exportBar {
+    flex-direction: column;
+  }
+
+  .exportButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .scriptPanel {
+    max-height: 300px;
+  }
+}
+
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.tabContent::-webkit-scrollbar { width: 6px; }
+.tabContent::-webkit-scrollbar-track { background: transparent; }
+.tabContent::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.tabContent::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .tabContent::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .tabContent::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

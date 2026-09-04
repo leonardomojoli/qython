@@ -1,0 +1,202 @@
+/* frontend/src/components/shared/FeedbackModal.module.css */
+
+/* Overlay with blur and fade animation */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  backdrop-filter: blur(8px);
+  padding: clamp(10px, 3vw, 20px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Content with premium glass morphism */
+.modalContent {
+  background: var(--card-background-color);
+  padding: clamp(24px, 5vw, 32px);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px var(--shadow-color),
+    0 0 0 1px var(--glass-border);
+  width: 90%;
+  max-width: min(440px, 100%);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  text-align: center;
+  animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Icon Container with gradient background */
+.iconContainer {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto clamp(16px, 3vw, 20px) auto;
+  font-size: 26px;
+}
+
+.iconFeedback {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.25));
+  color: #f59e0b;
+  border: 2px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Title */
+.modalContent h3 {
+  margin-top: 0;
+  margin-bottom: clamp(6px, 1.5vw, 8px);
+  font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+  font-weight: 600;
+  color: var(--text-color);
+  letter-spacing: -0.01em;
+}
+
+/* Subtitle */
+.subtitle {
+  margin-bottom: clamp(16px, 3vw, 20px);
+  font-size: clamp(0.85rem, 2vw, 0.95rem);
+  line-height: 1.5;
+  color: var(--text-color-secondary);
+}
+
+/* Input Wrapper with optional label */
+.inputWrapper {
+  position: relative;
+  margin-bottom: clamp(16px, 3vw, 24px);
+}
+
+.optionalLabel {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  opacity: 0.7;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+/* Textarea with premium styling */
+.textarea {
+  width: 100%;
+  padding: clamp(12px, 2.5vw, 16px);
+  padding-right: 70px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background-color);
+  border-radius: 12px;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  color: var(--text-color);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.textarea::placeholder {
+  color: var(--text-color-secondary);
+  opacity: 0.6;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+}
+
+/* Button Group */
+.buttonGroup {
+  display: flex;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 12px);
+  flex-wrap: wrap;
+}
+
+/* Base Button */
+.button {
+  padding: clamp(10px, 2vw, 12px) clamp(20px, 4vw, 28px);
+  border-radius: 10px;
+  font-size: clamp(0.9rem, 2vw, 0.95rem);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease-in-out;
+  min-width: 120px;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Cancel Button */
+.cancelButton {
+  background-color: rgba(var(--text-color-rgb), 0.08);
+  color: var(--text-color-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background-color: rgba(var(--text-color-rgb), 0.12);
+  color: var(--text-color);
+  border-color: var(--text-color-secondary);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+/* Submit Button with primary gradient */
+.submitButton {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(var(--primary-color-rgb), 0.35);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+  box-shadow: 0 6px 20px rgba(var(--primary-color-rgb), 0.45);
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .buttonGroup {
+    flex-direction: column-reverse;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,111 @@
+# Qython — stack completa em um comando.
+#
+#   cp .env.example .env    # preencha ao menos GEMINI_API_KEY e JWT_SECRET_KEY
+#   docker compose up -d
+#   → web em http://localhost:8080, API em http://localhost:8080/api
+#
+# Os serviços pesados de ML (whisper, embedder) ficam atrás de profiles porque
+# baixam alguns GB de modelo. Sem eles o sistema funciona: a transcrição cai no
+# Groq e a busca da biblioteca usa o pipeline de embeddings legado, local.
+#
+#   docker compose --profile ml up -d     # sobe também whisper + embedder
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-qython}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qython}
+      POSTGRES_DB: ${POSTGRES_DB:-qython}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qython}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chroma:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    volumes:
+      - chromadata:/data
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # ~500 MB a mais na imagem; só necessário para ingerir .docx/.pptx.
+        WITH_LIBREOFFICE: ${WITH_LIBREOFFICE:-false}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      chroma:
+        condition: service_started
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-qython}:${POSTGRES_PASSWORD:-qython}@db:5432/${POSTGRES_DB:-qython}
+      CHROMA_SERVER_HOST: chroma
+      CHROMA_SERVER_PORT: "8000"
+    volumes:
+      - uploads:/app/backend/static/uploads
+      - permanent:/app/backend/static/permanent_uploads
+    # Aplica as migrations antes de servir: sem isto o primeiro boot sobe com o
+    # banco vazio e todo request quebra em tabela inexistente.
+    # O script_location do alembic.ini é relativo, então o upgrade roda de
+    # dentro de backend/; o gunicorn volta para /app, onde `backend` é pacote.
+    command: >
+      sh -c "cd backend && alembic upgrade head && cd /app &&
+             gunicorn --workers 2 --worker-class uvicorn.workers.UvicornWorker
+                      --bind 0.0.0.0:8000 --timeout 600
+                      --access-logfile - --error-logfile -
+                      backend.main:app"
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  # --- perfil "ml": self-host dos modelos, opcional ---
+
+  whisper:
+    profiles: ["ml"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    command: uvicorn backend.whisper_server:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 75
+    volumes:
+      - models:/root/.cache/huggingface
+
+  embedder:
+    profiles: ["ml"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    command: uvicorn backend.embed_server:app --host 0.0.0.0 --port 8003 --timeout-keep-alive 75
+    volumes:
+      - models:/root/.cache/huggingface
+
+volumes:
+  pgdata:
+  chromadata:
+  uploads:
+  permanent:
+  models:

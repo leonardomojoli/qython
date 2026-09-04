@@ -1,0 +1,162 @@
+# Canonical Nginx configuration for qython.ai (Qython platform)
+# Location: /etc/nginx/sites-available/qython.ai
+#
+# This serves the actual app. qython.app and qython.com 301-redirect here —
+# see qython.app.redirect.nginx and qython.com.redirect.nginx.
+
+# Cache-Control por rota da API (usado no `location ^~ /api/` abaixo). Default = no-store:
+# respostas autenticadas (JSON com PII/dado clínico) NÃO devem ir pra cache em disco do
+# browser nem pra cache compartilhado/CDN (LGPD). Exceção: arquivos imutáveis servidos PELA
+# API (thumbnail/PDF — nome content-addressed por UUID, nunca mudam) podem cachear no browser;
+# `private` garante que nunca vão pra cache compartilhado. O `map` vive em contexto http
+# (este arquivo é incluído dentro de http), por isso fica FORA do bloco server.
+map $uri $qython_api_cache_control {
+    default                       "no-store, no-cache, must-revalidate";
+    "~^/api/academic/thumbnails/" "private, max-age=86400, immutable";
+    "~^/api/academic/documents/"  "private, max-age=86400, immutable";
+}
+
+server {
+    server_name qython.ai www.qython.ai;
+
+    root /opt/qython/packages/web/build;
+    index index.html index.htm;
+
+    # Gzip compression for better performance
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/xml application/json;
+    gzip_disable "MSIE [1-6]\.";
+
+    # Security headers for Firebase Auth popups
+    add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+    add_header Permissions-Policy "geolocation=(self), microphone=(), camera=()" always;
+
+    # Android App Links / iOS Universal Links — served as-is, no cache headers
+    # File goes at /opt/qython/packages/web/build/.well-known/assetlinks.json
+    location = /.well-known/assetlinks.json {
+        default_type application/json;
+        try_files $uri =404;
+    }
+    location = /.well-known/apple-app-site-association {
+        default_type application/json;
+        try_files $uri =404;
+    }
+
+    # API proxy to Gunicorn backend
+    # IMPORTANT: ^~ prefix gives priority over regex locations (like image caching)
+    # Without it, requests like /api/academic/thumbnails/file.png would be
+    # captured by the image cache regex and return 404
+    location ^~ /api/ {
+        client_max_body_size 100M;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_pass http://unix:/run/gunicorn/qython.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 360s;
+        proxy_send_timeout    360s;
+        proxy_read_timeout    360s;
+        send_timeout          360s;
+        proxy_buffers 8 32k;
+        proxy_buffer_size 32k;
+        # SEM `always` de propósito: assim o add_header só aplica em respostas de
+        # SUCESSO (200, 206 p/ range request, 3xx) — NUNCA em erro (4xx/5xx). Com
+        # `always`, um 401/403/404/500 transitório no /documents também levava o
+        # `immutable, max-age=86400` e o browser servia o ERRO cacheado por 24h sem
+        # reconsultar (footgun). Sucesso (thumbnail/PDF content-addressed) segue cacheado.
+        add_header Cache-Control $qython_api_cache_control;
+    }
+
+    # Static uploads (user-uploaded files) - ^~ gives priority over regex locations
+    location ^~ /static/uploads/ {
+        alias /opt/qython/backend/static/uploads/;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'X-Content-Type-Options' 'nosniff' always;
+        add_header Accept-Ranges bytes;
+        sendfile on;
+        gzip off;
+        expires 30d;
+        add_header Cache-Control "public";
+
+        types {
+            audio/mpeg mp3;
+            audio/wav wav;
+        }
+    }
+
+    # Cache static assets with hashes (JS, CSS in /assets/) - long cache since filename changes on update
+    location ~* ^/assets/.*\.(js|css)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # ES module workers/chunks (.mjs) — ex.: o worker do react-pdf (pdfjs 5 só fornece .mjs).
+    # O mime.types do nginx pode não mapear .mjs; servido como octet-stream, o browser RECUSA
+    # o módulo ("Strict MIME type checking"). Força JS + cache imutável (são hasheados).
+    location ~* \.mjs$ {
+        default_type application/javascript;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Cache images, fonts with medium duration
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+    # index.html should never be cached to ensure users get latest assets
+    location = /index.html {
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+        add_header Permissions-Policy "geolocation=(self), microphone=(), camera=()" always;
+    }
+
+    # SPA fallback - serve index.html for all routes (also no cache)
+    location / {
+        try_files $uri $uri/ /index.html;
+        # Don't cache HTML responses
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+        add_header Permissions-Policy "geolocation=(self), microphone=(), camera=()" always;
+    }
+
+    # SSL configuration (managed by Certbot)
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/qython.ai/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/qython.ai/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name qython.ai www.qython.ai;
+
+    # ACME HTTP-01 (Let's Encrypt) — PRECISA vir antes do redirect. Um `return 301`
+    # em nível de server curto-circuita a seleção de location: o desafio era 301-ado
+    # para o HTTPS, onde o SPA respondia index.html no lugar do token, e a validação
+    # falhava. Foi assim que a renovação quebrou em silêncio na migração p/ a Hetzner
+    # (jul/2026) e o certificado venceu em 13/ago. Não voltar a pôr o `return` no
+    # nível do server. Webroot casa com `webroot_path` em /etc/letsencrypt/renewal/.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

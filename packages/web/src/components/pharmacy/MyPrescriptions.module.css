@@ -1,0 +1,209 @@
+/* frontend/src/components/pharmacy/MyPrescriptions.module.css */
+
+.container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  opacity: 0.3;
+}
+
+/* Prescription card */
+.rxCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.rxHeader {
+  padding: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rxHeader:hover {
+  background: var(--glass-bg-elevated);
+}
+
+.rxInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.rxTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.rxDate {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rxType {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+  text-transform: uppercase;
+}
+
+.rxMeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.medPill {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-color);
+}
+
+.medMore {
+  font-size: 12px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+}
+
+/* Actions */
+.rxActions {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Expanded section */
+.expandedSection {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.sendsTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sendsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sendCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+
+.sendInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sendPharmacy {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.sendAddress {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sendStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.statusBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.sendDate {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.noSends {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}

@@ -1,0 +1,241 @@
+/* frontend/src/components/academic/ShareResultModal.module.css */
+/* Share Result Modal - Premium Deep Tech Styles */
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modalContent {
+    background: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 25px 80px var(--shadow-color);
+}
+
+.closeButton {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.closeButton:hover {
+    background: rgba(255, 82, 82, 0.1);
+    border-color: rgba(255, 82, 82, 0.5);
+    color: #ff5252;
+}
+
+/* Header */
+.modalHeader {
+    text-align: center;
+    padding: 40px 40px 20px;
+}
+
+.headerIcon {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    margin-bottom: 15px;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.modalHeader p {
+    margin: 10px 0 0;
+    color: var(--text-color-secondary);
+    font-size: 1rem;
+}
+
+/* Card Preview */
+.cardPreview {
+    padding: 0 40px 30px;
+}
+
+.cardImage {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px var(--shadow-color);
+}
+
+.loadingState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    color: var(--text-color-secondary);
+    gap: 15px;
+}
+
+.spinner {
+    font-size: 2rem;
+    color: var(--accent-color);
+}
+
+.errorState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.errorState p {
+    color: var(--text-color-secondary);
+    margin-bottom: 20px;
+}
+
+.errorState button {
+    padding: 10px 25px;
+    border-radius: 8px;
+    border: 1px solid var(--accent-color);
+    background: transparent;
+    color: var(--accent-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.errorState button:hover {
+    background: rgba(var(--accent-color-rgb), 0.1);
+}
+
+/* Share Actions */
+.shareActions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 0 40px 40px;
+}
+
+.shareButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.shareButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.shareButton svg {
+    font-size: 1.2rem;
+}
+
+/* LinkedIn */
+.shareButton.linkedin {
+    background: #0077B5;
+    color: white;
+}
+
+.shareButton.linkedin:hover:not(:disabled) {
+    background: #006097;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 119, 181, 0.4);
+}
+
+/* Twitter */
+.shareButton.twitter {
+    background: #1DA1F2;
+    color: white;
+}
+
+.shareButton.twitter:hover:not(:disabled) {
+    background: #0d8ecf;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(29, 161, 242, 0.4);
+}
+
+/* Download */
+.shareButton.download {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #bb86fc 100%);
+    color: #000;
+}
+
+.shareButton.download:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(var(--accent-color-rgb), 0.4);
+}
+
+/* Copy */
+.shareButton.copy {
+    background: rgba(var(--text-color-rgb), 0.1);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.shareButton.copy:hover:not(:disabled) {
+    background: rgba(var(--text-color-rgb), 0.15);
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    .modalContent {
+        margin: 10px;
+        border-radius: 16px;
+    }
+
+    .modalHeader {
+        padding: 30px 25px 15px;
+    }
+
+    .cardPreview {
+        padding: 0 25px 20px;
+    }
+
+    .shareActions {
+        grid-template-columns: 1fr;
+        padding: 0 25px 30px;
+    }
+}
+/* =========================================
+   SCROLLBAR STYLING
+   ========================================= */
+.modalContent::-webkit-scrollbar { width: 6px; }
+.modalContent::-webkit-scrollbar-track { background: transparent; }
+.modalContent::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.modalContent::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+html[data-theme='light'] .modalContent::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+html[data-theme='light'] .modalContent::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }

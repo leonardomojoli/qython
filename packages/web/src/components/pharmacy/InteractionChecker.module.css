@@ -1,0 +1,294 @@
+/* frontend/src/components/pharmacy/InteractionChecker.module.css */
+
+.container {
+  width: 100%;
+}
+
+/* Selected medications pills */
+.selectedMeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-height: 20px;
+}
+
+.selectedPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(var(--accent-color-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.pillName {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.pillPrinciple {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.pillRemove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  transition: color 0.2s ease;
+}
+
+.pillRemove:hover {
+  color: #e74c3c;
+}
+
+/* Search / Add section */
+.addSection {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.searchWrapper {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-color);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--accent-color);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchingHint {
+  padding: 8px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card-background-color);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownItem:hover {
+  background: var(--glass-bg-elevated);
+}
+
+.dropdownName {
+  font-weight: 500;
+}
+
+.dropdownPrinciple {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fpBadge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(39, 174, 96, 0.15);
+  color: #27ae60;
+}
+
+/* Check button */
+.checkButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(var(--accent-color-rgb), 0.35);
+}
+
+.checkButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(var(--accent-color-rgb), 0.45);
+}
+
+.checkButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Results */
+.results {
+  margin-top: 8px;
+}
+
+.resultsTitle {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* Interaction card */
+.interactionCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-left: 4px solid;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.interactionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.severityLabel {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.interactionPair {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.interactionDesc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+.interactionDetail {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.detailLabel {
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.interactionMeta {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* No interactions */
+.noInteractions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+  gap: 12px;
+}
+
+.noInteractionsIcon {
+  font-size: 40px;
+  color: #27ae60;
+}
+
+.noInteractions p {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+/* Hint */
+.hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.hintIcon {
+  font-size: 40px;
+  opacity: 0.3;
+}

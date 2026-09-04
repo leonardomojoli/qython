@@ -1,0 +1,59 @@
+# Qython Backend Service (Gunicorn + Uvicorn)
+# Location: /etc/systemd/system/qython.service
+#
+# After modifying this file:
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart qython
+#
+# NOTE: PATH must include the system bin dirs (/usr/bin etc.), not just the venv —
+# the backend shells out to system binaries (ffmpeg for transcription, tesseract
+# for OCR). A venv-only PATH makes those subprocess calls fail with
+# "No such file or directory: 'ffmpeg'".
+#
+# MEMORY (8GB box): workers reduzidos 4->2 (cada um ~1GB c/ spaCy/Presidio + genai).
+# Com whisper/embedder/chroma em serviços separados, 2 workers ASSÍNCRONOS (uvicorn)
+# seguram a concorrência. --max-requests recicla o worker p/ matar o creep de memória
+# que levava ao OOM-kill (derrubava o serviço inteiro -> 502 em upload/chat).
+
+[Unit]
+Description=Gunicorn service for Qython FastAPI App
+After=network.target postgresql.service chroma.service whisper.service embedder.service
+# ChromaDB (chroma.service), transcrição (whisper.service) e embeddings/rerank
+# (embedder.service, RAG v2) rodam como servidores standalone; os workers conectam via HTTP.
+# embedder é soft-dep: sem EMBED_SERVER_URL no .env, o backend usa o RAG v1 (MiniLM local).
+Wants=chroma.service whisper.service embedder.service
+
+[Service]
+User=linuxuser
+Group=www-data
+WorkingDirectory=/opt/qython
+Environment="PATH=/opt/qython/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=/opt/qython/.env
+RuntimeDirectory=gunicorn
+# Backstop de memória: throttle (reclaim) quando o cgroup do serviço passa de 6G, antes
+# do OOM-killer global (que derrubava o serviço inteiro -> 502).
+MemoryAccounting=yes
+MemoryHigh=6G
+
+ExecStart=/opt/qython/venv/bin/gunicorn \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind unix:/run/gunicorn/qython.sock \
+    --timeout 600 \
+    --max-requests 500 \
+    --max-requests-jitter 100 \
+    --umask 007 \
+    --log-level info \
+    --access-logfile - \
+    --error-logfile - \
+    backend.main:app
+
+Restart=always
+RestartSec=10
+Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=qython
+
+[Install]
+WantedBy=multi-user.target

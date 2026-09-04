@@ -1,0 +1,1485 @@
+/* src/components/user/Profile.module.css */
+.profileContainer {
+  padding: 0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px) clamp(15px, 4vw, 30px);
+  /* Novo: top right bottom left */
+  width: 100%;
+  height: auto;
+  /* Ajusta a altura ao conteúdo, em vez de forçar 100% */
+  overflow-x: hidden;
+  overflow-y: hidden;
+  /* Impede rolamento no próprio contêiner */
+  margin-top: 45px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: padding-left 0.3s ease;
+  /* Smooth transition for padding change */
+}
+
+.profileContainer.adjustedForClosedSidebar {
+  padding-left: clamp(20px, 5vw, 40px);
+  /* Adjusted padding when sidebar is closed */
+}
+
+.profileTitle {
+  text-align: left;
+  margin-bottom: clamp(12px, 2.5vw, 20px);
+  margin-top: 0;
+  margin-left: 5px;
+  /* Adiciona 5px de margem à esquerda */
+  font-size: clamp(18px, 4vw, 24px);
+  width: 100%;
+}
+
+
+.personalInfoContainer {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  padding: clamp(18px, 3vw, 28px) clamp(20px, 4vw, 32px);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.personalInfoContainer:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.infoRow {
+  display: flex;
+  margin-bottom: 12px;
+  /* Espaçamento entre as linhas de informação */
+  align-items: center;
+  /* Alinha o label e o valor verticalmente */
+}
+
+.infoLabel {
+  font-weight: bold;
+  color: var(--text-color-secondary);
+  /* Uma cor mais suave para o label */
+  min-width: 150px;
+  /* Largura mínima para alinhamento dos valores */
+  margin-right: 10px;
+}
+
+.infoValue,
+.infoInput {
+  color: var(--text-color);
+  flex-grow: 1;
+  /* Permite que o valor/input ocupe o espaço restante */
+}
+
+.infoInput {
+  background-color: var(--input-background-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.editControls {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-start;
+  /* Alinha botões de salvar/cancelar à esquerda */
+}
+
+.buttonGroup {
+  /* Para os botões de Upload/Gerar Avatar etc */
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.centeredContainer {
+  position: relative;
+  width: 100%;
+  max-width: min(650px, 100%);
+  /* Aumentado ligeiramente para mais espaço */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100vh - 45px - 20px);
+  /* Altura mínima para preencher a tela, descontando margens */
+  overflow-y: visible;
+  /* Permite expansão do conteúdo */
+}
+
+.tabContainer {
+  display: flex;
+  justify-content: center;
+  gap: clamp(10px, 2.5vw, 20px);
+  /* Aumentar um pouco o espaçamento se desejar */
+  margin-bottom: clamp(15px, 4vw, 30px);
+  /* Aumentar margem inferior para separar do conteúdo */
+  border-bottom: 1px solid var(--border-color);
+  /* Adiciona uma linha sutil abaixo das abas */
+  padding-bottom: clamp(6px, 1.5vw, 10px);
+  /* Espaçamento para a linha */
+  flex-wrap: wrap;
+}
+
+.tabContainer button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  /* Cor padrão do texto */
+  cursor: pointer;
+  padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
+  /* Ajustar padding para melhor toque */
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  /* Ajustar tamanho da fonte se necessário */
+  font-weight: 500;
+  /* Peso da fonte para as abas */
+  transition: color 0.3s ease, border-bottom-color 0.3s ease, background-color 0.2s ease;
+  border-bottom: 3px solid transparent;
+  /* Borda inferior para o efeito ativo */
+  border-radius: 6px 6px 0 0;
+  /* Leve arredondamento no topo */
+}
+
+.tabContainer button:hover {
+  color: var(--accent-color);
+  background-color: rgba(187, 134, 252, 0.08);
+  /* Fundo sutil no hover */
+}
+
+.tabContainer button.activeTab {
+  color: var(--accent-color);
+  font-weight: 600;
+  /* Destaque para aba ativa */
+  border-bottom-color: var(--accent-color);
+  background-color: rgba(187, 134, 252, 0.12);
+  /* Fundo um pouco mais pronunciado para aba ativa */
+}
+
+.tabContent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(15px, 3vw, 25px);
+  /* Espaçamento entre os blocos de configurações */
+  background-color: transparent;
+  /* Remove o fundo do contêiner principal */
+  padding: 0;
+  /* Remove o padding do contêiner */
+  border: none;
+  /* Remove a borda */
+  box-shadow: none;
+  /* Remove a sombra */
+  animation: fadeIn 0.5s ease-out;
+}
+
+.settingsBlock {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  padding: clamp(15px, 3vw, 25px) clamp(18px, 4vw, 30px);
+  border-radius: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.settingsBlock:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.settingItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  /* Mantém juntos à esquerda */
+  gap: clamp(15px, 3vw, 30px);
+  /* Espaço fixo entre label e select */
+  margin-bottom: clamp(15px, 3vw, 25px);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.sectionSeparator {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 30px 0;
+  /* border-bottom padrão não tem opacity, então removemos aqui para igualar */
+}
+
+.settingItem label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+  margin-left: 0;
+  white-space: nowrap;
+  min-width: 80px;
+  /* Opcional: para alinhar se houver múltiplos itens */
+}
+
+.settingItem select {
+  background-color: var(--input-background-color);
+  /* Usa a variável do tema para garantir contraste */
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  min-width: 250px;
+  /* Um pouco mais largo */
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23bbaabb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.7-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 10px;
+  padding-right: 35px;
+}
+
+.settingItem select option {
+  background-color: var(--card-background-color);
+  /* Fundo sólido para as opções */
+  color: var(--text-color);
+}
+
+.settingItem select:hover {
+  border-color: var(--accent-color);
+}
+
+.settingItem select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(187, 134, 252, 0.15);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-subsection {
+  margin-bottom: 30px;
+  /* Espaçamento entre subseções */
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  /* Linha divisória sutil */
+}
+
+.settings-subsection:last-child {
+  border-bottom: none;
+  /* Remove a borda da última subseção */
+  margin-bottom: 0;
+}
+
+.settings-subsection h4 {
+  font-size: 1.1rem;
+  /* Tamanho para títulos de subseção */
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 500;
+  /* Peso da fonte */
+}
+
+/* Estilo para opções de tema (radio buttons) */
+.theme-options {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.theme-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.theme-options input[type="radio"] {
+  opacity: 0;
+  /* Esconde o rádio padrão */
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.theme-options input[type="radio"]+span {
+  /* Círculo customizado */
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+
+.theme-options label:hover input[type="radio"]+span {
+  border-color: var(--accent-color);
+}
+
+.theme-options input[type="radio"]:checked+span {
+  border-color: var(--primary-light);
+  /* Borda lilás quando selecionado */
+}
+
+.theme-options input[type="radio"]:checked+span::after {
+  /* Ponto interno */
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  /* Preenchimento lilás */
+}
+
+/* Estilo para o select de idioma (baseado em .formSelect de ConsultationManager) */
+.settings-subsection select {
+  background-color: var(--input-background-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-radius: 6px;
+  width: 100%;
+  max-width: 300px;
+  /* Ou ajuste conforme necessário */
+  box-sizing: border-box;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 1rem;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="currentColor"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 35px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.settings-subsection select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.25);
+}
+
+/* Ajustes para ConsultaDefinitions dentro da seção */
+.template-selection {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.template-selection select {
+  flex: 1;
+  /* Para que os selects dividam o espaço */
+  max-width: none;
+  /* Remove o max-width para que possam preencher o flex */
+}
+
+.template-editor-container {
+  margin-top: 15px;
+}
+
+.template-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.template-actions button {
+  /* Reutilizar .theme-button ou .actionButtonPrimary/.actionButtonSecondary */
+  /* Exemplo usando um estilo de botão genérico que você pode definir em global.css ou Profile.module.css */
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.template-actions button:first-of-type {
+  /* Botão Salvar */
+  background-color: var(--primary-light);
+  color: white;
+  border: 1px solid var(--primary-light);
+}
+
+.template-actions button:first-of-type:hover {
+  background-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.template-actions button:last-of-type {
+  /* Botão Restaurar */
+  background-color: transparent;
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
+}
+
+.template-actions button:last-of-type:hover {
+  background-color: rgba(3, 218, 198, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Título principal de cada seção dentro da aba */
+.tab-section-title {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.personalInfoContainer {
+  background-color: var(--card-background-color);
+  /* Fundo muito sutil */
+  padding: 20px 25px;
+  /* Padding aumentado */
+  border-radius: 8px;
+  margin-bottom: 25px;
+  /* Espaçamento aumentado */
+  text-align: left;
+  border: 1px solid var(--border-color);
+  /* Borda quase invisível */
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  /* Alinha verticalmente label e valor/input */
+  margin-bottom: 18px;
+  /* Espaçamento aumentado entre as linhas */
+}
+
+.infoLabel {
+  font-weight: 500;
+  /* Menos "bold" que antes */
+  color: var(--text-color-secondary, #adb5bd);
+  /* Cor mais suave para o label */
+  min-width: 180px;
+  /* Aumentado para dar mais espaço */
+  margin-right: 15px;
+  /* Aumentado */
+  font-size: 0.95rem;
+}
+
+.infoValue {
+  color: var(--text-color);
+  font-size: 1rem;
+  word-break: break-word;
+  /* Para que emails longos quebrem */
+}
+
+.infoInput {
+  flex-grow: 1;
+  background-color: var(--input-background-color);
+  /* Fundo do input um pouco diferente */
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.infoInput:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  /* Lilás no foco */
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.25);
+}
+
+.editControls {
+  display: flex;
+  gap: 12px;
+  margin-top: 25px;
+  justify-content: flex-start;
+}
+
+/* Estilos de Botões Padronizados */
+.button-base {
+  padding: 9px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  /* Evita que o texto do botão quebre */
+}
+
+.button-base:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button-base:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button-primary {
+  /* Lilás Premium - para ações principais */
+  background: var(--gradient-interactive);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(var(--color-interactive-rgb), 0.35);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-interactive) 0%, var(--color-highlight) 100%);
+  box-shadow: 0 6px 20px rgba(var(--color-interactive-rgb), 0.45);
+  transform: translateY(-2px);
+}
+
+.button-secondary {
+  /* Turquesa Premium - para ações secundárias */
+  background: var(--gradient-secondary);
+  color: var(--color-bg);
+  border: none;
+  box-shadow: 0 4px 15px rgba(var(--brand-secondary-rgb), 0.3);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--brand-secondary-light) 0%, var(--brand-secondary) 100%);
+  box-shadow: 0 6px 20px rgba(var(--brand-secondary-rgb), 0.4);
+  transform: translateY(-2px);
+}
+
+.button-neutral {
+  /* Neutro - para Cancelar, Resetar Foto, Restaurar Padrão */
+  background-color: transparent;
+  color: var(--text-color-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.button-neutral:hover:not(:disabled) {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  border-color: var(--text-color-secondary);
+}
+
+.button-danger {
+  /* Vermelho - para Descartar Avatar, Remover Avatar */
+  background-color: var(--notification-error-bg);
+  color: var(--notification-error-text);
+  border: 1px solid var(--notification-error-bg);
+}
+
+.button-danger:hover:not(:disabled) {
+  background-color: rgba(var(--notification-error-bg-rgb), 0.4);
+  border-color: rgba(var(--notification-error-bg-rgb), 0.8);
+  color: white;
+}
+
+.button-upgrade {
+  /* Gradient for upgrade action - prominent but not alarming */
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+  width: 100%;
+  margin-top: 16px;
+}
+
+.button-upgrade:hover:not(:disabled) {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  transform: translateY(-2px);
+}
+
+/* Info value container for inline edit button */
+.infoValueContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+/* Small edit button next to field values */
+.updateFieldButton {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+}
+
+.updateFieldButton:hover {
+  opacity: 1;
+  color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+/* Upgrade section styling */
+.upgradeSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.profilePictureContainer {
+  margin-top: 20px;
+  /* Adicionado para separar da seção de informações */
+  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profilePicture {
+  width: 180px;
+  /* Reduzido ligeiramente para harmonizar */
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--accent-color);
+  box-shadow: 0 0 20px rgba(var(--accent-color-rgb), 0.35);
+  /* Sombra um pouco mais intensa */
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  /* Aumentar um pouco o espaçamento */
+  margin-top: 25px;
+  flex-wrap: wrap;
+}
+
+.subTabContainer {
+  display: flex;
+  justify-content: center;
+  /* Centralizar sub-abas */
+  gap: 15px;
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--border-color);
+  /* Linha mais sutil */
+  padding-bottom: 8px;
+}
+
+.subTabContainer button {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary, #adb5bd);
+  /* Cor mais suave para sub-abas não ativas */
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  /* Ligeiramente menor */
+  transition: color 0.3s ease, border-bottom-color 0.3s ease;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+}
+
+.subTabContainer button:hover {
+  color: var(--accent-color);
+}
+
+.subTabContainer button.activeSubTab {
+  color: var(--accent-color);
+  font-weight: 500;
+  /* Menos bold que a aba principal */
+  border-bottom-color: var(--accent-color);
+}
+
+.balance-section {
+  /* Container para o saldo */
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.balance {
+  font-size: 2.5rem;
+  /* Tamanho grande para o saldo */
+  font-weight: 700;
+  color: var(--secondary-light);
+  /* Cor turquesa para o saldo */
+  margin: 10px 0;
+  letter-spacing: 1px;
+}
+
+.balance-label {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  /* Mudado para collapse para um visual mais limpo */
+  margin-top: 15px;
+  font-size: 0.9rem;
+  /* Fonte um pouco menor para tabelas */
+}
+
+.historyTable th,
+.historyTable td {
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+  /* Bordas em todas as células */
+  color: var(--text-color);
+}
+
+.historyTable th {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  /* Fundo muito sutil para cabeçalhos */
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.historyTable tbody tr:nth-child(even) {
+  background-color: rgba(var(--text-color-rgb), 0.02);
+  /* Zebrado sutil */
+}
+
+.historyTable tbody tr:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  /* Hover lilás sutil */
+}
+
+.noHistoryMessage {
+  color: var(--text-color-secondary);
+  padding: 20px;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Botão de Atualizar Histórico */
+.refreshButton {
+  /* Herda estilos base do button-neutral e ajusta */
+  background-color: transparent;
+  color: var(--text-color-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 10px;
+  border-radius: 6px;
+  /* Ajustado para consistência */
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-left: 15px;
+  transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: rgba(var(--text-color-rgb), 0.05);
+  border-color: var(--text-color-secondary);
+  transform: translateY(-1px);
+}
+
+/* Para o refreshButton ficar ao lado do título da sub-aba "Histórico" */
+.billing-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Isso ajudará se o título também estiver em um span/div */
+  margin-bottom: 15px;
+}
+
+.billing-history-header h4 {
+  margin: 0;
+  /* Remove margem padrão de h4 */
+}
+
+.theme-options label input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Este span será o corpo customizado do checkbox */
+.theme-options label span {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  /* Largura do checkbox */
+  height: 18px;
+  /* Altura do checkbox */
+  background-color: var(--checkbox-bg-unchecked);
+  border: 2px solid var(--checkbox-border-unchecked);
+  border-radius: 4px;
+  /* Bordas quadradas para checkbox */
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  /* Espaço entre o checkbox e o texto do label */
+  vertical-align: middle;
+  /* Alinha melhor com o texto */
+}
+
+.theme-options label:hover input[type="checkbox"]+span {
+  border-color: var(--checkbox-hover-border);
+}
+
+.theme-options label input[type="checkbox"]:checked+span {
+  background-color: var(--checkbox-bg-checked);
+  border-color: var(--checkbox-border-checked);
+}
+
+/* Estilo para o "check mark" (✓) */
+.theme-options label input[type="checkbox"]:checked+span::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  /* Posição X do check mark */
+  top: 1px;
+  /* Posição Y do check mark */
+  width: 5px;
+  /* Largura do check mark */
+  height: 10px;
+  /* Altura do check mark */
+  border: solid var(--checkbox-checkmark-color);
+  /* Cor do check mark */
+  border-width: 0 2px 2px 0;
+  /* Espessura das linhas do check mark */
+  transform: rotate(45deg);
+}
+
+/* Garante que o texto ao lado do checkbox esteja alinhado */
+.theme-options label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.profileHeaderContainer {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  width: 100%;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: var(--card-background-color);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.profileHeaderAvatarContainer {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.profileHeaderAvatarContainer .profilePicture {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--accent-color);
+  transition: filter 0.3s ease;
+}
+
+.avatarHoverOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-size: 0.8rem;
+}
+
+.profileHeaderAvatarContainer:hover .avatarHoverOverlay {
+  opacity: 1;
+}
+
+.profileHeaderAvatarContainer:hover .profilePicture {
+  filter: brightness(0.7);
+}
+
+.profileHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profileHeaderName {
+  margin: 0 0 4px 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.profileHeaderEmail {
+  margin: 5px 0 10px 0;
+  font-size: 1rem;
+  color: var(--text-color-secondary);
+}
+
+.profileHeaderUsername {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: linear-gradient(90deg, #bb86fc, #9a67ea);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.profileHeaderOccupation {
+  background-color: rgba(var(--accent-color-rgb), 0.15);
+  color: var(--accent-color);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.statCard {
+  background-color: var(--background-color);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.statCard h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+}
+
+.statCard p {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--secondary-light);
+}
+
+/* --- ESTILOS PARA CONQUISTAS (BADGES) --- */
+.achievementsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 20px;
+}
+
+.achievementBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.achievementBadge:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(var(--accent-color-rgb), 0.1);
+}
+
+.achievementIcon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 10px;
+}
+
+.achievementTitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.achievementBadge.locked .achievementIcon {
+  filter: grayscale(100%) opacity(0.4);
+}
+
+.achievementBadge.locked .achievementTitle {
+  color: var(--border-color);
+}
+
+/* ... */
+
+.planName {
+  font-weight: 600;
+  color: var(--primary-light);
+  text-transform: capitalize;
+}
+
+.balanceSection {
+  text-align: center;
+  margin-bottom: 30px;
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.balanceLabel {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+}
+
+.balance {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--secondary-light);
+  margin: 5px 0 0 0;
+}
+
+.topUpGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.topUpButton {
+  /* Reutiliza o estilo de botão primário */
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid var(--primary-color);
+  box-shadow: 0 8px 20px rgba(3, 218, 198, 0.15);
+}
+
+.achievementBadge span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ========== Section Headers ========== */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: #e0e0e0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sectionIcon {
+  color: #bb86fc;
+  font-size: 1.2rem;
+}
+
+.sectionDescription {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.noHistoryMessage {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  text-align: center;
+  padding: 30px;
+}
+
+/* ========== Doctor Logo Section ========== */
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.logoPreview {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.logoPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.75rem;
+}
+
+.logoPlaceholder svg {
+  font-size: 1.5rem;
+}
+
+.logoActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.logoUploadButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logoUploadButton:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(187, 134, 252, 0.35);
+  transform: translateY(-1px);
+}
+
+.logoUploadButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.logoRemoveButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: 8px;
+  color: #ff5252;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logoRemoveButton:hover {
+  background: rgba(255, 82, 82, 0.2);
+  border-color: rgba(255, 82, 82, 0.5);
+}
+
+.logoHint {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+}
+
+/* Light mode overrides */
+html[data-theme='light'] .logoPreview {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html[data-theme='light'] .logoPlaceholder {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='light'] .logoHint {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme='light'] .logoRemoveButton {
+  background: rgba(255, 82, 82, 0.05);
+}
+
+@media (max-width: 480px) {
+  .logoSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ========== Deep Tech Avatar History ========== */
+.avatarHistoryGrid {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.avatarItem {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.avatarItem:hover {
+  transform: scale(1.05);
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s;
+}
+
+.avatarImage:hover {
+  border-color: rgba(3, 218, 198, 0.5);
+}
+
+.avatarImageSelected {
+  border: 3px solid #03dac6 !important;
+}
+
+.avatarRemoveButton {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(60, 60, 70, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.avatarItem:hover .avatarRemoveButton {
+  opacity: 1;
+}
+
+.avatarRemoveButton:hover {
+  background: #ff4d4d;
+  color: #fff;
+  border-color: transparent;
+}
+
+/* --- ACHIEVEMENT CATEGORIES & PROGRESS --- */
+.achievementCategory {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.achievementCategory:last-child {
+  border-bottom: none;
+}
+
+.categoryTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.achievementIconWrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--background-color);
+  border: 2px solid var(--border-color);
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.checkmark {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.lockIcon {
+  color: var(--border-color);
+  font-size: 1.2rem;
+}
+
+.achievementBadge.locked .achievementIconWrapper {
+  opacity: 0.5;
+}
+
+.progressSection {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressLabel {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+  min-width: 50px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Training Data Toggle */
+.trainingDataToggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 26px;
+  transition: all 0.3s ease;
+}
+
+.toggleSlider::before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background: linear-gradient(135deg, #bb86fc 0%, #9a67ea 100%);
+  border-color: rgba(187, 134, 252, 0.4);
+  box-shadow: 0 2px 10px rgba(187, 134, 252, 0.3);
+}
+
+.toggleSwitch input:checked + .toggleSlider::before {
+  transform: translateX(22px);
+  background-color: #fff;
+}
+
+.toggleSwitch input:disabled + .toggleSlider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleLabel {
+  color: #e0e0e0;
+  font-size: 0.95rem;
+}
+
+.toggleStatus {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.82rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Light mode overrides for toggle */
+html[data-theme='light'] .toggleSlider {
+  background-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .toggleSlider::before {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme='light'] .toggleSwitch input:checked + .toggleSlider::before {
+  background-color: #fff;
+}
+
+html[data-theme='light'] .toggleLabel {
+  color: #333;
+}
+
+html[data-theme='light'] .toggleStatus {
+  color: rgba(0, 0, 0, 0.45);
+}
