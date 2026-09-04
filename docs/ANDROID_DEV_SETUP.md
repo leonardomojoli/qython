@@ -4,12 +4,12 @@
 
 | Propriedade | Valor |
 |-------------|-------|
-| **Modelo** | Samsung Galaxy A22 |
-| **Código** | SM-A225M |
+| **Modelo** | <seu aparelho Android> |
+| **Código** | <MODELO> |
 | **Android** | 13 (API 33) |
 | **Device ID** | a22 |
-| **IP Local** | 192.168.15.3 |
-| **IP Meshnet** | 100.76.66.17 |
+| **IP Local** | <IP_LOCAL_DO_APARELHO> |
+| **IP Meshnet** | <IP_MESHNET_DO_APARELHO> |
 
 ## Conexão ADB via WiFi
 
@@ -37,7 +37,7 @@ adb pair <IP>:<PORTA_PAREAMENTO> <CODIGO>
 scripts\adb_connect.bat <PORTA>
 
 # Ou manualmente
-adb connect 192.168.15.3:<PORTA>
+adb connect <IP_LOCAL_DO_APARELHO>:<PORTA>
 ```
 
 > **Nota:** A porta muda após reiniciar o celular ou desativar/ativar a depuração sem fio.
@@ -51,7 +51,7 @@ adb devices -l
 
 Deve mostrar:
 ```
-192.168.15.3:XXXXX     device product:a22ub model:SM_A225M device:a22
+<IP_LOCAL_DO_APARELHO>:XXXXX     device product:a22ub model:<MODELO> device:a22
 ```
 
 ## Comandos Úteis
@@ -151,13 +151,13 @@ A conexão ADB WiFi só funciona na **mesma rede local**. Para acesso remoto, us
 
 ```bash
 # Conectar usando IP Meshnet (funciona de qualquer rede)
-adb connect 100.76.66.17:<PORTA>
+adb connect <IP_MESHNET_DO_APARELHO>:<PORTA>
 
 # Exemplo com porta atual
-adb connect 100.76.66.17:41335
+adb connect <IP_MESHNET_DO_APARELHO>:41335
 
 # Visualizar tela
-scrcpy -s 100.76.66.17:<PORTA>
+scrcpy -s <IP_MESHNET_DO_APARELHO>:<PORTA>
 ```
 
 ### Vantagens da Meshnet

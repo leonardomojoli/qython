@@ -75,7 +75,7 @@ Após reiniciar o celular:
 
 Do PC:
 ```bash
-adb connect 192.168.15.3:<PORTA>
+adb connect <IP_LOCAL_DO_APARELHO>:<PORTA>
 adb devices
 ```
 

@@ -2,7 +2,7 @@
 # Mantém a conexão ADB ativa com o dispositivo de desenvolvimento
 # Executa: powershell -ExecutionPolicy Bypass -File adb_watchdog.ps1
 
-$DEVICE_IP = "192.168.15.3"
+$DEVICE_IP = "<IP_LOCAL_DO_APARELHO>"
 $CHECK_INTERVAL = 30  # segundos entre verificações
 $PING_INTERVAL = 60   # segundos entre pings ADB (mantém conexão viva)
 $LOG_FILE = "$PSScriptRoot\adb_watchdog.log"

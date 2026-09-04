@@ -1,8 +1,8 @@
 @echo off
 REM Qython - Android Development Device Connection
-REM Device: Samsung Galaxy A22 (SM-A225M) - Android 13
+REM Device: <seu aparelho Android> (<MODELO>) - Android 13
 
-set DEVICE_IP=192.168.15.3
+set DEVICE_IP=<IP_LOCAL_DO_APARELHO>
 set DEVICE_PORT=%1
 
 if "%DEVICE_PORT%"=="" (
