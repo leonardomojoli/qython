@@ -9,13 +9,23 @@ export default defineConfig(({ mode }) => {
     // Resolve API origin for Service Worker cache patterns and dev proxy.
     // Defaults to canonical (qython.ai). qython.app/qython.com are Nginx 301 redirects.
     const apiUrl = env.VITE_API_URL || 'https://qython.ai/api';
-    const backendOrigin = env.VITE_API_URL_FOR_STATIC_FILES
-        || apiUrl.replace(/\/api\/?$/, '');
 
-    // Build escaped host regex fragment from API URL for runtime caching.
-    // For dev with localhost API the SW would simply target localhost; in prod it targets the live API host.
-    const apiHostEscaped = new URL(apiUrl).host.replace(/\./g, '\\.');
-    const apiHostPattern = `^https?://${apiHostEscaped}/api`;
+    // VITE_API_URL aceita duas formas: absoluta (https://host/api) ou relativa
+    // (/api), usada quando o front e a API compartilham a mesma origem — o caso
+    // do docker-compose, em que o nginx faz o proxy. new URL() lança
+    // "Invalid URL" na forma relativa, então o formato decide cada derivação.
+    const apiIsAbsolute = /^https?:\/\//i.test(apiUrl);
+
+    // Alvo do proxy do servidor de desenvolvimento. Com API relativa não há
+    // host a derivar, então aponta para o backend local.
+    const backendOrigin = env.VITE_API_URL_FOR_STATIC_FILES
+        || (apiIsAbsolute ? apiUrl.replace(/\/api\/?$/, '') : 'http://localhost:8000');
+
+    // Padrão de host para o runtime caching do Service Worker. Na mesma origem
+    // qualquer host serve: o SW só intercepta requests da própria origem.
+    const apiHostPattern = apiIsAbsolute
+        ? `^https?://${new URL(apiUrl).host.replace(/\./g, '\\.')}/api`
+        : '^https?://[^/]+/api';
 
     return {
     plugins: [
