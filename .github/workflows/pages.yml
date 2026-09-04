@@ -26,7 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # enablement liga o Pages na primeira execucao usando o GITHUB_TOKEN do
+      # proprio workflow; um PAT comum nao tem escopo para isso pela API.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
