@@ -76,10 +76,14 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('yoyo_lock')
-    op.drop_table('_yoyo_version')
-    op.drop_table('_yoyo_migration')
-    op.drop_table('_yoyo_log')
+    # Resquício do yoyo-migrations, usado antes do Alembic. O --autogenerate
+    # rodou contra um banco que ainda tinha essas tabelas e emitiu drop_table
+    # incondicional — que funciona ao migrar um banco antigo e falha com
+    # UndefinedTable em qualquer banco novo, onde elas nunca existiram.
+    # Com IF EXISTS a limpeza continua valendo para quem vem do yoyo, e uma
+    # instalação do zero passa.
+    for _legacy in ('yoyo_lock', '_yoyo_version', '_yoyo_migration', '_yoyo_log'):
+        op.execute(f'DROP TABLE IF EXISTS {_legacy}')
     # ### end Alembic commands ###
 
 

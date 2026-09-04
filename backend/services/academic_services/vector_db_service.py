@@ -4,8 +4,14 @@ import logging
 import os
 import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from typing import List, Optional
-from sentence_transformers import SentenceTransformer
+from typing import List, Optional, TYPE_CHECKING
+
+# sentence-transformers arrasta o torch (~2 GB) e o modelo so e carregado sob
+# demanda, em get_embeddings_model. Importar no topo obrigava o processo
+# inteiro a pagar isso no boot — e derrubava a aplicacao onde o pacote nao
+# estivesse instalado, mesmo sem ninguem usar a biblioteca.
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 from ...config import Config
 from . import embedding_client as ec
 import threading
@@ -14,7 +20,7 @@ logger = logging.getLogger("qython_logger")
 
 # Lazy initialization to avoid worker conflicts
 _client = None
-_embeddings_model: Optional[SentenceTransformer] = None
+_embeddings_model: Optional["SentenceTransformer"] = None
 _lock = threading.Lock()
 
 def get_chroma_client():
@@ -41,7 +47,7 @@ def get_chroma_client():
                 logger.info("ChromaDB client initialized successfully.")
     return _client
 
-def get_embeddings_model() -> SentenceTransformer:
+def get_embeddings_model() -> "SentenceTransformer":
     """Get or create embeddings model (lazy initialization, thread-safe)."""
     global _embeddings_model
     if _embeddings_model is None:
@@ -49,6 +55,7 @@ def get_embeddings_model() -> SentenceTransformer:
             if _embeddings_model is None:  # Double-check locking
                 logger.info("Loading sentence transformer model 'all-MiniLM-L6-v2'...")
                 try:
+                    from sentence_transformers import SentenceTransformer
                     _embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
                     logger.info("Sentence transformer model loaded successfully.")
                 except Exception as e:

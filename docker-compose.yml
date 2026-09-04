@@ -61,13 +61,14 @@ services:
       - permanent:/app/backend/static/permanent_uploads
     # Aplica as migrations antes de servir: sem isto o primeiro boot sobe com o
     # banco vazio e todo request quebra em tabela inexistente.
-    # O script_location do alembic.ini é relativo, então o upgrade roda de
-    # dentro de backend/; o gunicorn volta para /app, onde `backend` é pacote.
+    # bootstrap_db decide entre criar o schema (banco novo) e aplicar as
+    # migrations pendentes (banco existente) — a cadeia histórica não roda do
+    # zero, o motivo está documentado no próprio arquivo.
     # ⚠️ Em bloco YAML ">", linha MAIS indentada que a primeira preserva a
     # quebra em vez de virar espaço — o shell receberia "--bind" como comando.
     # Todas as continuações ficam na mesma coluna de propósito.
     command: >
-      sh -c "cd backend && alembic upgrade head && cd /app &&
+      sh -c "python -m backend.bootstrap_db &&
       gunicorn --workers 2 --worker-class uvicorn.workers.UvicornWorker
       --bind 0.0.0.0:8000 --timeout 600
       --access-logfile - --error-logfile - backend.main:app"

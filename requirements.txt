@@ -26,7 +26,10 @@ faster-whisper  # transcrição local self-host (CTranslate2 INT8, large-v3-turb
 
 # RAG v2 (busca na biblioteca: dense e5 + BM25 + RRF + cross-encoder rerank)
 rank-bm25  # BM25 esparso (import rank_bm25) p/ recuperação híbrida — vector_db_service
-# embedder.service usa sentence-transformers (e5-base + reranker mmarco), que já está no venv;
+# ATENCAO: sentence-transformers estava so NESTE comentario, com a observacao
+# de que 'ja esta no venv'. Era verdade no servidor e falso em qualquer outra
+# maquina — o backend nao subia. Declarado de verdade logo abaixo.
+# embedder.service usa sentence-transformers (e5-base + reranker mmarco);
 # os modelos baixam no 1º start. Sem EMBED_SERVER_URL, o RAG cai no MiniLM local (v1).
 
 # Segurança e Autenticação
@@ -91,3 +94,7 @@ presidio-anonymizer
 # pandas        # relatorios do servico de preferencias
 # json-repair   # conserto de JSON malformado vindo do modelo
 # torch         # apenas o embed_server (perfil "ml" do compose)
+
+# Importados no codigo e ausentes daqui, encontrados subindo a stack do zero.
+fpdf2  # modulo `fpdf`, usado na geracao de PDF dos materiais
+sentence-transformers  # embeddings locais da biblioteca (puxa torch, ~2 GB)
