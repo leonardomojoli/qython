@@ -47,5 +47,10 @@ async def check_and_update_admin(email):
             print("   Certifique-se de ter criado a conta na página de registro primeiro.")
 
 if __name__ == "__main__":
-    target_email = "you@example.com"
-    asyncio.run(check_and_update_admin(target_email))
+    # E-mail pela linha de comando; sem ele o script nao teria como saber quem
+    # promover em uma instalacao nova.
+    if len(sys.argv) < 2:
+        print("Uso: python -m scripts.check_admin <email>")
+        print("Registre a conta pela tela de cadastro antes de promove-la.")
+        sys.exit(1)
+    asyncio.run(check_and_update_admin(sys.argv[1]))

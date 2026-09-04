@@ -65,11 +65,16 @@ docker compose up -d
 ```
 
 A aplicação sobe em **http://localhost:8080**. As migrations rodam sozinhas no
-primeiro boot. Para criar o primeiro usuário administrador:
+primeiro boot.
+
+Crie sua conta pela tela de cadastro e então promova-a a administrador:
 
 ```bash
-docker compose exec backend python -m scripts.check_admin
+docker compose exec backend python -m scripts.check_admin voce@exemplo.com
 ```
+
+O script encontra a conta pelo e-mail, marca como admin e ativa — a instalação
+nova não tem nenhum usuário privilegiado até esse passo.
 
 ### Modelos locais (opcional)
 

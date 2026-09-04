@@ -40,6 +40,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt gunicorn
 
 COPY backend/ ./backend/
 COPY __init__.py ./
+# scripts/ traz utilitarios de manutencao rodados com `docker compose exec`,
+# como a promocao do primeiro usuario a administrador.
+COPY scripts/ ./scripts/
 
 # Diretórios de runtime (montados como volume no compose).
 RUN mkdir -p backend/static/uploads backend/static/permanent_uploads log
