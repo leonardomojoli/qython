@@ -60,3 +60,31 @@ Pillow
 qrcode[pil]
 beautifulsoup4
 defusedxml
+
+# --- Dependencias diretas que faltavam neste arquivo ---
+# Importadas pelo backend mas nunca declaradas aqui: em producao foram
+# instaladas no venv a mao, entao o servidor rodava e qualquer clone quebrava.
+# As abaixo sao importadas no TOPO dos modulos — sem elas o boot falha.
+alembic  # CLI das migrations; o compose roda `alembic upgrade head` no start
+chromadb  # cliente do banco vetorial
+firebase-admin  # verificacao do token de login
+langchain-text-splitters  # chunking dos documentos da biblioteca
+numpy
+requests
+starlette  # importado direto, nao so como transitiva do fastapi
+stripe
+Werkzeug
+
+# Redacao de PII antes de toda chamada a LLM externo (LGPD). Sem presidio o
+# codigo NAO deixa de redigir — cai num detector por regex, mais fraco. Numa
+# instalacao que toque dado de paciente real, mantenha estes instalados e baixe
+# o modelo: python -m spacy download pt_core_news_lg
+presidio-analyzer
+presidio-anonymizer
+
+# Opcionais: importados dentro de funcao, entao a ausencia degrada o recurso
+# sem derrubar a aplicacao. Descomente conforme o uso.
+# python-docx   # ingestao de .docx e .pptx na biblioteca
+# pandas        # relatorios do servico de preferencias
+# json-repair   # conserto de JSON malformado vindo do modelo
+# torch         # apenas o embed_server (perfil "ml" do compose)

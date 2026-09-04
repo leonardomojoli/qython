@@ -131,7 +131,12 @@ vale entender antes de configurar:
 
 - **Redação de PII** (`backend/middleware/pii_redaction.py`) roda com Presidio antes
   de qualquer chamada a LLM externo. Nomes, CPF, CNS, CRM, telefone e e-mail são
-  substituídos por marcadores.
+  substituídos por marcadores. ⚠️ O Presidio precisa de um modelo do spaCy, que
+  não vem no `pip install`. Sem ele o sistema **não deixa de redigir**, mas cai
+  num detector por regex, mais fraco — e avisa só no log. Para a redação forte:
+  ```bash
+  docker compose exec backend python -m spacy download pt_core_news_lg
+  ```
 - **Criptografia em repouso** (Fernet) nos campos sensíveis de usuário, paciente e
   consulta. As chaves vêm de `QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK`.
 - **Audit log append-only** com trigger no Postgres que rejeita UPDATE e DELETE.
