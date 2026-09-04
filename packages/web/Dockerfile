@@ -6,10 +6,18 @@ FROM node:22-slim AS build
 WORKDIR /repo
 
 # Manifestos primeiro: a camada de dependências só invalida quando eles mudam.
+# Os TRÊS workspaces precisam estar presentes — a raiz declara "packages/*" e o
+# npm valida o lockfile contra o conjunto inteiro; faltando um, o ci recusa por
+# dessincronia. Só o manifesto do mobile entra, nunca o código dele.
 COPY package.json package-lock.json turbo.json ./
 COPY packages/web/package.json packages/web/
 COPY packages/shared/package.json packages/shared/
+COPY packages/mobile/package.json packages/mobile/
 
+# Instala a árvore inteira do lockfile, incluindo as dependências do mobile que
+# esta imagem não usa. Passar --workspace aqui NÃO poda nada: o npm ci monta o
+# lockfile todo de qualquer forma (verificado). É o preço de um único lockfile
+# na raiz, e a razão de esta etapa levar alguns minutos.
 RUN npm ci
 
 COPY packages/shared/ packages/shared/
