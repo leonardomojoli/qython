@@ -1,7 +1,10 @@
 fastapi
 uvicorn
 sqlalchemy
-asyncpg
+asyncpg  # driver async, usado pela aplicacao
+psycopg2-binary  # driver SINCRONO, exigido pelas migrations do alembic.
+# Nenhum `import psycopg2` aparece no codigo: o SQLAlchemy carrega o driver
+# pelo esquema da URL, entao a falta so aparece em runtime, no upgrade.
 pydantic[email]
 email-validator
 python-multipart
