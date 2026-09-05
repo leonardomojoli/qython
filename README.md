@@ -64,8 +64,13 @@ Então:
 docker compose up -d
 ```
 
-A aplicação sobe em **http://localhost:8080**. As migrations rodam sozinhas no
-primeiro boot.
+A aplicação sobe em **http://localhost:8080**.
+
+O primeiro `up` demora: a imagem do backend carrega modelos de ML e passa dos
+5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
+vazio o schema é criado a partir dos modelos, e num banco já existente só as
+migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
+próprio arquivo explica por quê).
 
 Crie sua conta pela tela de cadastro e então promova-a a administrador:
 
