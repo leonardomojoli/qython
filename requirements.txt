@@ -72,7 +72,10 @@ defusedxml
 # instaladas no venv a mao, entao o servidor rodava e qualquer clone quebrava.
 # As abaixo sao importadas no TOPO dos modulos — sem elas o boot falha.
 alembic  # CLI das migrations; o compose roda `alembic upgrade head` no start
-chromadb  # cliente do banco vetorial
+chromadb==1.1.0  # cliente do banco vetorial. TRAVADO junto com a imagem
+# chromadb/chroma:1.1.0 do compose: o cliente fica congelado dentro da imagem do
+# backend, o servidor e baixado a parte, e versoes desencontradas deixam de se
+# entender. 1.1.0 e o par que rodou em producao.
 firebase-admin  # verificacao do token de login
 langchain-text-splitters  # chunking dos documentos da biblioteca
 numpy

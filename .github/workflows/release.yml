@@ -1,0 +1,174 @@
+name: Release
+
+# Constrói as imagens do backend e do web, sobe a stack inteira com elas e só
+# então publica. Numa tag v* as imagens vão para o GHCR e a release é criada;
+# disparado à mão, faz só o build e o teste — um ensaio que não publica nada.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # criar a release
+  packages: write   # publicar no ghcr.io
+
+env:
+  REGISTRY: ghcr.io/leonardomojoli
+
+jobs:
+  build-test-publish:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versão
+        id: v
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build do backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          tags: ${{ env.REGISTRY }}/qython-backend:${{ steps.v.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Qython backend (FastAPI)
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build do web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/web/Dockerfile
+          load: true
+          tags: ${{ env.REGISTRY }}/qython-web:${{ steps.v.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Qython web (React + nginx)
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # O torch do PyPI vem na build CUDA, com gigabytes de nvidia-* inúteis sem
+      # GPU. O Dockerfile instala a build CPU; isto impede a regressão silenciosa.
+      - name: Imagem do backend sem bibliotecas CUDA
+        run: |
+          IMG="$REGISTRY/qython-backend:${{ steps.v.outputs.version }}"
+          if docker run --rm --entrypoint pip "$IMG" list 2>/dev/null | grep -qi '^nvidia-'; then
+            docker run --rm --entrypoint pip "$IMG" list 2>/dev/null | grep -i '^nvidia-'
+            echo "::error::bibliotecas CUDA na imagem — o torch não veio do índice CPU"
+            exit 1
+          fi
+          docker image ls --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep qython
+
+      - name: Sobe a stack com as imagens recém-construídas
+        env:
+          QYTHON_VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          printf 'GEMINI_API_KEY=teste-sem-chave\nJWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+          docker compose up -d --no-build
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then ok=1; break; fi
+            sleep 5
+          done
+          [ "${ok:-}" = 1 ] || { echo "::error::backend não ficou saudável em 5 min"; exit 1; }
+
+      - name: Verifica a stack de ponta a ponta
+        run: |
+          health=$(curl -fsS http://localhost:8080/api/health)
+          echo "health: $health"
+          [ "$health" = '{"status":"ok"}' ]
+
+          curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
+          echo "SPA: ok"
+          # Rota do React Router: o nginx precisa devolver o index, não 404.
+          curl -fsS -o /dev/null http://localhost:8080/login
+          echo "fallback de rota do SPA: ok"
+
+          tables=$(docker compose exec -T db psql -U qython -d qython -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          echo "tabelas: $tables"
+          [ "$tables" -ge 60 ]
+          head=$(docker compose exec -T db psql -U qython -d qython -tAc "SELECT version_num FROM alembic_version")
+          echo "alembic head: $head"
+          [ -n "$head" ]
+
+          # O /api/health não toca no Chroma; isto prova que cliente e servidor
+          # travados na mesma versão conversam.
+          docker compose exec -T backend python -c \
+            "import chromadb; print('chroma heartbeat:', chromadb.HttpClient(host='chroma', port=8000).heartbeat())"
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail=150 || true
+
+      - name: Login no GHCR
+        if: github.ref_type == 'tag'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publica as imagens
+        if: github.ref_type == 'tag'
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          for img in qython-backend qython-web; do
+            docker tag "$REGISTRY/$img:$V" "$REGISTRY/$img:latest"
+            docker push "$REGISTRY/$img:$V"
+            docker push "$REGISTRY/$img:latest"
+          done
+
+      - name: Cria a release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes=".github/release-notes/$GITHUB_REF_NAME.md"
+          if [ -f "$notes" ]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "Qython ${{ steps.v.outputs.version }}" --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "Qython ${{ steps.v.outputs.version }}" --generate-notes
+          fi
+
+  # Máquina limpa, sem login em registro nenhum: é exatamente a situação de quem
+  # baixa o Qython. Falha aqui significa imagem privada ou pull quebrado.
+  verifica-download-publico:
+    needs: build-test-publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixa as imagens publicadas, anonimamente, e sobe a stack
+        env:
+          QYTHON_VERSION: ${{ needs.build-test-publish.outputs.version }}
+        run: |
+          printf 'GEMINI_API_KEY=teste-sem-chave\nJWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+          docker compose pull backend web
+          docker compose up -d --no-build
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then ok=1; break; fi
+            sleep 5
+          done
+          [ "${ok:-}" = 1 ] || { docker compose logs --tail=100; exit 1; }
+          curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
+          echo "download público: ok"

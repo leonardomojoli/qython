@@ -4,6 +4,12 @@
 #   docker compose up -d
 #   → web em http://localhost:8080, API em http://localhost:8080/api
 #
+# O backend e o web vêm prontos do GitHub Container Registry; nada é compilado
+# na sua máquina. Para uma versão específica, fixe QYTHON_VERSION no .env
+# (ex.: QYTHON_VERSION=1.0.0). Para compilar do código-fonte em vez de baixar:
+#
+#   docker compose up -d --build
+#
 # Os serviços pesados de ML (whisper, embedder) ficam atrás de profiles porque
 # baixam alguns GB de modelo. Sem eles o sistema funciona: a transcrição cai no
 # Groq e a busca da biblioteca usa o pipeline de embeddings legado, local.
@@ -27,7 +33,10 @@ services:
       retries: 5
 
   chroma:
-    image: chromadb/chroma:latest
+    # Travado no par do cliente (requirements.txt). O cliente fica congelado na
+    # imagem do backend; com o servidor em "latest" os dois acabam se
+    # desencontrando no primeiro pull depois de uma versão incompatível.
+    image: chromadb/chroma:1.1.0
     restart: unless-stopped
     volumes:
       - chromadata:/data
@@ -36,6 +45,9 @@ services:
       ANONYMIZED_TELEMETRY: "FALSE"
 
   backend:
+    # Com "image" e "build" juntos, o compose tenta baixar a imagem primeiro e
+    # só compila se ela não existir no registro (ou se pedirem --build).
+    image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -74,6 +86,7 @@ services:
       --access-logfile - --error-logfile - backend.main:app"
 
   web:
+    image: ghcr.io/leonardomojoli/qython-web:${QYTHON_VERSION:-latest}
     build:
       context: .
       dockerfile: packages/web/Dockerfile
@@ -89,9 +102,7 @@ services:
 
   whisper:
     profiles: ["ml"]
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     command: uvicorn backend.whisper_server:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 75
@@ -100,9 +111,7 @@ services:
 
   embedder:
     profiles: ["ml"]
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     command: uvicorn backend.embed_server:app --host 0.0.0.0 --port 8003 --timeout-keep-alive 75
