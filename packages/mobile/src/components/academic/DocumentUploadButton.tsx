@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { pick } from 'react-native-document-picker';
+import { errorCodes, isErrorWithCode, pick } from '@react-native-documents/picker';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -71,7 +71,7 @@ export default function DocumentUploadButton({ libraryId, onUploadComplete }: Pr
       onUploadComplete();
     } catch (err: unknown) {
       // User cancelled picker — ignore
-      if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'DOCUMENT_PICKER_CANCELED') {
+      if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED) {
         return;
       }
       Alert.alert('', t('errorUploadingDocument', 'Erro ao enviar o documento.'));
