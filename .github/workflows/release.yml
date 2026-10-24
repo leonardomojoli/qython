@@ -118,10 +118,19 @@ jobs:
           echo "audit_log append-only: ok"
           [ "$(psql "SELECT indisunique FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='ix_user_consents_active'")" = "t" ]
           echo "consentimento ativo único: ok"
+          # Os seeds rodam no boot de UM worker (advisory lock) enquanto o outro já
+          # responde /api/health; o catálogo de medicamentos leva alguns segundos.
+          # Espera os prompts, que são o último seed, antes de conferir.
+          for i in $(seq 1 60); do
+            [ "$(psql "SELECT count(*) FROM copilot_prompts")" -ge 15 ] && break
+            sleep 3
+          done
           prompts=$(psql "SELECT count(*) FROM copilot_prompts"); echo "prompts do copiloto: $prompts"
           [ "$prompts" -ge 15 ]
           meds=$(psql "SELECT count(*) FROM medications"); echo "medicamentos: $meds"
           [ "$meds" -gt 0 ]
+          seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
+          [ "$seasons" -gt 0 ]
 
           # O /api/health não toca no Chroma; isto prova que cliente e servidor
           # travados na mesma versão conversam.
