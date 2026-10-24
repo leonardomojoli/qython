@@ -33,7 +33,7 @@ from sqlalchemy import create_engine, inspect
 # Permite `python -m backend.bootstrap_db` e execução direta.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.config import Config as AppConfig  # noqa: E402
+from backend.config import Config as AppConfig, sync_database_url  # noqa: E402
 from backend.db_base import Base  # noqa: E402
 from backend import models  # noqa: F401,E402  (registra os 66 modelos em Base.metadata)
 
@@ -56,15 +56,12 @@ def _alembic_config() -> Config:
 
 
 def main() -> int:
-    url = AppConfig.SQLALCHEMY_DATABASE_URI
-    if not url:
+    if not AppConfig.SQLALCHEMY_DATABASE_URI:
         logger.error("DATABASE_URL não definida.")
         return 1
-    if "+asyncpg" in url:
-        # As migrations rodam em engine SÍNCRONA; o driver async falha aqui com
-        # MissingGreenlet. Quem converte para asyncpg é backend/database.py.
-        logger.error("DATABASE_URL deve usar o driver síncrono (postgresql://), não asyncpg.")
-        return 1
+    # Engine SÍNCRONA, com driver explícito: o asyncpg falharia aqui com
+    # MissingGreenlet, e o padrão de postgresql:// muda entre versões do SQLAlchemy.
+    url = sync_database_url(AppConfig.SQLALCHEMY_DATABASE_URI)
 
     engine = create_engine(url)
     try:

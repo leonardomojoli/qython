@@ -11,7 +11,9 @@
 # máquina de quem roda o script. O índice CPU do PyTorch entra para o torch vir
 # na build "+cpu", sem as bibliotecas nvidia-*.
 #
-# Uso:  scripts/lock_requirements.sh            (requer uv: pip install uv)
+# Uso:  scripts/lock_requirements.sh             mantém as versões já fixadas
+#       scripts/lock_requirements.sh --upgrade   sobe tudo para o mais novo possível
+# (requer uv: pip install uv)
 # Depois de rodar, confira o diff — versão que retrocede é sinal de conflito.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,7 +24,8 @@ uv pip compile requirements.txt -o requirements.lock \
   --extra-index-url https://download.pytorch.org/whl/cpu \
   --index-strategy unsafe-best-match \
   --emit-index-url \
-  --custom-compile-command "scripts/lock_requirements.sh"
+  --custom-compile-command "scripts/lock_requirements.sh" \
+  "$@"
 
 if grep -qiE '^nvidia-' requirements.lock; then
   echo "ERRO: bibliotecas nvidia-* no lock — o torch não veio do índice CPU." >&2
