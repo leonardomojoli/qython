@@ -96,6 +96,16 @@ jobs:
 
           curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
           echo "SPA: ok"
+          # Servir o HTML não prova que o React renderiza: o app passou semanas em
+          # tela branca (Firebase quebrando no import) com o <title> acima intacto.
+          # O Chrome do runner executa o JS e devolve o DOM já montado.
+          dom=$(google-chrome --headless=new --no-sandbox --disable-gpu \
+                --virtual-time-budget=15000 --dump-dom http://localhost:8080/login 2>/dev/null)
+          if ! printf '%s' "$dom" | grep -q 'type="password"'; then
+            echo "::error::a tela de login não renderizou (o React quebrou no carregamento)"
+            printf '%s' "$dom" | head -c 1500; exit 1
+          fi
+          echo "login renderizado: ok"
           # Rota do React Router: o nginx precisa devolver o index, não 404.
           curl -fsS -o /dev/null http://localhost:8080/login
           echo "fallback de rota do SPA: ok"

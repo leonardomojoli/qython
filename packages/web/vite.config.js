@@ -94,25 +94,24 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
         outDir: 'build',
-        // Code-splitting configuration
-        rollupOptions: {
+        // Code-splitting. O Vite 8 (Rolldown) removeu o manualChunks em forma de
+        // objeto; os mesmos grupos viram codeSplitting.groups, casados pelo caminho
+        // em node_modules. Prioridade maior é avaliada antes.
+        rolldownOptions: {
             output: {
-                manualChunks: {
-                    // Vendor chunks - libraries that rarely change
-                    'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-                    'vendor-firebase': ['firebase/app', 'firebase/auth'],
-                    'vendor-ui': [
-                        '@fortawesome/fontawesome-svg-core',
-                        '@fortawesome/free-solid-svg-icons',
-                        '@fortawesome/free-brands-svg-icons',
-                        '@fortawesome/react-fontawesome'
+                codeSplitting: {
+                    groups: [
+                        // Vendor chunks - libraries that rarely change
+                        { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/, priority: 30 },
+                        { name: 'vendor-firebase', test: /node_modules[\\/](firebase|@firebase)[\\/]/, priority: 20 },
+                        { name: 'vendor-ui', test: /node_modules[\\/]@fortawesome[\\/]/, priority: 20 },
+                        { name: 'vendor-utils', test: /node_modules[\\/](axios|i18next|react-i18next|marked)[\\/]/, priority: 20 },
+                        // Heavy libraries in separate chunks for lazy loading
+                        { name: 'vendor-reactflow', test: /node_modules[\\/](reactflow|@reactflow)[\\/]/, priority: 20 },
+                        { name: 'vendor-pdf', test: /node_modules[\\/](react-pdf|pdfjs-dist)[\\/]/, priority: 20 },
+                        { name: 'vendor-charts', test: /node_modules[\\/]recharts[\\/]/, priority: 20 },
+                        { name: 'vendor-audio', test: /node_modules[\\/]wavesurfer\\.js[\\/]/, priority: 20 },
                     ],
-                    'vendor-utils': ['axios', 'i18next', 'react-i18next', 'marked'],
-                    // Heavy libraries in separate chunks for lazy loading
-                    'vendor-reactflow': ['reactflow'],
-                    'vendor-pdf': ['react-pdf', 'pdfjs-dist'],
-                    'vendor-charts': ['recharts'],
-                    'vendor-audio': ['wavesurfer.js'],
                 },
             },
         },
@@ -130,18 +129,8 @@ export default defineConfig(({ mode }) => {
             },
         },
     },
-    // Allow JSX in .js files (CRA compatibility)
-    esbuild: {
-        loader: 'jsx',
-        include: /src\/.*\.js$/,
-        exclude: [],
-    },
-    optimizeDeps: {
-        esbuildOptions: {
-            loader: {
-                '.js': 'jsx',
-            },
-        },
-    },
+    // Os componentes usam .jsx. Até o Vite 7 o projeto mantinha JSX em .js
+    // (herança do CRA) com loader do esbuild; o Vite 8 transforma com Oxc, que
+    // decide a linguagem pela extensão, e esse arranjo deixou de funcionar.
     };
 });
