@@ -1,97 +1,86 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Qython Mobile
 
-# Getting Started
+App React Native 0.84 (bare, New Architecture) que conversa com o servidor
+Qython do próprio usuário. Não existe servidor central: o endereço é informado
+na tela de login.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Build local
 
-## Step 1: Start Metro
+As dependências ficam no `node_modules` da raiz do monorepo (npm workspaces);
+`packages/mobile/node_modules` não existe e o Gradle já aponta para a raiz.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+Requisitos: Node 22, JDK 17, Android SDK 36, NDK 27.1.12297006.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```bash
+npm ci                                   # na raiz do repositório
+cd packages/mobile/android
+./gradlew assembleDebug                  # APK de debug, JS servido pelo Metro
 ```
 
-## Step 2: Build and run your app
+Para rodar com Metro: `npm run start --workspace=packages/mobile` e, em outro
+terminal, `npm run android --workspace=packages/mobile`.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## Servidor
 
-### Android
+Na tela de login, o campo **Servidor** recebe o endereço do backend, por
+exemplo `http://192.168.0.10:8080` (sem esquema, assume `http://`). **Testar
+conexão** faz `GET <servidor>/api/health` e espera `{"status":"ok"}`. O valor
+fica salvo no aparelho (MMKV); trocar de servidor encerra a sessão.
 
-```sh
-# Using npm
-npm run android
+Builds de debug começam apontando para `http://10.0.2.2:8000` (o host visto do
+emulador). O release aceita HTTP porque o servidor costuma estar na rede local
+sem TLS; também aceita certificados instalados pelo usuário, para quem servir
+HTTPS com uma CA própria.
 
-# OR using Yarn
-yarn android
+## Firebase (opcional)
+
+Login com Google e push dependem do Firebase, que não vem no repositório. Sem
+os arquivos abaixo o app compila e funciona normalmente; o botão do Google
+some e o app não pede permissão de notificação.
+
+- Android: `android/app/google-services.json`
+- iOS: `ios/QythonMobile/GoogleService-Info.plist`
+
+Ambos estão no `.gitignore`.
+
+## Release assinado
+
+O release nunca usa a chave de debug (`android/app/debug.keystore` é pública).
+Sem keystore, `assembleRelease` falha antes de compilar, dizendo o que falta.
+
+Gerar o keystore, uma vez (guarde o arquivo e a senha fora do repositório:
+sem eles, nenhuma versão futura instala por cima da anterior):
+
+```bash
+keytool -genkeypair -v -keystore qython-release.keystore -storetype PKCS12 -alias qython -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Qython"
 ```
 
-### iOS
+Build local assinado (variáveis de ambiente ou `~/.gradle/gradle.properties`):
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+| Variável | Conteúdo |
+|---|---|
+| `QYTHON_RELEASE_STORE_FILE` | caminho do keystore |
+| `QYTHON_RELEASE_STORE_PASSWORD` | senha do keystore |
+| `QYTHON_RELEASE_KEY_ALIAS` | alias da chave (`qython` no comando acima) |
+| `QYTHON_RELEASE_KEY_PASSWORD` | opcional; padrão = senha do keystore |
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
 ```
 
-Then, and every time you update your native dependencies, run:
+### No GitHub Actions
 
-```sh
-bundle exec pod install
-```
+O workflow `.github/workflows/mobile.yml` roda à mão (**Actions → Mobile → Run
+workflow**) e em tags `v*`. Gera o APK como artifact e, numa tag, anexa à
+release da tag quando ela existir. Secrets do repositório
+(**Settings → Secrets and variables → Actions**):
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+| Secret | Conteúdo |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 qython-release.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | senha do keystore |
+| `ANDROID_KEY_ALIAS` | alias da chave |
+| `ANDROID_KEY_PASSWORD` | opcional; só se diferente da senha do keystore |
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+O resumo de cada execução mostra o SHA-256 do certificado e do APK, para quem
+baixa conferir que o arquivo é o oficial.
