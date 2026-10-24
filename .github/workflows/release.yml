@@ -44,7 +44,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=Qython backend (FastAPI)
-            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.licenses=AGPL-3.0-only
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
@@ -59,7 +59,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=Qython web (React + nginx)
-            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.licenses=AGPL-3.0-only
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web

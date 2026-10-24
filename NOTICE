@@ -1,31 +1,64 @@
 Qython
-Copyright 2024-2026 Leonardo Mojoli
+Copyright (C) 2024-2026 Leonardo Mojoli
 
-This product includes software developed by Leonardo Mojoli.
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3 (AGPL-3.0-only).
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU Affero General Public License along
+with this program (see LICENSE). If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Qython integrates with third-party services that are governed by their own
+License history
+
+Up to and including commit e673b26 (2026-10-24), Qython was published under
+the Apache License, Version 2.0. Copies obtained under those terms keep them.
+Every version after that commit is licensed under AGPL-3.0-only.
+
+Why AGPL: anyone may use, study, modify and redistribute Qython, including
+doctors and institutions running it for themselves. Whoever offers a modified
+version to other people over a network must make the modified source available
+to those users (AGPL section 13). That keeps improvements to clinical software
+open instead of turning into closed copies.
+
+---
+
+Not a medical device
+
+Qython is a study and documentation aid. It is not a medical device, has not
+been reviewed by ANVISA, the FDA or any other regulator, and must not be used
+as the sole basis for any clinical decision. Language-model output contains
+errors, including confident and plausible ones; verify every clinical
+statement against primary sources.
+
+---
+
+Trademark
+
+The license covers the code, not the name. "Qython" and its logo identify the
+original project; modified versions must not present themselves under that
+name.
+
+---
+
+Third-party services and components
+
+Qython can integrate with third-party services that are governed by their own
 terms and are NOT covered by this license:
 
-  - Google Gemini API (generative models)
-  - Groq API (speech-to-text fallback)
-  - Lastreo (medical credential verification)
-  - Google Drive API (user-owned document storage)
-  - Firebase Authentication
+  - Google Gemini API (generative models, when the user supplies a key)
+  - Groq API (speech-to-text fallback, optional)
+  - Lastreo (medical credential verification, optional)
+  - Google Drive API (optional backup of the user's own documents)
+  - Firebase Authentication (optional)
 
-Model weights downloaded at runtime (faster-whisper large-v3-turbo,
-intfloat/multilingual-e5-base, cross-encoder/mmarco-mMiniLMv2-L12-H384-v1)
-carry their own upstream licenses.
+Bundled and downloaded components keep their own licenses, among them
+PyMuPDF (AGPL-3.0), and model weights downloaded at runtime
+(faster-whisper large-v3-turbo, intfloat/multilingual-e5-base,
+cross-encoder/mmarco-mMiniLMv2-L12-H384-v1, and local language models such as
+Gemma or MedGemma), each under its upstream license.
