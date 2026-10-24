@@ -1,6 +1,8 @@
 fastapi
 uvicorn
-sqlalchemy
+sqlalchemy>=2.0,<2.1  # o codigo foi escrito e rodou em producao na 2.0. A 2.1 troca o
+# driver padrao de postgresql:// de psycopg2 para psycopg 3 (que nao esta aqui) e
+# derrubou o boot no ensaio de release de 24/out/2026.
 asyncpg  # driver async, usado pela aplicacao
 psycopg2-binary  # driver SINCRONO, exigido pelas migrations do alembic.
 # Nenhum `import psycopg2` aparece no codigo: o SQLAlchemy carrega o driver
@@ -100,4 +102,11 @@ presidio-anonymizer
 
 # Importados no codigo e ausentes daqui, encontrados subindo a stack do zero.
 fpdf2  # modulo `fpdf`, usado na geracao de PDF dos materiais
-sentence-transformers  # embeddings locais da biblioteca (puxa torch, ~2 GB)
+sentence-transformers>=5  # embeddings locais da biblioteca. O piso importa: sem ele o
+# resolvedor chegou a escolher a 2.2.2 (2022), que nem importa com o huggingface_hub atual.
+transformers>=4.41,<5  # idem: sem piso caiu para 4.17.0; a 5.x exige huggingface_hub>=1.0.
+torch  # explicito para o requirements.lock fixar a build CPU (indice do PyTorch);
+# vindo do PyPI ele arrasta gigabytes de nvidia-* inuteis sem GPU.
+
+# Servidor de producao da imagem Docker (antes era instalado por fora, sem versao).
+gunicorn
