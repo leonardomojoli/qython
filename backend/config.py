@@ -48,6 +48,13 @@ class Config:
     # --- BANCO DE DADOS (CRÍTICO PARA O ALEMBIC) ---
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
+    # --- Edição ---
+    # 'local' (padrão): o Qython instalado pelo próprio médico ou hospital. Não há
+    # cobrança, e cada trava do cadastro (captcha, SMS, e-mail, Lastreo) só vale se
+    # o serviço dela estiver configurado. 'hosted': o antigo SaaS, com dracmas e planos.
+    EDITION = os.getenv("QYTHON_EDITION", "local").strip().lower()
+    BILLING_ENABLED = EDITION == "hosted"
+
     # --- URLs públicas (emails, deep links, redirects) ---
     WEB_BASE_URL = os.getenv("WEB_BASE_URL", "https://qython.ai").rstrip("/")
     API_BASE_URL = os.getenv("API_BASE_URL", f"{WEB_BASE_URL}/api").rstrip("/")

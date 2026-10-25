@@ -140,6 +140,7 @@ async def lifespan(app: FastAPI):
     from .services.server_monitor import start_server_monitor, stop_server_monitor
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
     from .seeds.copilot_prompts import seed_copilot_prompts
+    from .seeds.terms_of_use import seed_terms_of_use
     from .database import AsyncSessionLocal
 
     # Create tables is now async
@@ -177,6 +178,13 @@ async def lifespan(app: FastAPI):
                 # rollback para não deixar a sessão em erro para o unlock abaixo
                 await db.rollback()
                 logger.error(f"Error seeding copilot prompts: {e}")
+
+            try:
+                if await seed_terms_of_use(db):
+                    logger.info("Published the local edition terms of use")
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error seeding terms of use: {e}")
 
             await db.execute(text("SELECT pg_advisory_unlock(100001)"))
 

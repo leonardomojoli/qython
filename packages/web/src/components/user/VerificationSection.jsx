@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleCheck, faShieldHalved, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import LatreoVerifyButton from './LatreoVerifyButton';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 // Seção de verificação de identidade no Perfil — ponto de entrada PERMANENTE (além do banner).
 // Mostra o estado (verificado / acesso concedido / pendente / rejeitado) e oferece o mesmo
@@ -11,7 +12,9 @@ import LatreoVerifyButton from './LatreoVerifyButton';
 export default function VerificationSection() {
     const { user } = useUser();
     const { t } = useTranslation();
-    if (!user || user.is_admin) return null;
+    const { config } = usePublicConfig();
+    // Sem o Lastreo, o acesso só vem do administrador; o banner global já diz isso.
+    if (!user || user.is_admin || !config?.registration?.professional_verification) return null;
 
     const vs = user.verification_status;
     const isVerified = vs === 'verified';

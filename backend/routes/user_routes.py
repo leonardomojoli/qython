@@ -50,7 +50,7 @@ class UserInfoResponse(BaseModel):
     is_admin: bool
     occupation: str
     university: Optional[str]
-    phone_number: str
+    phone_number: Optional[str] = None  # opcional quando não há verificação por SMS
     period: Optional[str]
     matricula: Optional[str]
     identifier_type: Optional[str]
@@ -69,6 +69,9 @@ class UserInfoResponse(BaseModel):
     # ACESSO (política Qython) é separado de verification_status (verdade do Latreo).
     access_granted: bool = False
     onboarding_completed: bool = False
+    # Há um termo de uso vigente que este usuário ainda não aceitou (versão nova
+    # ou primeiro acesso). O front bloqueia o app até o aceite.
+    terms_pending: bool = False
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -437,9 +440,18 @@ async def get_user_info(
     
     # Verificar e creditar bônus mensal se elegível
     await check_and_credit_monthly_student_bonus(current_user, db)
-    
+
     logger.debug(f"Retornando informações para o usuário: {current_user.email}")
-    return current_user
+    return await _user_info(db, current_user)
+
+
+async def _user_info(db: AsyncSession, user: User) -> UserInfoResponse:
+    """UserInfoResponse com os campos calculados. Todo endpoint que devolve o
+    usuário passa por aqui: o front substitui o objeto inteiro, e um terms_pending
+    ausente liberaria o app antes do aceite."""
+    info = UserInfoResponse.model_validate(user)
+    info.terms_pending = await consent_service.terms_pending(db, user.id)
+    return info
 
 
 @router.post("/onboarding/complete", status_code=status.HTTP_200_OK)
@@ -509,7 +521,7 @@ async def update_user_profile(
     )
 
     logger.info(f"Perfil do usuário {current_user.email} atualizado. Campos: {', '.join(update_data.keys())}")
-    return current_user
+    return await _user_info(db, current_user)
 
 @router.put("/training-data-preference", status_code=status.HTTP_200_OK)
 async def update_training_data_preference(

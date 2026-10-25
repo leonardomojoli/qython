@@ -9,6 +9,7 @@ import { NotificationProvider, useNotification } from './contexts/NotificationCo
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { MaterialViewerProvider, useMaterialViewer } from './contexts/MaterialViewerContext';
+import { PublicConfigProvider } from './contexts/PublicConfigContext';
 import { getChatSessions, updateUserPreferences } from './api';
 import SessionManager from './components/shared/SessionManager';
 import SideBar from './components/shared/SideBar';
@@ -26,6 +27,7 @@ import OfflineBanner from './components/common/OfflineBanner';
 import LandingPage from './components/landing/LandingPage';
 import Login from './components/user/Login';
 import Register from './components/user/Register';
+import TermsAcceptance from './components/user/TermsAcceptance';
 import ForgotPassword from './components/user/ForgotPassword';
 import ResetPassword from './components/user/ResetPassword';
 
@@ -89,6 +91,12 @@ const ProtectedRoute = ({ isLoggedIn, initialCheckComplete, children }) => {
       return children;
     }
     return <Navigate to="/waitlist" replace />;
+  }
+
+  // TERMO DE USO: nada do app abre antes do aceite da versão vigente (primeiro
+  // acesso ou termo novo). Vem depois da waitlist, que não usa o app.
+  if (user?.terms_pending) {
+    return <TermsAcceptance />;
   }
 
   // ONBOARDING GATE: um usuário ativo que ainda NÃO concluiu o onboarding é roteado
@@ -184,6 +192,8 @@ const AppLayoutAndRoutes = () => {
   // Overlay do material só bloqueia a barra lateral quando está EXPANDIDO e no /academic
   // (fora dali tudo é pílula, sem overlay). Aí elevamos a barra por cima (classe viewer-active).
   const materialOverlayOpen = expandedId != null && location.pathname.startsWith('/academic');
+  // Com o termo de uso pendente, a tela de aceite ocupa tudo: sem barra lateral nem tour.
+  const appUnlocked = isLoggedIn && !user?.terms_pending;
 
   const handleInitialCheckComplete = useCallback(() => {
     setInitialCheckComplete(true);
@@ -224,7 +234,7 @@ const AppLayoutAndRoutes = () => {
       <SessionManager setIsLoggedIn={setIsLoggedIn} onInitialCheckComplete={handleInitialCheckComplete} />
       <VerificationBanner />
       {/* Contextual Tours - only mount tour for current route (performance optimization) */}
-      {isLoggedIn && location.pathname === '/consultation-manager' && (
+      {appUnlocked && location.pathname === '/consultation-manager' && (
         <QythonTour
           tourId="consultation"
           route="/consultation-manager"
@@ -233,21 +243,21 @@ const AppLayoutAndRoutes = () => {
           skipScrollSteps={['editor']}
         />
       )}
-      {isLoggedIn && location.pathname === '/copilot' && (
+      {appUnlocked && location.pathname === '/copilot' && (
         <QythonTour
           tourId="copilot"
           route="/copilot"
           steps={copilotTourSteps}
         />
       )}
-      {isLoggedIn && location.pathname === '/academic' && (
+      {appUnlocked && location.pathname === '/academic' && (
         <QythonTour
           tourId="academic"
           route="/academic"
           steps={academicTourSteps}
         />
       )}
-      {isLoggedIn && location.pathname === '/profile' && (
+      {appUnlocked && location.pathname === '/profile' && (
         <QythonTour
           tourId="profile"
           route="/profile"
@@ -256,7 +266,7 @@ const AppLayoutAndRoutes = () => {
         />
       )}
       <div className="app-container dark-theme">
-        {isLoggedIn && isWorkspaceRoute && (
+        {appUnlocked && isWorkspaceRoute && (
           <div
             className={`sidebar-app-container ${isSidebarOpen ? 'open' : 'closed'} ${materialOverlayOpen ? 'viewer-active' : ''}`}
             onMouseEnter={() => setIsSidebarOpen(true)}
@@ -412,6 +422,7 @@ const AppLayoutAndRoutes = () => {
 
 const AppWithProviders = () => (
   <LanguageProvider>
+    <PublicConfigProvider>
     <UserProvider>
       <ThemeProvider>
         <NotificationProvider>
@@ -421,6 +432,7 @@ const AppWithProviders = () => (
         </NotificationProvider>
       </ThemeProvider>
     </UserProvider>
+    </PublicConfigProvider>
   </LanguageProvider>
 );
 

@@ -1,7 +1,8 @@
 # qython/backend/routes/public_routes.py
 """
 Public API endpoints — no authentication required.
-Used by patients to view prescriptions via QR code/shared links.
+Used by patients to view prescriptions via QR code/shared links, and by the web
+app to learn what this installation requires before anyone logs in (/config).
 Security: Only exposes minimal data (doctor name, patient first name, medication list).
 """
 
@@ -19,6 +20,7 @@ from ..models import (
     Pharmacy, PharmacyChain, Medication
 )
 from ..services.pharmacy_service import find_nearby_pharmacies
+from ..services import edition_service
 from ..security import verify_unsubscribe_token
 from ..rate_limiter import limiter
 
@@ -45,6 +47,12 @@ def _unsub_html(title: str, body: str, ok: bool = True) -> str:
 <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">{body}</p>
 <a href="https://qython.ai" style="color:#bb86fc;text-decoration:none;font-weight:600;">qython.ai</a>
 </td></tr></table></td></tr></table></body></html>"""
+
+
+@router.get("/config")
+async def get_public_config(db: AsyncSession = Depends(get_db)):
+    """Edição e travas de cadastro desta instalação (ver edition_service)."""
+    return await edition_service.public_config(db)
 
 
 @router.get("/email/unsubscribe")

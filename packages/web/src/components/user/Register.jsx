@@ -10,6 +10,7 @@ import qythonLogo from '../../assets/qython-imagotipo.png';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUser } from '../../contexts/UserContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, isFirebaseConfigured } from '../../firebaseConfig';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -28,6 +29,16 @@ function Register({ setIsLoggedIn }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useUser();
+  // Cada passo do cadastro só aparece se a trava dele vale nesta instalação (ver
+  // backend/services/edition_service.py). Numa instalação local típica nenhuma vale.
+  const { config, refresh: refreshPublicConfig } = usePublicConfig();
+  const reg = config?.registration || {};
+  const isHosted = config?.edition === 'hosted';
+  const needsCaptcha = !!reg.captcha;
+  const needsPhoneVerification = !!reg.phone_verification;
+  const lastreoAvailable = !!reg.professional_verification;
+  const inviteRequired = !!reg.invite_required;
+  const isOwnerSetup = !!config?.setup_required;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-force-theme', 'light');
@@ -53,9 +64,6 @@ function Register({ setIsLoggedIn }) {
   const [captchaError, setCaptchaError] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [hasInvite, setHasInvite] = useState(null);
-  // Waitlist/convite é toggle de admin (require_invite). Default false = sem fricção:
-  // quem verifica entra direto. Fail-open (se a busca falhar, assume sem convite).
-  const [inviteRequired, setInviteRequired] = useState(false);
   const [username, setUsername] = useState('');
   const [avatarPrompt, setAvatarPrompt] = useState('');
   const [tempAvatar, setTempAvatar] = useState(null);
@@ -145,7 +153,10 @@ function Register({ setIsLoggedIn }) {
 
   const isDoctor = formData.occupation === t('doctor');
   const isStep1Valid = () => {
-    const basicValid = formData.full_name && formData.email && formData.occupation && formData.phone_number && isPhoneVerified && termsAccepted && captchaToken;
+    const basicValid = formData.full_name && formData.email && formData.occupation
+      && (!needsPhoneVerification || (formData.phone_number && isPhoneVerified))
+      && (!isHosted || termsAccepted)
+      && (!needsCaptcha || captchaToken);
     const passwordValid = Object.values(passwordCriteria).every(Boolean);
     let conditionalValid = true;
     if (formData.occupation) {
@@ -178,10 +189,12 @@ function Register({ setIsLoggedIn }) {
       if (!formData.period) m.push(t('period', 'período'));
       if (!formData.matricula) m.push(t('studentIdLabel', 'matrícula'));
     }
-    if (!formData.phone_number) m.push(t('phone', 'telefone'));
-    else if (!isPhoneVerified) m.push(t('missingPhoneVerify', 'verificar o telefone por SMS'));
-    if (!termsAccepted) m.push(t('missingTerms', 'aceitar os termos'));
-    if (!captchaToken) m.push(t('missingCaptcha', 'a verificação de segurança'));
+    if (needsPhoneVerification) {
+      if (!formData.phone_number) m.push(t('phone', 'telefone'));
+      else if (!isPhoneVerified) m.push(t('missingPhoneVerify', 'verificar o telefone por SMS'));
+    }
+    if (isHosted && !termsAccepted) m.push(t('missingTerms', 'aceitar os termos'));
+    if (needsCaptcha && !captchaToken) m.push(t('missingCaptcha', 'a verificação de segurança'));
     return m;
   };
 
@@ -224,14 +237,6 @@ function Register({ setIsLoggedIn }) {
     }
   };
 
-  // Lê o toggle de convite (público) uma vez. Falha → mantém false (sem fricção).
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/admin/settings/public`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d && typeof d.require_invite !== 'undefined') setInviteRequired(!!d.require_invite); })
-      .catch(() => {});
-  }, []);
-
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!isStep1Valid()) return;
@@ -251,7 +256,7 @@ function Register({ setIsLoggedIn }) {
 
     const idTypePrefix = isDoctor ? 'LICENSE' : 'STUDENT_ID';
     dataToSend.append('identifier_type', `${idTypePrefix}_${formData.country ? formData.country.toUpperCase() : 'XX'}`);
-    dataToSend.append('captcha_token', captchaToken);
+    if (captchaToken) dataToSend.append('captcha_token', captchaToken);
     dataToSend.append('language', i18n.language.split('-')[0]);
 
     if (tokenValue) dataToSend.append('invite_token', tokenValue);
@@ -278,6 +283,15 @@ function Register({ setIsLoggedIn }) {
           setUser(result.user);
           // AQUI ESTÁ A CORREÇÃO: Avisa o App.js que estamos logados
           if (setIsLoggedIn) setIsLoggedIn(true);
+        }
+        // Depois do cadastro do dono a instalação deixa de estar vazia.
+        refreshPublicConfig();
+
+        // Conta já ativa (dono, instalação sem e-mail, Google): direto para o app,
+        // onde o termo de uso é a primeira tela.
+        if (result.access_token && result.status === 'active' && !tokenValue) {
+          navigate('/copilot');
+          return;
         }
 
         if (tokenValue) {
@@ -316,8 +330,7 @@ function Register({ setIsLoggedIn }) {
           <p>{t('registerHeroSubtitle')}</p>
         </div>
         <div className={styles.testimonial}>
-          <p>{t('registerTestimonial')}</p>
-          <span className={styles.testimonialAuthor}>{t('registerTestimonialAuthor')}</span>
+          <p>{t('authFootnote', 'Software livre (AGPL-3.0). Não é dispositivo médico.')}</p>
         </div>
       </div>
 
@@ -330,9 +343,13 @@ function Register({ setIsLoggedIn }) {
           {step === 1 && (
             <>
               <h2 className={styles.formTitle}>{t('createAccount')}</h2>
-              <p className={styles.formSubtitle}>{t('fillDataToStart')}</p>
+              <p className={styles.formSubtitle}>
+                {isOwnerSetup
+                  ? t('ownerSetupSubtitle', 'Esta é a primeira conta desta instalação e será a administradora.')
+                  : t('fillDataToStart')}
+              </p>
 
-              {isFirebaseConfigured && (
+              {isFirebaseConfigured && config?.google_login && (
                 <>
                   <button type="button" onClick={handleGoogleSignup} className={styles.googleButton} disabled={isGoogleLoading}>
                     {isGoogleLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <><FontAwesomeIcon icon={faGoogle} /> {t('continueWithGoogle')}</>}
@@ -559,7 +576,7 @@ function Register({ setIsLoggedIn }) {
                       </>
                     )}
 
-                    {(
+                    {lastreoAvailable && (
                       /* Verificação de identidade via Latreo — médico (registro CFM+CNES) ou
                          estudante (vínculo acadêmico: e-mail institucional ou matrícula+selfie).
                          Documentos/biometria vão direto pro Latreo, nunca pelo Qython.
@@ -596,6 +613,7 @@ function Register({ setIsLoggedIn }) {
                   </div>
                 )}
 
+                {needsPhoneVerification ? (
                 <div className={styles.inputGroup}>
                   <label className={styles.themeLabel}>{t('phone')}</label>
                   <div className={styles.phoneWrapper}>
@@ -610,8 +628,16 @@ function Register({ setIsLoggedIn }) {
                     </small>
                   )}
                 </div>
+                ) : (
+                  <div className={styles.inputGroup}>
+                    <label className={styles.themeLabel}>{t('phone')} <span style={{ color: '#666', fontWeight: 400 }}>({t('optional') || 'Opcional'})</span></label>
+                    <PhoneInput international defaultCountry="BR" value={formData.phone_number} onChange={handlePhoneChange} labels={phoneLocale} className={styles.phoneInputCustom} placeholder="(99) 99999-9999" />
+                  </div>
+                )}
 
-                {/* SEÇÃO DE CONSENTIMENTOS */}
+                {/* SEÇÃO DE CONSENTIMENTOS — só no SaaS. Na instalação local o termo de uso
+                    é aceito na primeira tela depois do cadastro, com o texto completo. */}
+                {isHosted && (
                 <div style={{ marginTop: '20px', marginBottom: '20px' }}>
                   {/* CHECKBOX DE MARKETING */}
                   <div className={styles.marketingGroup}>
@@ -641,10 +667,12 @@ function Register({ setIsLoggedIn }) {
                   </div>
                 </div>
 
-                {termsAccepted && (
-                  <div style={{ marginBottom: '20px' }}>
+                )}
+
+                {needsCaptcha && (termsAccepted || !isHosted) && (
+                  <div style={{ marginBottom: '20px', marginTop: '20px' }}>
                     <Turnstile
-                      sitekey={import.meta.env.VITE_CLOUDFLARE_SITE_KEY}
+                      sitekey={reg.captcha_site_key || import.meta.env.VITE_CLOUDFLARE_SITE_KEY}
                       onVerify={(token) => { setCaptchaToken(token); setCaptchaError(''); }}
                       onError={(err) => {
                         setCaptchaToken(null);

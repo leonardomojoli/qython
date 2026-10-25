@@ -66,20 +66,26 @@ docker compose up -d
 
 A aplicação sobe em **http://localhost:8080**.
 
-O primeiro `up` demora: a imagem do backend carrega modelos de ML e passa dos
-5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
+O primeiro `up` demora: a imagem do backend carrega modelos de ML e tem cerca
+de 3,5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
 vazio o schema é criado a partir dos modelos, e num banco já existente só as
 migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
 próprio arquivo explica por quê).
 
-Crie sua conta pela tela de cadastro e então promova-a a administrador:
+Abra o endereço e crie a primeira conta. Ela vira a administradora da
+instalação, sem captcha, SMS nem confirmação por e-mail: essas travas só valem
+quando o serviço de cada uma está configurado no `.env`. Em seguida aparece o
+termo de uso, que precisa ser aceito antes de usar o app. Crie essa conta logo
+depois de subir a instalação, porque até ela existir quem abrir o endereço
+primeiro vira o administrador.
+
+Contas criadas depois entram sem acesso às funções de IA até o administrador
+liberar pelo painel de administração. Sem e-mail configurado, "Esqueci minha
+senha" não tem como mandar o link; a senha se redefine pelo terminal:
 
 ```bash
-docker compose exec backend python -m scripts.check_admin voce@exemplo.com
+docker compose exec backend python -m backend.scripts.reset_password voce@exemplo.com
 ```
-
-O script encontra a conta pelo e-mail, marca como admin e ativa — a instalação
-nova não tem nenhum usuário privilegiado até esse passo.
 
 ### Modelos locais (opcional)
 

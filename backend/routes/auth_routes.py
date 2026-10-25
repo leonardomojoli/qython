@@ -12,14 +12,17 @@ from ..config import Config
 from ..rate_limiter import limiter
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, text
 from sqlalchemy.future import select
 
 from ..database import get_db
 from ..models import User, Invitation
 from ..services.captcha_service import verify_captcha
+from ..services import edition_service
 from ..services.email_service import send_verification_email, send_welcome_email, send_registration_complete_email, send_password_reset_email
 from ..services import firebase_service
 from ..services import audit_service
+from ..services import consent_service
 from ..services.system_settings_service import SystemSettingsService
 from ..security import create_access_token, get_password_hash, verify_password, create_verification_token, verify_verification_token, create_password_reset_token, verify_password_reset_token
 
@@ -33,7 +36,7 @@ router = APIRouter()
 class RegisterStep1Form:
     def __init__(
         self,
-        captcha_token: str = Form(...),
+        captcha_token: Optional[str] = Form(None),  # só exigido com o Turnstile configurado
         email: EmailStr = Form(...),
         password: str = Form(...),
         full_name: str = Form(...),
@@ -97,6 +100,9 @@ class ResetPasswordPayload(BaseModel):
     token: str
     new_password: str
 
+# Chave do advisory lock que serializa o cadastro numa instalação vazia.
+_OWNER_SIGNUP_LOCK = 100002
+
 # --- Endpoints ---
 
 @router.post("/google", status_code=status.HTTP_200_OK)
@@ -145,7 +151,8 @@ async def google_login(
                 "verification_status": user.verification_status,
                 "access_granted": user.access_granted,
                 "onboarding_completed": user.onboarding_completed,
-                "subscription_plan": user.subscription_plan
+                "subscription_plan": user.subscription_plan,
+                "terms_pending": await consent_service.terms_pending(db, user.id),
             }
         }
 
@@ -177,7 +184,9 @@ async def register_step1(
             detail="Novos cadastros estão temporariamente pausados. Por favor, tente novamente mais tarde."
         )
 
-    if not form_data.captcha_token or not verify_captcha(form_data.captcha_token):
+    if edition_service.captcha_required() and not (
+        form_data.captcha_token and verify_captcha(form_data.captcha_token)
+    ):
         raise HTTPException(status_code=400, detail="CAPTCHA inválido")
 
     if not form_data.google_id_token:
@@ -210,24 +219,36 @@ async def register_step1(
         ).with_for_update())
         valid_invite = result.scalars().first()
 
-    # Telefone — verificação OBRIGATÓRIA. Todo cadastro precisa de um número
-    # provado via Firebase SMS (ativo de marketing/WhatsApp + anti-fraude).
-    if not form_data.phone_verification_token:
-        raise HTTPException(status_code=400, detail="Verificação de telefone obrigatória.")
-    # verify_phone_token valida o ID token assinado pelo Firebase e devolve o
-    # número verificado em E.164; levanta HTTPException(400) se inválido/expirado.
-    final_phone_number = firebase_service.verify_phone_token(form_data.phone_verification_token)
-    phone_is_verified = True
+    # Telefone — com o Firebase configurado, todo cadastro precisa de um número
+    # provado por SMS (anti-fraude). Sem ele (instalação local), o número é opcional
+    # e fica como digitado, sem verificação.
+    if edition_service.phone_verification_required():
+        if not form_data.phone_verification_token:
+            raise HTTPException(status_code=400, detail="Verificação de telefone obrigatória.")
+        # verify_phone_token valida o ID token assinado pelo Firebase e devolve o
+        # número verificado em E.164; levanta HTTPException(400) se inválido/expirado.
+        final_phone_number = firebase_service.verify_phone_token(form_data.phone_verification_token)
+        phone_is_verified = True
+    else:
+        final_phone_number = (form_data.phone_number or '').strip() or None
+        phone_is_verified = False
 
-    # Status Inicial. `require_invite` (system setting, default False) decide se quem
-    # verifica precisa de convite (waitlist) ou entra direto. Religável no admin sem deploy.
+    # O primeiro cadastro da instalação é o dono: administrador, ativo e com acesso,
+    # sem convite nem verificação. O lock (liberado no commit) impede que dois
+    # cadastros simultâneos numa instalação vazia criem dois donos.
+    await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _OWNER_SIGNUP_LOCK})
+    is_owner = not (await db.execute(select(func.count(User.id)))).scalar()
+
+    # Status Inicial. Sem e-mail configurado não há como confirmar o endereço, então a
+    # conta nasce confirmada. `require_invite` (system setting, default False) decide
+    # se quem confirmou precisa de convite (waitlist) ou entra direto.
     invite_required = await SystemSettingsService.is_invite_required(db)
-    initial_status = 'email_pending'
-    if is_google_verified:
-        if valid_invite or not invite_required:
-            initial_status = 'active'
-        else:
-            initial_status = 'waitlist'
+    if is_owner:
+        initial_status = 'active'
+    elif is_google_verified or not edition_service.email_verification_required():
+        initial_status = 'active' if (valid_invite or not invite_required) else 'waitlist'
+    else:
+        initial_status = 'email_pending'
 
     # Dracmas Iniciais: 150 (base) + 150 (bônus estudante) = 300 para estudantes
     # Suficiente para ~100 msgs de chat ou ~36 resumos - teste adequado das features
@@ -260,18 +281,23 @@ async def register_step1(
         profile_picture='default-profile.png',
         dracmas=initial_dracmas,
         verification_status='pending',
-        marketing_consent=form_data.marketing_consent
+        marketing_consent=form_data.marketing_consent,
+        is_admin=is_owner,
+        access_granted=is_owner,
+        # O onboarding é a escolha de plano do SaaS; sem cobrança não há o que escolher.
+        onboarding_completed=not Config.BILLING_ENABLED,
     )
     db.add(new_user)
     await db.flush()
 
     if valid_invite:
         valid_invite.used_by_user_id = new_user.id
-        if is_google_verified:
+        # Pendente de e-mail, o convite só é consumido na confirmação (verify_email).
+        if initial_status != 'email_pending':
             valid_invite.is_used = True
 
     await db.commit()
-    logger.info(f"Usuário {new_user.email} criado. Status: {initial_status}")
+    logger.info(f"Usuário {new_user.email} criado. Status: {initial_status}" + (" (dono da instalação)" if is_owner else ""))
 
     # Verificação Latreo (médico OU estudante): se o usuário concluiu o embed
     # durante o cadastro, confirma o resultado server-side (fonte da verdade) e
@@ -308,13 +334,13 @@ async def register_step1(
             logger.warning(f"[LATREO] confirm at register failed for {new_user.email}: {e}")
 
     # RESPOSTA FINAL
-    if not is_google_verified:
+    if initial_status == 'email_pending':
         # Fluxo Email: Envia verificação
         email_token = create_verification_token(data={"sub": form_data.email})
         send_verification_email(form_data.email, email_token, form_data.full_name, form_data.language)
         return {"message": "Token enviado.", "email": form_data.email, "status": "email_pending"}
     else:
-        # Fluxo Google: Retorna JWT imediatamente (Auto-Login)
+        # Conta já confirmada (Google, dono ou instalação sem e-mail): JWT imediato (Auto-Login)
         access_token = create_access_token(data={"sub": new_user.email, "user_id": new_user.id})
         
         if initial_status == 'active':
@@ -340,7 +366,8 @@ async def register_step1(
                 "status": new_user.status,
                 "is_admin": new_user.is_admin,
                 "access_granted": new_user.access_granted,
-                "onboarding_completed": new_user.onboarding_completed
+                "onboarding_completed": new_user.onboarding_completed,
+                "terms_pending": await consent_service.terms_pending(db, new_user.id),
             }
         }
 
@@ -455,7 +482,8 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
             "verification_status": user.verification_status,
             "access_granted": user.access_granted,
             "onboarding_completed": user.onboarding_completed,
-            "subscription_plan": user.subscription_plan
+            "subscription_plan": user.subscription_plan,
+            "terms_pending": await consent_service.terms_pending(db, user.id),
         }
     }
 

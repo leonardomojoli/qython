@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { hasPlatformAccess } from '../../utils/access';
 import LatreoVerifyButton from '../user/LatreoVerifyButton';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 // Dispensar é POR SESSÃO (sessionStorage): some o banner até o usuário fechar a aba/navegador,
 // e volta a cobrar na próxima sessão. A verificação em si continua acessível pela seção do Perfil.
@@ -15,6 +16,7 @@ const VerificationBanner = () => {
     const { user, loadingUser } = useUser();
     const location = useLocation();
     const { t } = useTranslation();
+    const { config } = usePublicConfig();
     const [dismissed, setDismissed] = useState(() => {
         try { return sessionStorage.getItem(DISMISS_KEY) === '1'; } catch (_) { return false; }
     });
@@ -25,7 +27,9 @@ const VerificationBanner = () => {
     if (loadingUser || dismissed) {
         return null;
     }
-    if (hiddenRoutes.some(route => location.pathname.startsWith(route) || location.pathname === route)) {
+    // A raiz compara exato: com startsWith, '/' casava com qualquer caminho e o banner
+    // nunca aparecia em lugar nenhum.
+    if (hiddenRoutes.some(route => (route === '/' ? location.pathname === route : location.pathname.startsWith(route)))) {
         return null;
     }
     // Não mostrar se: não houver usuário, já tem ACESSO (admin / Latreo-verificado / acesso
@@ -91,7 +95,9 @@ const VerificationBanner = () => {
         <div style={styles.container}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 <FontAwesomeIcon icon={faClock} />
-                {t('verifyBannerPrompt', 'Conclua sua verificação para liberar as funções de IA (geração de conteúdo, copiloto e consultas).')}
+                {config?.registration?.professional_verification
+                    ? t('verifyBannerPrompt', 'Conclua sua verificação para liberar as funções de IA (geração de conteúdo, copiloto e consultas).')
+                    : t('accessPendingBanner', 'Sua conta aguarda a liberação do administrador desta instalação para usar as funções de IA.')}
             </span>
             <LatreoVerifyButton style={styles.button} />
             <button type="button" style={styles.close} onClick={dismiss} aria-label={t('dismiss', 'Dispensar')} title={t('dismiss', 'Dispensar')}>
