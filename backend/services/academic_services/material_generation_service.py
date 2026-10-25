@@ -984,7 +984,7 @@ def generate_mind_map_image(outline_data: dict) -> Optional[str]:
         Base64 encoded image string, or None if generation fails
     """
     try:
-        from google import genai
+        from ..llm_provider import gemini_client
         from google.genai import types
         import base64
 
@@ -1044,7 +1044,7 @@ STYLE REQUIREMENTS:
         logger.debug(f"[MIND_MAP_IMAGE] Prompt: {image_prompt[:200]}...")
 
         # Initialize client
-        image_client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        image_client = gemini_client()  # imagem: só Gemini, mesmo com texto local
 
         # Retry logic
         max_retries = 3

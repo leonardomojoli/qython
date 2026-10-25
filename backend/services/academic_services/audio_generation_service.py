@@ -3,7 +3,9 @@ import uuid
 import logging
 import wave
 from ...config import Config
-from ..llm_services import client, types
+from ..llm_services import types
+# TTS só existe no Gemini: vale mesmo quando o texto roda num modelo local.
+from ..llm_provider import gemini_client
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ...models import PodcastGenerationJob
@@ -94,7 +96,7 @@ def generate_podcast_from_script(script_text: str, progress_callback=None, voice
                 )
             )
 
-            response = client.models.generate_content(
+            response = gemini_client().models.generate_content(
                 model=TTS_MODEL_NAME,
                 contents=[chunk],
                 config=config

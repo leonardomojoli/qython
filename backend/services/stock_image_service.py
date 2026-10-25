@@ -9,7 +9,8 @@ from PIL import Image
 import time
 
 from ..config import Config
-from .llm_services import client # Reuse the existing Gemini client from llm_services
+# Gerar imagem só existe no Gemini: vale mesmo quando o texto roda num modelo local.
+from .llm_provider import gemini_client
 from google.genai import errors as genai_errors
 
 logger = logging.getLogger("qython_logger")
@@ -54,7 +55,7 @@ def generate_image_from_prompt(prompt: str) -> Optional[str]:
         logger.debug(f"Image generation attempt {attempt} of {len(prompt_strategies)}.")
         
         try:
-            response = client.models.generate_content(
+            response = gemini_client().models.generate_content(
                 model=Config.IMAGE_GEN_MODEL,
                 contents=[enhanced_prompt],
             )

@@ -61,6 +61,10 @@ services:
       chroma:
         condition: service_started
     env_file: .env
+    # Alcança uma IA local rodando fora do Docker (llama-server, Ollama) pelo nome
+    # host.docker.internal, que no Linux só existe declarado assim.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # URL neutra, sem driver: backend/database.py troca para asyncpg (aplicação)
       # e config.sync_database_url para psycopg 3 (migrations e bootstrap_db).

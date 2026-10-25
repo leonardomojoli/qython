@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ..models import AcademicLibrary
 from ..config import Config
+from . import llm_provider
 
 from .enhancementprompts import PROMPTS, PATIENT_DATA_RULE
 from .academic_services import vector_db_service
@@ -458,9 +459,20 @@ class ResilientGeminiClient:
         return getattr(self._paid, name)
 
 
-_paid_client = genai.Client(api_key=Config.GEMINI_API_KEY, http_options=http_options)
-client = ResilientGeminiClient(_paid_client)
-logger.info("Cliente Gemini inicializado (timeout 300s) — chave PAGA única + retry no 503 (até %d).", GEMINI_PAID_RETRIES)
+def _build_text_client():
+    """Cliente de texto do provedor configurado (llm_provider): o Gemini, com retry de
+    sobrecarga, ou um servidor OpenAI-compatível (IA local) com a mesma interface."""
+    if llm_provider.provider_name() == "openai":
+        built = llm_provider.build_openai_client()
+        logger.info("IA de texto: servidor OpenAI-compatível em %s (modelo %s).",
+                    os.getenv("LLM_BASE_URL"), os.getenv("LLM_MODEL") or "padrão do servidor")
+        return built
+    logger.info("IA de texto: Gemini (timeout 300s) — chave PAGA única + retry no 503 (até %d).", GEMINI_PAID_RETRIES)
+    return ResilientGeminiClient(llm_provider.gemini_client())
+
+
+# Construído no primeiro uso: importar este módulo não exige chave nem servidor no ar.
+client = llm_provider.LazyClient(_build_text_client)
 
 
 # ---------------------------------------------------------------------------
@@ -507,6 +519,19 @@ def _redact_llm_contents(value):
                        type(value).__name__, exc)
         return value
 
+async def _generate_off_loop(**kwargs):
+    """client.models.generate_content numa thread, com a redação de PII junto.
+
+    A geração é síncrona e, com IA local em CPU, leva minutos: no event loop ela
+    travaria o servidor inteiro. A redação também vai para a thread porque o Presidio
+    é CPU pura e, na primeira chamada, ainda carrega o modelo do spaCy (segundos)."""
+    def run():
+        if "contents" in kwargs:
+            kwargs["contents"] = _redact_llm_contents(kwargs["contents"])
+        return client.models.generate_content(**kwargs)
+    return await asyncio.to_thread(run)
+
+
 # Dicionário para gerenciar caches em memória
 prompt_cache_manager = {}
 ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
@@ -514,6 +539,9 @@ ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
 def initialize_prompt_cache():
     if not ENABLE_PROMPT_CACHING:
         logger.info("O cache de prompts está desabilitado pela configuração de ambiente (ENABLE_PROMPT_CACHING=0).")
+        return
+    if llm_provider.provider_name() != "gemini":
+        logger.info("Cache de prompts é recurso do Gemini; desligado com o provedor %s.", llm_provider.provider_name())
         return
 
     logger.info("Iniciando cacheamento de prompts de melhoria...")
@@ -1358,9 +1386,9 @@ async def _call_llm_with_retry(
         try:
             logger.info(f"[LLM_CALL] Tentativa {attempt + 1}/{max_retries} com modelo {model_name}")
 
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_name}',
-                contents=_redact_llm_contents(full_contents),
+                contents=full_contents,
                 config=generation_config
             )
 
@@ -1691,7 +1719,7 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # força a busca ativa no PubMed com uma query EM INGLÊS gerada por LLM — a busca por palavra-chave
     # PT da resposta dá recall ~0. Tira a decisão de "buscar ou não" das mãos do modelo (pedido do user).
     if not grounded and _warrants_clinical_refs(cleaned_response_text):
-        gen_q = _generate_pubmed_query(cleaned_response_text)
+        gen_q = await asyncio.to_thread(_generate_pubmed_query, cleaned_response_text)
         if gen_q:
             ref_search_queries = (ref_search_queries or []) + [gen_q]
             force_pubmed = True
@@ -2127,9 +2155,9 @@ async def chat_with_library_rag(query: str, library_id: int, db: AsyncSession, h
             system_instruction=system_prompt
         )
         
-        response = client.models.generate_content(
+        response = await _generate_off_loop(
             model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(chat_history_for_llm),
+            contents=chat_history_for_llm,
             config=generation_config
         )
 
@@ -2370,9 +2398,9 @@ async def normalize_clinical_terms(
 
     try:
         model_to_use = Config.SIMPLE_TASK_LLM_MODEL
-        response = client.models.generate_content(
+        response = await _generate_off_loop(
             model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(prompt),
+            contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,  # Baixa temperatura para consistência
                 max_output_tokens=200
@@ -2529,9 +2557,9 @@ HISTÓRICO CLÍNICO BRUTO:
         try:
             logger.info(f"[HISTORY-EXTRACT] Tentativa {attempt}/{max_attempts} com modelo: {model_to_use}")
 
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_to_use}',
-                contents=_redact_llm_contents(prompt),
+                contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=8192,
@@ -2728,9 +2756,9 @@ HISTÓRICO CLÍNICO BRUTO:
             logger.info(f"[HISTORY] Tentativa {attempt}/{max_attempts} com modelo: {model_to_use}")
 
             # Use structured output with response_mime_type for guaranteed valid JSON
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_to_use}',
-                contents=_redact_llm_contents(prompt),
+                contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,  # Very low temperature for consistent structured output
                     max_output_tokens=8192,  # Increased for longer histories
