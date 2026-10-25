@@ -2873,5 +2873,7 @@
   "arenaModeSimuladosSub": "Questões no estilo de cada prova",
   "catalogHeroTitleLocal": "Escolha o concurso que você vai prestar",
   "arenaXpEmptyTitleLocal": "Comece um simulado",
-  "arenaXpEmptyDescLocal": "Complete um simulado para ganhar seus primeiros XP."
+  "arenaXpEmptyDescLocal": "Complete um simulado para ganhar seus primeiros XP.",
+  "sharePrescriptionPdf": "Compartilhar PDF",
+  "prescriptionPdfDownloaded": "PDF da receita baixado."
 }

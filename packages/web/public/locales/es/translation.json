@@ -2873,5 +2873,7 @@
   "arenaModeSimuladosSub": "Preguntas al estilo de cada examen",
   "catalogHeroTitleLocal": "Elija el examen que va a rendir",
   "arenaXpEmptyTitleLocal": "Empiece un simulacro",
-  "arenaXpEmptyDescLocal": "Complete un simulacro para ganar sus primeros XP."
+  "arenaXpEmptyDescLocal": "Complete un simulacro para ganar sus primeros XP.",
+  "sharePrescriptionPdf": "Compartir PDF",
+  "prescriptionPdfDownloaded": "PDF de la receta descargado."
 }

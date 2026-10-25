@@ -141,6 +141,8 @@ jobs:
           [ "$meds" -gt 0 ]
           seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
           [ "$seasons" -gt 0 ]
+          exams=$(psql "SELECT count(*) FROM arena_exams"); echo "concursos da Arena: $exams"
+          [ "$exams" -ge 7 ]
 
           # Instalação local recém-criada: sem captcha, SMS nem e-mail configurados, o
           # primeiro cadastro passa direto e vira o dono, e o app só abre depois do

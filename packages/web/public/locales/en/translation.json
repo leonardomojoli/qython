@@ -2873,5 +2873,7 @@
   "arenaModeSimuladosSub": "Questions in the style of each exam",
   "catalogHeroTitleLocal": "Choose the exam you are preparing for",
   "arenaXpEmptyTitleLocal": "Start a practice exam",
-  "arenaXpEmptyDescLocal": "Complete a practice exam to earn your first XP."
+  "arenaXpEmptyDescLocal": "Complete a practice exam to earn your first XP.",
+  "sharePrescriptionPdf": "Share PDF",
+  "prescriptionPdfDownloaded": "Prescription PDF downloaded."
 }

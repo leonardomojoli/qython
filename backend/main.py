@@ -141,6 +141,7 @@ async def lifespan(app: FastAPI):
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
     from .seeds.copilot_prompts import seed_copilot_prompts
     from .seeds.terms_of_use import seed_terms_of_use
+    from .seeds.arena_exams import seed_arena_exams
     from .database import AsyncSessionLocal
 
     # Create tables is now async
@@ -169,6 +170,14 @@ async def lifespan(app: FastAPI):
                     logger.info(f"Seeded {meds_added} medications, {interactions_added} drug interactions")
             except Exception as e:
                 logger.error(f"Error seeding pharmacy data: {e}")
+
+            try:
+                exams_added = await seed_arena_exams(db)
+                if exams_added:
+                    logger.info(f"Seeded {exams_added} arena exams")
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error seeding arena exams: {e}")
 
             try:
                 prompts_added = await seed_copilot_prompts(db)
