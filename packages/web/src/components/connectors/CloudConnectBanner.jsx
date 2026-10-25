@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCloudArrowUp, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { useConnectorStatus } from '../../hooks/useConnectorStatus';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import DriveConnectButton from './DriveConnectButton';
 import styles from './CloudConnectBanner.module.css';
 
@@ -12,9 +13,14 @@ import styles from './CloudConnectBanner.module.css';
 // flag CLOUD_LIBRARY_REQUIRED liga); aqui é o nudge visível estilo Claude/ChatGPT/Gemini.
 export default function CloudConnectBanner({ onConnected }) {
   const { t } = useTranslation();
-  const { isConnected, isRevoked, loading, refetch } = useConnectorStatus();
+  const { isConnected, isRevoked, isAvailable, loading, refetch } = useConnectorStatus();
+  const { config } = usePublicConfig();
 
-  if (loading || isConnected) return null;
+  // Na instalação local os originais já ficam no disco de quem instalou; o Drive é um
+  // extra opcional (Perfil → Conectores), não algo a cobrar na entrada da Biblioteca.
+  // Uma conexão revogada ainda avisa, para o usuário saber que os arquivos dele pararam.
+  if (loading || isConnected || !isAvailable) return null;
+  if (!isRevoked && config?.edition !== 'hosted') return null;
 
   const handleConnected = (data) => {
     refetch();
