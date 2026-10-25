@@ -12,6 +12,11 @@
 <meta property="og:description" content="Copiloto clínico, biblioteca semântica e gerador de materiais. Rode na sua própria infraestrutura. Open source, AGPL-3.0.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://qython.ai">
+<meta property="og:image" content="https://qython.ai/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Qython: inteligência clínica com IA, rodando na sua máquina">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root{
     --bg:#0d0d12; --bg-2:#12121a;
@@ -109,6 +114,10 @@
   }
   .card h3{margin:0 0 7px; font-size:1rem; font-weight:650}
   .card p{margin:0; font-size:.9rem; color:var(--muted); line-height:1.6}
+  .card ul{margin:0; padding-left:18px; font-size:.9rem; color:var(--muted); line-height:1.6}
+  .card li+li{margin-top:6px}
+  .card.stays{border-color:rgba(3,218,198,.28)}
+  .card.leaves{border-color:rgba(187,134,252,.28)}
 
   .req{list-style:none; padding:0; margin:0; display:grid; gap:9px}
   .req li{
@@ -182,7 +191,35 @@
 <span class="p">cp</span> .env.example .env   <span class="c"># preencha GEMINI_API_KEY e JWT_SECRET_KEY</span>
 <span class="p">docker</span> compose up -d</pre>
   </div>
-  <p class="note">Sobe em <code>localhost:8080</code>. As migrations rodam sozinhas no primeiro boot.</p>
+  <p class="note">
+    Sobe em <code>localhost:8080</code>. Na primeira vez, crie a sua conta: ela vira a
+    administradora desta instalação. O banco se prepara sozinho.
+  </p>
+
+  <h2>O que fica e o que sai da sua máquina</h2>
+  <div class="grid">
+    <div class="card stays">
+      <h3>Fica na sua máquina</h3>
+      <ul>
+        <li>O banco de dados: pacientes, consultas, receitas e atestados.</li>
+        <li>Os arquivos da biblioteca e o índice de busca.</li>
+        <li>Os materiais e simulados gerados.</li>
+      </ul>
+    </div>
+    <div class="card leaves">
+      <h3>Sai só para o que você configurar</h3>
+      <ul>
+        <li>O texto de cada pedido à IA vai ao provedor da sua chave (hoje, o Google
+        Gemini). Nos fluxos clínicos, nomes e documentos são trocados por marcadores
+        antes do envio.</li>
+        <li>Buscas no PubMed enviam só os termos da busca.</li>
+        <li>Transcrição pelo Groq e cópia no Google Drive, se você ligar.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note" style="margin-top:14px">
+    Em desenvolvimento: IA local com o Gemma 4, em que nem o texto sai do computador.
+  </p>
 
   <h2>O que vem junto</h2>
   <div class="grid">
@@ -204,25 +241,25 @@
     </div>
     <div class="card">
       <h3>Arena acadêmica</h3>
-      <p>Simulados com memória anti-repetição, provas de concurso customizadas,
-      ranking e gamificação.</p>
+      <p>Simulados no estilo de cada prova (ENAMED, USMLE, MIR e outras), com memória
+      anti-repetição, e provas customizadas para o concurso que você vai prestar.</p>
     </div>
     <div class="card">
       <h3>Consultas</h3>
-      <p>Anamnese guiada por especialidade — 33 delas —, evolução clínica e
-      prescrição com orientações ao paciente.</p>
+      <p>Anamnese guiada por especialidade — 33 delas —, evolução clínica, receita,
+      atestado e pedido de exame em PDF, e orientações ao paciente.</p>
     </div>
     <div class="card">
-      <h3>App mobile</h3>
-      <p>React Native para Android e iOS, com modo offline e sincronização
-      incremental com o backend.</p>
+      <h3>App Android (em preparação)</h3>
+      <p>Para usar à beira do leito, com modo offline, sincronizando com o Qython do
+      seu computador.</p>
     </div>
   </div>
 
   <h2>O que você precisa</h2>
   <ul class="req">
     <li><b>Docker</b><span>É o único pré-requisito obrigatório. A stack sobe em um comando.</span></li>
-    <li><b>Chave Gemini</b><span>Gratuita no Google AI Studio para testar. Uso individual custa centavos por mês.</span></li>
+    <li><b>Chave Gemini</b><span>Gratuita no Google AI Studio para testar. Com dado de paciente real, use uma chave paga: no plano gratuito o Google pode usar o conteúdo enviado para melhorar os produtos dele.</span></li>
     <li><b>4 GB de RAM</b><span>Suficiente na configuração padrão. 8 GB se quiser rodar os modelos de transcrição e embedding localmente.</span></li>
   </ul>
 
