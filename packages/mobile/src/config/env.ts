@@ -49,7 +49,7 @@ export function setServerUrl(input: string): string {
   if (url) {
     storage.set(STORAGE_KEYS.SERVER_URL, url);
   } else {
-    storage.delete(STORAGE_KEYS.SERVER_URL);
+    storage.remove(STORAGE_KEYS.SERVER_URL);
   }
   listeners.forEach((listener) => listener(url));
   return url;

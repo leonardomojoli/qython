@@ -98,10 +98,10 @@ jobs:
 
       # Fixa as versões que o android/build.gradle pede, em vez de depender do
       # que a imagem do runner traz no momento.
-      - name: Android SDK 36 e NDK 27.1
+      - name: Android SDK 37 e NDK 27.1
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
-            "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1" < /dev/null
+            "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1" < /dev/null
 
       - name: Dependências (workspace inteiro)
         run: npm ci
@@ -119,7 +119,7 @@ jobs:
       # impressão digital no resumo deixa quem baixa conferir se ele é oficial.
       - name: Confere o APK
         run: |
-          tools="$ANDROID_HOME/build-tools/36.0.0"
+          tools="$ANDROID_HOME/build-tools/37.0.0"
           apk=packages/mobile/android/app/build/outputs/apk/release/app-release.apk
           certs=$("$tools/apksigner" verify --print-certs "$apk")
           echo "$certs"

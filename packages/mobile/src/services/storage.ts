@@ -1,6 +1,6 @@
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
-export const storage = new MMKV({
+export const storage = createMMKV({
   id: 'qython-offline',
   encryptionKey: 'qython-offline-v1',
 });
@@ -40,7 +40,7 @@ export function getObject<T>(key: string): T | null {
 }
 
 export function removeKey(key: string): void {
-  storage.delete(key);
+  storage.remove(key);
 }
 
 export function getCacheSize(): number {
@@ -56,6 +56,6 @@ export function getCacheSize(): number {
 export function clearAllSyncData(): void {
   const syncKeys = Object.values(STORAGE_KEYS).filter(k => k.startsWith('sync:'));
   for (const key of syncKeys) {
-    storage.delete(key);
+    storage.remove(key);
   }
 }
