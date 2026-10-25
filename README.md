@@ -141,10 +141,12 @@ O Qython foi construído para lidar com dado clínico, e isso impõe uma escolha
 vale entender antes de configurar:
 
 - **Redação de PII** (`backend/middleware/pii_redaction.py`) roda com Presidio antes
-  de qualquer chamada a LLM externo. Nomes, CPF, CNS, CRM, telefone e e-mail são
-  substituídos por marcadores. ⚠️ O Presidio precisa de um modelo do spaCy, que
-  não vem no `pip install`. Sem ele o sistema **não deixa de redigir**, mas cai
-  num detector por regex, mais fraco — e avisa só no log. Para a redação forte:
+  das chamadas ao LLM externo que levam texto clínico: copiloto, consultas, revisão
+  automática das consultas e resumo de conversas longas. Nomes, CPF, CNS, telefone
+  e e-mail são substituídos por marcadores. A geração de material de estudo a
+  partir da biblioteca não passa por ela. A imagem já traz o modelo médio do spaCy
+  (`pt_core_news_md`); o grande reconhece nomes melhor e é usado quando instalado
+  (fica dentro do container, então repita depois de atualizar a imagem):
   ```bash
   docker compose exec backend python -m spacy download pt_core_news_lg
   ```
