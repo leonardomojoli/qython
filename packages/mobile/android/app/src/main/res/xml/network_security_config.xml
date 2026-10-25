@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  O servidor é o do próprio médico, configurado em runtime: em geral um IP da
+  rede local (http://192.168.x.x:8080) sem TLS, que não dá para listar aqui.
+  Por isso HTTP é permitido, e certificados instalados pelo usuário também são
+  aceitos para quem servir HTTPS com uma CA própria.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

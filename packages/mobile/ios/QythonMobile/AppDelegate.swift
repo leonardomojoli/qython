@@ -17,11 +17,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    FirebaseApp.configure()
-
-    UNUserNotificationCenter.current().delegate = self
-    Messaging.messaging().delegate = self
-    application.registerForRemoteNotifications()
+    // GoogleService-Info.plist não é versionado; sem ele, configure() aborta o
+    // app. Sem Firebase o app roda normalmente, só sem login com Google e push.
+    if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+      FirebaseApp.configure()
+      Messaging.messaging().delegate = self
+      UNUserNotificationCenter.current().delegate = self
+      application.registerForRemoteNotifications()
+    }
 
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
@@ -47,6 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
+    guard FirebaseApp.app() != nil else { return }
     Messaging.messaging().apnsToken = deviceToken
   }
 

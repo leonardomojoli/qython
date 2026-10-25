@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
   QUEUE_PROCESSING_LOCK: 'offline:queue_lock',
 
   // Settings
+  SERVER_URL: 'settings:server_url',
   AUTO_SYNC_ENABLED: 'settings:auto_sync',
   SYNC_FREQUENCY_MINUTES: 'settings:sync_frequency',
 } as const;

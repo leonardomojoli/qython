@@ -1,24 +1,105 @@
 // packages/mobile/src/config/env.ts
-// Centralized URL configuration for the mobile app.
+// Server URL configuration for the mobile app.
 //
-// Constants are baked into the JS bundle at build time. To change the
-// production URL after release you need to ship a new build (or wire up
-// a runtime config service later — react-native-config is the standard
-// option but adds native build setup, so we keep this lightweight for now).
+// There is no central server: each install talks to the doctor's own Qython
+// backend, usually on the local network. The address is chosen at runtime on
+// the login screen and persisted in MMKV. Always read it through the getters
+// at the moment of use; a value copied into a module-level constant would
+// keep pointing at the old server until the app restarts.
 
-const PROD_WEB_BASE = 'https://qython.ai';
+import { storage, STORAGE_KEYS } from '../services/storage';
 
-// Android emulator → host machine. iOS simulator uses localhost.
-// Switch this constant if you need to point the dev build elsewhere.
-const DEV_WEB_BASE = 'http://10.0.2.2:8000';
+// Dev builds fall back to the backend on the host machine (Android emulator →
+// host is 10.0.2.2). Release builds start empty and ask for the address.
+const DEV_DEFAULT_SERVER = 'http://10.0.2.2:8000';
 
-const webBase = __DEV__ ? DEV_WEB_BASE : PROD_WEB_BASE;
+// Public project site, used in share footers. Not the user's server: a LAN
+// address means nothing to whoever receives the text, and shouldn't leak.
+export const QYTHON_SITE_URL = 'https://qython.ai';
 
-export const WEB_BASE_URL = webBase;
-export const API_BASE_URL = `${webBase}/api`;
-export const WS_BASE_URL = webBase.replace(/^https?:\/\//, (m) =>
-  m === 'https://' ? 'wss://' : 'ws://',
-);
+type ServerUrlListener = (url: string) => void;
+const listeners = new Set<ServerUrlListener>();
+
+/**
+ * Turns what the user typed ("192.168.0.10:8080", "http://host/",
+ * "https://host/api") into "scheme://host[:port][/path]" with no trailing
+ * slash and no /api suffix. No scheme means http, the common case on a LAN.
+ */
+export function normalizeServerUrl(input: string): string {
+  let url = input.trim();
+  if (!url) {
+    return '';
+  }
+  const scheme = /^https?:\/\//i.exec(url);
+  url = scheme ? scheme[0].toLowerCase() + url.slice(scheme[0].length) : `http://${url}`;
+  return url.replace(/\/+$/, '').replace(/\/api$/i, '');
+}
+
+/** The configured server, or '' when none was set yet. */
+export function getServerUrl(): string {
+  return storage.getString(STORAGE_KEYS.SERVER_URL) ?? (__DEV__ ? DEV_DEFAULT_SERVER : '');
+}
+
+/** Saves the server (normalized) and notifies listeners if it changed. */
+export function setServerUrl(input: string): string {
+  const url = normalizeServerUrl(input);
+  if (url === getServerUrl()) {
+    return url;
+  }
+  if (url) {
+    storage.set(STORAGE_KEYS.SERVER_URL, url);
+  } else {
+    storage.delete(STORAGE_KEYS.SERVER_URL);
+  }
+  listeners.forEach((listener) => listener(url));
+  return url;
+}
+
+export function onServerUrlChange(listener: ServerUrlListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function getApiBaseUrl(): string {
+  return `${getServerUrl()}/api`;
+}
+
+// http → ws, https → wss
+export function getWsBaseUrl(): string {
+  return getServerUrl().replace(/^http/, 'ws');
+}
+
+export type ServerHealth = 'ok' | 'unreachable' | 'not-qython';
+
+/**
+ * GET <server>/api/health, which the backend answers with {"status":"ok"}.
+ * Tells "nothing answered" apart from "something answered, but it isn't a
+ * Qython server" (wrong port, router page, captive portal...).
+ */
+export async function checkServerHealth(input: string, timeoutMs = 8000): Promise<ServerHealth> {
+  const url = normalizeServerUrl(input);
+  if (!url) {
+    return 'unreachable';
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let resp: Response;
+  try {
+    resp = await fetch(`${url}/api/health`, { signal: controller.signal });
+  } catch {
+    return 'unreachable';
+  } finally {
+    clearTimeout(timer);
+  }
+  try {
+    const data = await resp.json();
+    return resp.ok && data?.status === 'ok' ? 'ok' : 'not-qython';
+  } catch {
+    return 'not-qython';
+  }
+}
 
 // Cloudflare Turnstile public site key (same value as web VITE_CLOUDFLARE_SITE_KEY).
 // Public by design — rendered client-side. The widget validates the document

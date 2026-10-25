@@ -1,0 +1,178 @@
+name: Mobile
+
+# Constrói o APK Android de release.
+# - Tag v*: assina com a chave oficial (secrets) e anexa o APK à release da
+#   tag, que é criada pelo release.yml (aqui nunca se cria release).
+# - Disparo manual e pull request: assina com uma chave descartável gerada no
+#   próprio job. Serve para provar que o app compila e empacota; o APK sai
+#   rotulado como NÃO OFICIAL e não instala por cima de uma versão oficial.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/mobile/**"
+      - "package-lock.json"
+      - ".github/workflows/mobile.yml"
+
+permissions:
+  contents: write   # anexar o APK à release
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      # Antes de qualquer setup. A chave oficial é a identidade permanente do
+      # app e só é usada em tag; sem ela, a tag falha dizendo o que falta.
+      - name: Chave de assinatura
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          keystore="$RUNNER_TEMP/release.keystore"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            missing=""
+            [ -n "$KEYSTORE_BASE64" ] || missing="$missing ANDROID_KEYSTORE_BASE64"
+            [ -n "$KEYSTORE_PASSWORD" ] || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+            [ -n "$KEY_ALIAS" ] || missing="$missing ANDROID_KEY_ALIAS"
+            if [ -n "$missing" ]; then
+              echo "::error title=APK sem assinatura oficial::faltam os secrets do repositório:$missing. Veja packages/mobile/README.md (Release assinado)."
+              exit 1
+            fi
+            echo "$KEYSTORE_BASE64" | base64 -d > "$keystore"
+            {
+              echo "QYTHON_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "QYTHON_RELEASE_KEY_ALIAS=$KEY_ALIAS"
+              echo "QYTHON_RELEASE_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+              echo "OFFICIAL=true"
+            } >> "$GITHUB_ENV"
+          else
+            password=$(openssl rand -hex 24)
+            echo "::add-mask::$password"
+            keytool -genkeypair -keystore "$keystore" -storetype PKCS12 -alias verificacao \
+              -keyalg RSA -keysize 2048 -validity 30 -storepass "$password" \
+              -dname "CN=Qython verificacao NAO OFICIAL"
+            {
+              echo "QYTHON_RELEASE_STORE_PASSWORD=$password"
+              echo "QYTHON_RELEASE_KEY_ALIAS=verificacao"
+              echo "OFFICIAL=false"
+            } >> "$GITHUB_ENV"
+          fi
+          echo "QYTHON_RELEASE_STORE_FILE=$keystore" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v7
+
+      - name: Versão
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="dev-${HEAD_SHA::7}"
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          # run_number só cresce: um APK novo sempre instala por cima do anterior.
+          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # Cache do Gradle pelo próprio setup-java. O gradle/actions v6 tirou o
+      # cache do código aberto e exige aceitar termos de um componente
+      # proprietário; este basta para um job só.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+          cache-dependency-path: |
+            packages/mobile/android/**/*.gradle*
+            packages/mobile/android/gradle/wrapper/gradle-wrapper.properties
+
+      # Fixa as versões que o android/build.gradle pede, em vez de depender do
+      # que a imagem do runner traz no momento.
+      - name: Android SDK 36 e NDK 27.1
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1" < /dev/null
+
+      - name: Dependências (workspace inteiro)
+        run: npm ci
+
+      - name: Build do APK de release
+        working-directory: packages/mobile/android
+        run: |
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -PqythonVersionName="$VERSION" -PqythonVersionCode="$VERSION_CODE"
+
+      # A chave de debug do repositório é pública; um APK assinado com ela
+      # poderia ser "atualizado" por qualquer um. O Gradle já impede isso; esta
+      # é a última barreira. Pacote e versão são lidos do próprio APK, e a
+      # impressão digital no resumo deixa quem baixa conferir se ele é oficial.
+      - name: Confere o APK
+        run: |
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          apk=packages/mobile/android/app/build/outputs/apk/release/app-release.apk
+          certs=$("$tools/apksigner" verify --print-certs "$apk")
+          echo "$certs"
+          if echo "$certs" | grep -q "CN=Android Debug"; then
+            echo "::error::APK assinado com a chave de debug"
+            exit 1
+          fi
+          badging=$("$tools/aapt2" dump badging "$apk" | head -1)
+          echo "$badging"
+          echo "$badging" | grep -q "name='ai.qython.app' versionCode='$VERSION_CODE' versionName='$VERSION'"
+          if [ "$OFFICIAL" = "true" ]; then
+            out="qython-$VERSION-android.apk"
+          else
+            out="qython-$VERSION-verificacao-NAO-OFICIAL.apk"
+            echo "::warning title=APK não oficial::assinado com uma chave descartável gerada neste job. Serve só para verificação: não é uma versão oficial e não instala por cima de uma."
+          fi
+          mv "$apk" "$out"
+          echo "APK=$out" >> "$GITHUB_ENV"
+          {
+            echo "### $out"
+            echo
+            if [ "$OFFICIAL" != "true" ]; then
+              echo "**Não oficial:** chave descartável deste job, só para verificação."
+              echo
+            fi
+            echo '```'
+            echo "$badging"
+            echo "$certs" | grep -i "SHA-256"
+            sha256sum "$out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.OFFICIAL == 'true' && format('qython-{0}-android', env.VERSION) || format('qython-{0}-verificacao-NAO-OFICIAL', env.VERSION) }}
+          path: ${{ env.APK }}
+          if-no-files-found: error
+
+      # O release.yml roda em paralelo e só cria a release depois de testar a
+      # stack inteira (~20 min). Espera por ela; se não aparecer, o APK continua
+      # disponível como artifact deste run.
+      - name: Anexa o APK à release da tag
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for i in $(seq 1 40); do
+            if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+              gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+              exit 0
+            fi
+            echo "release $GITHUB_REF_NAME ainda não existe (tentativa $i/40), nova tentativa em 30 s"
+            sleep 30
+          done
+          echo "::warning::a release $GITHUB_REF_NAME não apareceu em 20 min; o APK ficou só como artifact deste run"

@@ -1,5 +1,6 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import api from './api';
+import { isFirebaseConfigured } from './firebase';
 
 let messagingModule: any = null;
 
@@ -10,6 +11,11 @@ export function setForegroundHandler(handler: (title: string, body: string, data
 }
 
 async function getMessaging() {
+  // Without google-services.json there is no Firebase app and every
+  // messaging() call throws; push is just unavailable in that build.
+  if (!isFirebaseConfigured()) {
+    return null;
+  }
   if (!messagingModule) {
     try {
       const firebase = require('@react-native-firebase/messaging');
@@ -24,6 +30,12 @@ async function getMessaging() {
 
 export async function requestPermission(): Promise<boolean> {
   try {
+    // Checked first so a build without push doesn't ask for the permission.
+    const messaging = await getMessaging();
+    if (!messaging) {
+      return false;
+    }
+
     // Android 13+ requires POST_NOTIFICATIONS permission
     if (Platform.OS === 'android' && Platform.Version >= 33) {
       const result = await PermissionsAndroid.request(
@@ -32,11 +44,6 @@ export async function requestPermission(): Promise<boolean> {
       if (result !== PermissionsAndroid.RESULTS.GRANTED) {
         return false;
       }
-    }
-
-    const messaging = await getMessaging();
-    if (!messaging) {
-      return false;
     }
 
     const authStatus = await messaging().requestPermission();
