@@ -8,10 +8,8 @@ import { Markdown } from 'tiptap-markdown';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
+// TipTap 3: o pacote de tabela exporta as quatro peças (e perdeu o export default).
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import Strikethrough from '@tiptap/extension-strike';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -37,6 +35,51 @@ import {
   faSave, faCheckCircle, faSpinner, faCopy, faPaste, faListCheck
 } from '@fortawesome/free-solid-svg-icons';
 import './QythonTipTapEditor.css';
+
+// marked gera tarefas GFM como <li><input type="checkbox"> texto</li>, formato que o
+// TaskItem do TipTap não reconhece: as caixinhas viravam tópicos comuns ao reabrir a
+// nota. Converte para o formato do TipTap (ul[data-type=taskList] > li[data-type=taskItem]).
+//
+// Uma lista "mista" é dividida em trechos consecutivos de tarefas e de itens comuns.
+// É assim que uma lista comum seguida de uma de tarefas volta do Markdown: com o
+// mesmo marcador "-", o CommonMark as junta numa lista só.
+//
+// (Ler o Markdown direto pelo tiptap-markdown, em vez do marked, resolveria as
+// tarefas mas corrompe a nota a cada reabertura, inserindo itens vazios.)
+const markdownToEditorHtml = (md) => {
+  const html = marked(md || '');
+  if (!html.includes('type="checkbox"')) return html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // checkbox do próprio item, não de uma sublista dentro dele
+  const ownCheckbox = (li) => [...li.querySelectorAll('input[type="checkbox"]')].find((box) => box.closest('li') === li);
+  // de dentro para fora: as sublistas são resolvidas antes da lista que as contém
+  [...doc.querySelectorAll('ul')].reverse().forEach((ul) => {
+    const items = [...ul.children].filter((el) => el.tagName === 'LI');
+    if (!items.some(ownCheckbox)) return;
+    const runs = [];
+    items.forEach((li) => {
+      const isTask = Boolean(ownCheckbox(li));
+      if (!runs.length || runs[runs.length - 1].isTask !== isTask) runs.push({ isTask, items: [] });
+      runs[runs.length - 1].items.push(li);
+    });
+    const lists = runs.map(({ isTask, items: runItems }) => {
+      const list = doc.createElement('ul');
+      if (isTask) list.setAttribute('data-type', 'taskList');
+      runItems.forEach((li) => {
+        if (isTask) {
+          const box = ownCheckbox(li);
+          li.setAttribute('data-type', 'taskItem');
+          li.setAttribute('data-checked', box.checked ? 'true' : 'false');
+          box.remove();
+        }
+        list.appendChild(li);
+      });
+      return list;
+    });
+    ul.replaceWith(...lists);
+  });
+  return doc.body.innerHTML;
+};
 
 const AUTOSAVE_DEBOUNCE_TIME = 2000;
 
@@ -400,6 +443,14 @@ const QythonTipTapEditor = ({
         code: false,
         codeBlock: false,
         strike: false,
+        // O StarterKit 3 passou a incluir estes três. Desligados para manter o
+        // comportamento do editor: o Link é adicionado abaixo com validação de URL
+        // (duas instâncias colidiriam); sublinhado não existe em Markdown, que é
+        // como as notas são salvas; e o trailingNode inseriria um parágrafo vazio
+        // no fim, alterando o Markdown salvo.
+        link: false,
+        underline: false,
+        trailingNode: false,
       }),
       Markdown.configure({ html: true, linkify: true, breaks: true }),
       Link.configure({ openOnClick: true, autolink: true, linkOnPaste: true, validate: href => /^https?:\/\//.test(href) }),
@@ -409,7 +460,10 @@ const QythonTipTapEditor = ({
       TaskItem.configure({ nested: true }),
     ],
     immediatelyRender: false,
-    content: value ? marked(value) : '',
+    // A toolbar lê editor.isActive()/can() durante o render. O TipTap 3 deixou de
+    // re-renderizar a cada transação por padrão; sem isto os botões congelariam.
+    shouldRerenderOnTransaction: true,
+    content: value ? markdownToEditorHtml(value) : '',
     onUpdate: ({ editor: currentEditor, transaction }) => {
       if (!transaction.docChanged || isRestoringRef.current) {
         return;
@@ -642,11 +696,10 @@ const QythonTipTapEditor = ({
     }
   }, [editor, AUTOSAVE_KEY_DYNAMIC, value, enableAutosaveRestore, globalAutosaveEnabled]);
 
-
   const handleRestore = () => {
     if (editor && restorableContent) {
       isRestoringRef.current = true;
-      const htmlValue = marked(restorableContent);
+      const htmlValue = markdownToEditorHtml(restorableContent);
       editor.commands.setContent(htmlValue, false);
       onChange(restorableContent);
       console.log(`Conteúdo restaurado de ${AUTOSAVE_KEY_DYNAMIC}`);
@@ -668,7 +721,7 @@ const QythonTipTapEditor = ({
     setRestorableContent(null);
     if (editor) {
       isRestoringRef.current = true;
-      const defaultHtmlValue = marked(value || '');
+      const defaultHtmlValue = markdownToEditorHtml(value || '');
       editor.commands.setContent(defaultHtmlValue, false);
       onChange(value || '');
       isRestoringRef.current = false;
@@ -679,7 +732,7 @@ const QythonTipTapEditor = ({
     if (editor && editor.isEditable && !showRestorePrompt && !isRestoringRef.current) {
       const currentMarkdown = editor.storage.markdown.getMarkdown();
       if (value !== currentMarkdown) {
-        const newHtmlValue = marked(value || '');
+        const newHtmlValue = markdownToEditorHtml(value || '');
         if (newHtmlValue !== editor.getHTML()) {
           // Prevent this sync from triggering the onUpdate callback (which would cause loops)
           isRestoringRef.current = true;
