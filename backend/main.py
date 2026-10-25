@@ -192,15 +192,19 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     logger.info("Internal scheduler started")
 
-    # Start server monitor for metrics collection and auto-maintenance
-    start_server_monitor()
-    logger.info("Server monitor started")
+    # Start server monitor for metrics collection and auto-maintenance. Só no SaaS:
+    # numa instalação local, CPU alta é o próprio usuário trabalhando (a IA local
+    # ocupa a CPU de propósito), e o "modo manutenção" travaria o app dele.
+    if Config.EDITION == "hosted":
+        start_server_monitor()
+        logger.info("Server monitor started")
 
     yield
 
     # Cleanup on shutdown
     stop_scheduler()
-    stop_server_monitor()
+    if Config.EDITION == "hosted":
+        stop_server_monitor()
     logger.info("Application shutdown complete")
 
 app = FastAPI(lifespan=lifespan)

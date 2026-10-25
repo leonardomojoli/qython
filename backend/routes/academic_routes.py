@@ -44,6 +44,12 @@ logger = logging.getLogger("qython_logger")
 
 router = APIRouter()
 
+
+def _generated_content_expiry():
+    """Quando um podcast, videoaula ou slide gerado expira. None = nunca (edição local)."""
+    ttl = Config.GENERATED_CONTENT_TTL_HOURS
+    return datetime.now(timezone.utc) + timedelta(hours=ttl) if ttl else None
+
 # Constantes para a nova lógica de podcast
 PODCAST_CONTENT_TARGET_LENGTH = 45000
 PODCAST_CONTENT_TRIGGER_LENGTH = 50000
@@ -326,7 +332,7 @@ async def _run_podcast_generation_task(job_id: int, input_data: str, user_id: in
             job.status = 'completed'
             job.progress_percent = 100
             job.current_step = 'Concluído'
-            job.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+            job.expires_at = _generated_content_expiry()
             await db.commit()
             logger.info(f"Podcast para a tarefa {job_id} gerado com sucesso. Expires at: {job.expires_at}")
 
@@ -716,7 +722,7 @@ async def _run_material_generation_task(material_id: int, input_data: str, mater
 
             # Set TTL for slideshow materials that have files on disk
             if material_type == 'slideshow_only' and material_content.get('slideshow_file_path'):
-                material.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+                material.expires_at = _generated_content_expiry()
 
             # --- DATA FLYWHEEL: Salvar material gerado ---
             import json
@@ -942,7 +948,7 @@ async def _run_video_lesson_generation_task(job_id: int, input_data: str, user_i
             job.current_step = 'Concluído'
             job.progress_percent = 100
             job.completed_steps = 4
-            job.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+            job.expires_at = _generated_content_expiry()
 
             # --- DATA FLYWHEEL: Salvar roteiro de video-aula ---
             job.training_data_id = await collect_data(

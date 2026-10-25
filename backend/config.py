@@ -241,7 +241,9 @@ class Config:
     MAX_IMAGES_PER_DOCUMENT = 50
 
     # --- TTL for Generated Content ---
-    GENERATED_CONTENT_TTL_HOURS = 72
+    # No SaaS, podcasts, videoaulas e slides expiravam em 72 h para poupar o disco do
+    # servidor. Na instalação local o disco é de quem gerou: ficam até serem apagados.
+    GENERATED_CONTENT_TTL_HOURS = 72 if BILLING_ENABLED else None
 
     # --- Avatar History ---
     MAX_AVATAR_HISTORY = {

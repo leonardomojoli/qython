@@ -25,21 +25,35 @@ def get_plan_base(plan_string: str) -> str:
     return 'free'
 
 
+def effective_plan(user: User) -> str:
+    """Plano que vale para os limites. Sem cobrança (edição local) não há plano a
+    escolher, e todo usuário fica com o maior."""
+    if not Config.BILLING_ENABLED:
+        return 'specialist'
+    return get_plan_base(user.subscription_plan)
+
+
+def storage_quota_applies(user: User) -> bool:
+    """A cota em bytes só existe no SaaS, onde o disco era nosso. Na instalação local
+    os arquivos ficam no disco de quem instalou. Admins nunca têm cota."""
+    return Config.BILLING_ENABLED and not user.is_admin
+
+
 def get_storage_quota(user: User) -> int:
     """Return storage quota in bytes for the user's plan."""
-    plan = get_plan_base(user.subscription_plan)
+    plan = effective_plan(user)
     return Config.STORAGE_QUOTAS.get(plan, Config.STORAGE_QUOTAS['free'])
 
 
 def get_storage_limits(user: User) -> dict:
     """Return docs_per_library and max_libraries limits for the user's plan."""
-    plan = get_plan_base(user.subscription_plan)
+    plan = effective_plan(user)
     return Config.STORAGE_LIMITS.get(plan, Config.STORAGE_LIMITS['free'])
 
 
 async def check_storage_quota(db: AsyncSession, user: User, file_size_bytes: int) -> bool:
     """Check if user has enough storage quota for a file of given size. Admins bypass all limits."""
-    if user.is_admin:
+    if not storage_quota_applies(user):
         return True
     quota = get_storage_quota(user)
     return (user.storage_used_bytes + file_size_bytes) <= quota
