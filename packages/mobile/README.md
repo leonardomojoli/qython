@@ -48,12 +48,42 @@ Ambos estão no `.gitignore`.
 O release nunca usa a chave de debug (`android/app/debug.keystore` é pública).
 Sem keystore, `assembleRelease` falha antes de compilar, dizendo o que falta.
 
-Gerar o keystore, uma vez (guarde o arquivo e a senha fora do repositório:
-sem eles, nenhuma versão futura instala por cima da anterior):
+### A chave oficial
+
+O keystore de release é a identidade permanente do app. O Android só instala
+uma atualização por cima da versão anterior se as duas tiverem sido assinadas
+com a mesma chave. Se o arquivo ou a senha se perderem, nenhuma versão futura
+instala por cima das que já foram distribuídas: quem usa o app teria de
+desinstalá-lo (perdendo os dados locais) e instalar de novo. Gere a chave uma
+vez só, faça backup e nunca a coloque no repositório.
+
+Gerar (o `keytool` pede a senha no terminal; em PKCS12 a senha da chave é a
+mesma do keystore):
 
 ```bash
 keytool -genkeypair -v -keystore qython-release.keystore -storetype PKCS12 -alias qython -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Qython"
 ```
+
+Backup: copie `qython-release.keystore` para fora do repositório (um pendrive
+guardado e/ou um gerenciador de senhas que aceite anexos) e guarde a senha no
+gerenciador de senhas. Confira que o backup abre:
+
+```bash
+keytool -list -keystore qython-release.keystore
+```
+
+Cadastrar no GitHub. Cada `gh secret set` sem `--body` lê o valor do
+terminal, então a senha não fica no histórico do shell:
+
+```bash
+base64 -w0 qython-release.keystore | gh secret set ANDROID_KEYSTORE_BASE64 --repo leonardomojoli/qython
+gh secret set ANDROID_KEYSTORE_PASSWORD --repo leonardomojoli/qython
+gh secret set ANDROID_KEY_ALIAS --repo leonardomojoli/qython --body qython
+gh secret set ANDROID_KEY_PASSWORD --repo leonardomojoli/qython
+```
+
+`ANDROID_KEY_PASSWORD` recebe a mesma senha do keystore. Depois de conferir o
+backup, apague a cópia local que não for o backup.
 
 Build local assinado (variáveis de ambiente ou `~/.gradle/gradle.properties`):
 
@@ -70,17 +100,16 @@ Build local assinado (variáveis de ambiente ou `~/.gradle/gradle.properties`):
 
 ### No GitHub Actions
 
-O workflow `.github/workflows/mobile.yml` roda à mão (**Actions → Mobile → Run
-workflow**) e em tags `v*`. Gera o APK como artifact e, numa tag, anexa à
-release da tag quando ela existir. Secrets do repositório
-(**Settings → Secrets and variables → Actions**):
+O workflow `.github/workflows/mobile.yml` roda em tags `v*`, à mão (**Actions →
+Mobile → Run workflow**) e em pull requests que mexem no mobile:
 
-| Secret | Conteúdo |
-|---|---|
-| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 qython-release.keystore` |
-| `ANDROID_KEYSTORE_PASSWORD` | senha do keystore |
-| `ANDROID_KEY_ALIAS` | alias da chave |
-| `ANDROID_KEY_PASSWORD` | opcional; só se diferente da senha do keystore |
+- **Tag `v*`:** assina com a chave oficial, que vem dos secrets acima. Sem
+  eles, falha dizendo quais faltam. O APK sai como artifact e é anexado à
+  release da tag quando ela existir.
+- **Manual e pull request:** assina com uma chave descartável gerada no
+  próprio job. O APK (`qython-dev-<commit>-verificacao-NAO-OFICIAL.apk`) só
+  prova que o app compila e empacota. Não é uma versão oficial e não instala
+  por cima de uma, porque a assinatura é outra.
 
-O resumo de cada execução mostra o SHA-256 do certificado e do APK, para quem
-baixa conferir que o arquivo é o oficial.
+O resumo de cada execução mostra pacote, versão e SHA-256 do certificado e do
+APK, para quem baixa conferir se o arquivo é o oficial.
