@@ -90,10 +90,7 @@ function AppContent() {
 
   return (
     <>
-      <StatusBar
-        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.background}
-      />
+      <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} />
       <NavigationContainer
         theme={{
           dark: mode === 'dark',

@@ -12,6 +12,14 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
         settings.layout.rootDirectory.files("../package.json", "../react-native.config.js", "../../../package-lock.json")
     )
 }
+// @react-native-voice/voice 3.2.4 (a última publicada, de 2022) tem um
+// build.gradle que o Gradle 9 e o AGP 9 recusam. O projeto autolinkado passa a
+// usar o build de react-native-voice/, que compila as mesmas fontes Java.
+def voice = findProject(':react-native-voice_voice')
+if (voice != null) {
+    gradle.ext.reactNativeVoiceDir = voice.projectDir
+    voice.projectDir = file('react-native-voice')
+}
 rootProject.name = 'QythonMobile'
 include ':app'
 includeBuild('../../../node_modules/@react-native/gradle-plugin')

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Share } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Share, type TextInputInstance } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useTranslation } from 'react-i18next';
@@ -119,7 +119,7 @@ export default function MessageBubble({ message, isTyping, onFeedback, onEdit, o
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.content);
-  const editInputRef = useRef<TextInput>(null);
+  const editInputRef = useRef<TextInputInstance>(null);
 
   const handleStartEdit = () => {
     if (!onEdit) return;
@@ -190,7 +190,7 @@ export default function MessageBubble({ message, isTyping, onFeedback, onEdit, o
               colors={[theme.primary + '38', theme.primary + '18'] as unknown as string[]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
           )}
