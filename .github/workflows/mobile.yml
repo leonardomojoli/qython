@@ -64,7 +64,7 @@ jobs:
           fi
           echo "QYTHON_RELEASE_STORE_FILE=$keystore" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Versão
         env:
@@ -79,17 +79,22 @@ jobs:
           # run_number só cresce: um APK novo sempre instala por cima do anterior.
           echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v4
+      # Cache do Gradle pelo próprio setup-java. O gradle/actions v6 tirou o
+      # cache do código aberto e exige aceitar termos de um componente
+      # proprietário; este basta para um job só.
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-
-      - uses: gradle/actions/setup-gradle@v4
+          cache: gradle
+          cache-dependency-path: |
+            packages/mobile/android/**/*.gradle*
+            packages/mobile/android/gradle/wrapper/gradle-wrapper.properties
 
       # Fixa as versões que o android/build.gradle pede, em vez de depender do
       # que a imagem do runner traz no momento.
@@ -147,7 +152,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.OFFICIAL == 'true' && format('qython-{0}-android', env.VERSION) || format('qython-{0}-verificacao-NAO-OFICIAL', env.VERSION) }}
           path: ${{ env.APK }}
