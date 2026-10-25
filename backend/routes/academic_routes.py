@@ -35,6 +35,7 @@ from ..services.academic_services import file_processing_service
 from ..utils import allowed_file, UPLOAD_FOLDER, THUMBNAIL_FOLDER
 from ..security import get_current_active_user
 from ..services import llm_services
+from ..services import llm_provider
 from ..services.data_collector_service import collect_data
 from ..services.activity_service import track_activity
 from fastapi.responses import FileResponse
@@ -1091,6 +1092,15 @@ async def process_file(
 
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="source_type inválido.")
+
+        # O material precisa caber na janela do modelo junto com as instruções e a
+        # resposta. No Gemini quase nunca encosta; num modelo local, a biblioteca entra
+        # amostrada por janelas, do começo ao fim, em vez de cortada no meio.
+        material_budget = _context_char_budget(0.45)
+        if input_data and len(input_data) > material_budget:
+            original = len(input_data)
+            input_data = _sample_text_for_budget(input_data, material_budget)
+            logger.info(f"[MATERIAL_CTX] {original} → {len(input_data)} chars (janela de {llm_provider.context_tokens()} tokens)")
 
         # Premium features require Residente+ plan
         PREMIUM_MATERIAL_TYPES = ['podcast', 'video_lesson', 'mind_map']
@@ -2640,6 +2650,14 @@ async def delete_custom_exam_card(
     return {"message": "Card removido.", "libraries_deleted": libraries_deleted}
 
 
+def _context_char_budget(share: float, cap: Optional[int] = None) -> int:
+    """Teto, em caracteres, para texto de biblioteca num prompt: uma fatia da janela de
+    contexto do modelo (llm_provider), sem passar do teto configurado. No Gemini a janela
+    é de 1M e vale o teto; num modelo local, a janela (16k–128k) é que limita."""
+    budget = llm_provider.token_budget(share) * 4
+    return min(budget, cap) if cap else budget
+
+
 def _sample_text_for_budget(text: str, budget: int, windows: int = 14) -> str:
     """Reduz `text` a ~budget chars SEM excluir nenhuma parte do material.
 
@@ -2759,7 +2777,7 @@ async def generate_custom_exam_draft(
                 blk_count = 0
             if not blk_libs or blk_count <= 0:
                 continue
-            blk_text = await _aggregate_library_text(db, blk_libs, char_budget=Config.EXAM_LIB_CHAR_BUDGET)
+            blk_text = await _aggregate_library_text(db, blk_libs, char_budget=_context_char_budget(0.35, Config.EXAM_LIB_CHAR_BUDGET))
             if not blk_text or not blk_text.strip():
                 continue
             blueprint_blocks.append({
@@ -2771,7 +2789,7 @@ async def generate_custom_exam_draft(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhum bloco válido: cada bloco precisa de ao menos uma biblioteca com texto e um nº de questões.")
         num_q = sum(b['num_questions'] for b in blueprint_blocks)  # total = soma dos blocos
     else:
-        input_data = await _aggregate_library_text(db, content_lib_ids, char_budget=Config.EXAM_LIB_CHAR_BUDGET)
+        input_data = await _aggregate_library_text(db, content_lib_ids, char_budget=_context_char_budget(0.35, Config.EXAM_LIB_CHAR_BUDGET))
         if not input_data or not input_data.strip():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="As bibliotecas-fonte não têm texto processado para gerar a prova.")
 
@@ -2814,7 +2832,7 @@ async def generate_custom_exam_draft(
     if dossier.get('confirmed') and str(dossier.get('synthesis') or '').strip():
         profile_parts.append(str(dossier['synthesis']).strip())
     if past_exams_lib and past_exams_lib in lib_ids:
-        past_text = await _aggregate_library_text(db, [past_exams_lib], char_budget=Config.EXAM_PAST_CHAR_BUDGET)
+        past_text = await _aggregate_library_text(db, [past_exams_lib], char_budget=_context_char_budget(0.1, Config.EXAM_PAST_CHAR_BUDGET))
         if past_text and past_text.strip():
             fmt_block = ("PROVAS ANTERIORES desta banca/prova — use com DUPLA função:\n"
                          "(1) REFERÊNCIA DE FORMATO/ESTILO: imite o jeito de formular, o nível "

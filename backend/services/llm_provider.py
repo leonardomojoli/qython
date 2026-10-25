@@ -21,7 +21,10 @@ Configuração (.env):
   LLM_MODEL       nome do modelo para o servidor (o llama-server ignora; o Ollama
                   exige, ex.: gemma4:e4b).
   LLM_API_KEY     só para servidores que pedem chave.
-  LLM_TIMEOUT_SECONDS  tempo máximo de uma resposta (padrão 600: CPU é lenta).
+  LLM_TIMEOUT_SECONDS  tempo máximo de uma resposta (padrão 1800). Em CPU, a uns 7
+                  tokens/s, um questionário longo leva vários minutos.
+  LLM_CONTEXT_TOKENS  janela de contexto do modelo (padrão 16384). Precisa bater com
+                  o -c do llama-server ou o num_ctx do Ollama.
   LLM_THINKING    on | off (padrão off). Modelos como o Gemma 4 raciocinam antes de
                   responder; em CPU, a uns 8 tokens/s, isso custa minutos e pode
                   esgotar o limite de tokens antes da resposta.
@@ -51,6 +54,24 @@ def provider_name() -> str:
     if explicit in ("gemini", "openai"):
         return explicit
     return "gemini" if os.getenv("GEMINI_API_KEY") else "openai"
+
+
+def context_tokens() -> int:
+    """Janela de contexto do modelo de texto, em tokens. O Gemini aceita 1 milhão; um
+    modelo local, o que o servidor foi configurado para alocar."""
+    if provider_name() == "gemini":
+        return 1_000_000
+    return int(os.getenv("LLM_CONTEXT_TOKENS", "16384"))
+
+
+def token_budget(share: float) -> int:
+    """Fatia da janela de contexto para um pedaço do prompt (histórico, biblioteca)."""
+    return int(context_tokens() * share)
+
+
+def approx_tokens(text: str) -> int:
+    """Estimativa barata (4 caracteres por token), suficiente para decidir o que cabe."""
+    return len(text or "") // 4
 
 
 def capabilities() -> dict:
@@ -292,6 +313,7 @@ def _from_openai(completion) -> _Response:
 # --------------------------------------------------------------------------- #
 
 # Servidor local subindo (conexão recusada) ou sobrecarregado: vale tentar de novo.
+# Timeout não: a geração recomeçaria do zero e a espera dobraria.
 _RETRIES = max(0, int(os.getenv("LLM_RETRIES", "2")))
 _RETRY_BACKOFF = float(os.getenv("LLM_RETRY_BACKOFF", "2.0"))
 
@@ -316,6 +338,12 @@ class _OpenAIModels:
             "messages": to_openai_messages(contents, system),
             **to_openai_params(config),
         }
+        # Pedidos feitos para o Gemini chegam a 32k tokens de saída; numa janela local de
+        # 16k isso não cabe junto com o prompt. A resposta fica com o que sobra.
+        if request.get("max_tokens"):
+            prompt_tokens = approx_tokens(str(request["messages"]))
+            room = max(256, context_tokens() - prompt_tokens - 64)
+            request["max_tokens"] = min(request["max_tokens"], room)
         last = None
         for attempt in range(_RETRIES + 1):
             extra = {"chat_template_kwargs": {"enable_thinking": self._thinking}} if self._template_kwargs_ok else None
@@ -329,7 +357,9 @@ class _OpenAIModels:
                     completion = self._client.chat.completions.create(**request)
                     return _from_openai(completion)
                 raise
-            except (openai.APIConnectionError, openai.APITimeoutError, openai.InternalServerError) as exc:
+            except openai.APITimeoutError:
+                raise
+            except (openai.APIConnectionError, openai.InternalServerError) as exc:
                 last = exc
                 if attempt < _RETRIES:
                     wait = _RETRY_BACKOFF * (attempt + 1)
@@ -415,6 +445,6 @@ def build_openai_client() -> OpenAICompatibleClient:
         base_url=base_url.rstrip("/"),
         model=os.getenv("LLM_MODEL") or "local",
         api_key=os.getenv("LLM_API_KEY"),
-        timeout=float(os.getenv("LLM_TIMEOUT_SECONDS", "600")),
+        timeout=float(os.getenv("LLM_TIMEOUT_SECONDS", "1800")),
         thinking=os.getenv("LLM_THINKING", "off").strip().lower() in ("1", "on", "true"),
     )

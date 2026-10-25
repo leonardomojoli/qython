@@ -1498,6 +1498,24 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
         if library:
             logger.info(f"Enriquecendo prompt com a biblioteca: '{library.name}'")
             library_text = await asyncio.to_thread(vector_db_service.get_all_text_for_library, library_id)
+            # A biblioteca inteira cabe no contexto do Gemini; num modelo local, não. Quando
+            # passa de metade da janela, entram os trechos mais relevantes para a pergunta,
+            # até o limite.
+            budget = llm_provider.token_budget(0.5)
+            if library_text and llm_provider.approx_tokens(library_text) > budget:
+                chunks = await asyncio.to_thread(
+                    vector_db_service.query_library, query_text=message, library_id=library_id, n_results=20,
+                )
+                selected, used = [], 0
+                for chunk in chunks or []:
+                    cost = llm_provider.approx_tokens(chunk)
+                    if used + cost > budget:
+                        break
+                    selected.append(chunk)
+                    used += cost
+                logger.info(f"Biblioteca maior que o contexto (~{llm_provider.approx_tokens(library_text)} tokens): "
+                            f"usando {len(selected)} trechos relevantes (~{used} tokens).")
+                library_text = "\n\n---\n\n".join(selected)
             if library_text and library_text.strip():
                 library_context_string = (
                     f"Use o seguinte conteúdo da biblioteca '{library.name}' como base principal para sua resposta. "
