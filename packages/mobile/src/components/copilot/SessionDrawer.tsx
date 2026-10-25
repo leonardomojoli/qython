@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -37,7 +38,7 @@ export default function SessionDrawer({
   const [loading, setLoading] = useState(false);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameText, setRenameText] = useState('');
-  const renameInputRef = useRef<TextInput>(null);
+  const renameInputRef = useRef<TextInputInstance>(null);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);

@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { getAuthToken, clearAuthTokens } from './auth';
-import { API_BASE_URL } from '../config/env';
+import { getApiBaseUrl, onServerUrlChange } from '../config/env';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -33,5 +33,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// The server is picked at runtime, on the login screen. Follow it, and drop the
+// session: a token issued by one server must never be sent to another.
+onServerUrlChange(() => {
+  api.defaults.baseURL = getApiBaseUrl();
+  clearAuthTokens().catch(() => {});
+});
 
 export default api;

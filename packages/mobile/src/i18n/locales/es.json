@@ -2972,5 +2972,12 @@
   "mcBelowMinimum": "bajo el mínimo ({{min}})",
   "mcVerdictEliminated": "Eliminado por puntuación insuficiente en: {{subjects}}",
   "mcVerdictPassed": "Aprobado — {{points}} puntos (corte: {{cutoff}})",
-  "mcVerdictFailed": "Por debajo del corte — {{points}} puntos (corte: {{cutoff}})"
+  "mcVerdictFailed": "Por debajo del corte — {{points}} puntos (corte: {{cutoff}})",
+  "serverLabel": "Servidor",
+  "serverPlaceholder": "http://192.168.0.10:8080",
+  "testConnection": "Probar conexión",
+  "serverOk": "Conectado a Qython",
+  "serverUnreachable": "El servidor no respondió. Revisa la dirección y que el teléfono esté en la misma red.",
+  "serverNotQython": "Algo respondió en esta dirección, pero no es un servidor Qython.",
+  "serverRequired": "Ingresa la dirección de tu servidor Qython."
 }

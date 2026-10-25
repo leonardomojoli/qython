@@ -9,6 +9,7 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
+  type TextInputInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { launchCamera, launchImageLibrary, type ImagePickerResponse } from 'react-native-image-picker';
@@ -39,7 +40,7 @@ const InputBar = forwardRef<InputBarHandle, Props>(({ onSend, disabled }, ref) =
   const { theme } = useTheme();
   const [text, setText] = useState('');
   const [files, setFiles] = useState<AttachedFile[]>([]);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   // Permite que o empty-state (pílulas) pré-preencha o input e abra o teclado.
   useImperativeHandle(ref, () => ({
