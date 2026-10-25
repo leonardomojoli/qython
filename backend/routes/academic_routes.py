@@ -39,6 +39,7 @@ from ..services.data_collector_service import collect_data
 from ..services.activity_service import track_activity
 from fastapi.responses import FileResponse
 from ..config import Config
+from ..services.storage_service import effective_plan  # plano que vale p/ limites (o maior, sem cobrança)
 
 logger = logging.getLogger("qython_logger")
 
@@ -1096,7 +1097,7 @@ async def process_file(
         PREMIUM_ALLOWED_PLANS = ['resident', 'staff', 'specialist']
 
         if payload.material_type in PREMIUM_MATERIAL_TYPES:
-            if not current_user.is_admin and current_user.subscription_plan not in PREMIUM_ALLOWED_PLANS:
+            if not current_user.is_admin and effective_plan(current_user) not in PREMIUM_ALLOWED_PLANS:
                 feature_names = {
                     'podcast': 'Podcasts',
                     'video_lesson': 'Videoaulas',
@@ -1344,7 +1345,7 @@ async def start_quiz(
 ):
     # Arena access requires Residente+ plan
     ARENA_ALLOWED_PLANS = ['resident', 'staff', 'specialist']
-    if current_user.subscription_plan not in ARENA_ALLOWED_PLANS:
+    if effective_plan(current_user) not in ARENA_ALLOWED_PLANS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="A Arena Qython está disponível a partir do Plano Residente. Faça upgrade para competir!"
@@ -2377,7 +2378,7 @@ def _require_custom_exam_access(user: User):
     """Provas customizadas seguem o gate da Arena (Residente+)."""
     if getattr(user, 'is_admin', False):
         return
-    if user.subscription_plan not in CUSTOM_EXAM_ALLOWED_PLANS:
+    if effective_plan(user) not in CUSTOM_EXAM_ALLOWED_PLANS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="As Provas Customizadas (Concursos) estão disponíveis a partir do Plano Residente. Faça upgrade para acessar!",

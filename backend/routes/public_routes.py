@@ -55,6 +55,22 @@ async def get_public_config(db: AsyncSession = Depends(get_db)):
     return await edition_service.public_config(db)
 
 
+@router.get("/terms")
+async def get_public_terms(db: AsyncSession = Depends(get_db)):
+    """Termo de uso vigente, para ler antes de entrar (página /terms-of-use)."""
+    from ..models import ConsentDocumentType
+    from ..services import consent_service
+    document = await consent_service.get_active_document(db, ConsentDocumentType.terms_of_use)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Nenhum termo de uso publicado.")
+    return {
+        "title": document.title,
+        "version": document.version,
+        "body": document.body,
+        "published_at": document.published_at,
+    }
+
+
 @router.get("/email/unsubscribe")
 async def unsubscribe_email(token: str, db: AsyncSession = Depends(get_db)):
     """One-click unsubscribe from lifecycle emails (no auth). Sets

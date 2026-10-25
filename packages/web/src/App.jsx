@@ -9,7 +9,7 @@ import { NotificationProvider, useNotification } from './contexts/NotificationCo
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { MaterialViewerProvider, useMaterialViewer } from './contexts/MaterialViewerContext';
-import { PublicConfigProvider } from './contexts/PublicConfigContext';
+import { PublicConfigProvider, usePublicConfig } from './contexts/PublicConfigContext';
 import { getChatSessions, updateUserPreferences } from './api';
 import SessionManager from './components/shared/SessionManager';
 import SideBar from './components/shared/SideBar';
@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import ScrollToTop from './components/shared/ScrollToTop';
 import VerificationBanner from './components/shared/VerificationBanner';
 import ErrorBoundary from './components/shared/ErrorBoundary';
-import CookieConsent from './components/common/CookieConsent';
 import OfflineBanner from './components/common/OfflineBanner';
 
 // Core routes (loaded eagerly for fast initial load)
@@ -49,6 +48,7 @@ const PublicPrescription = lazy(() => import('./components/pharmacy/PublicPrescr
 // Legal pages (rarely visited)
 const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./components/legal/TermsOfUse'));
+const LocalTerms = lazy(() => import('./components/legal/LocalTerms'));
 const DPO = lazy(() => import('./components/legal/DPO'));
 const Subprocessors = lazy(() => import('./components/legal/Subprocessors'));
 const PatientNotice = lazy(() => import('./components/legal/PatientNotice'));
@@ -195,6 +195,17 @@ const AppLayoutAndRoutes = () => {
   // Com o termo de uso pendente, a tela de aceite ocupa tudo: sem barra lateral nem tour.
   const appUnlocked = isLoggedIn && !user?.terms_pending;
 
+  // Edição: o SaaS (hosted) tem landing, preços, páginas legais da empresa e páginas de
+  // marketing. A instalação local abre direto no app e não tem nada disso; as rotas
+  // levam para o lugar equivalente. Até a config chegar, nenhuma das duas é assumida.
+  const { config: publicConfig } = usePublicConfig();
+  const editionKnown = publicConfig !== null;
+  const isHosted = publicConfig?.edition === 'hosted';
+  const billingEnabled = Boolean(publicConfig?.billing_enabled);
+  const onlyIf = (allowed, element, fallback) => (
+    !editionKnown ? <PageLoader /> : allowed ? element : <Navigate to={fallback} replace />
+  );
+
   const handleInitialCheckComplete = useCallback(() => {
     setInitialCheckComplete(true);
   }, []);
@@ -261,7 +272,7 @@ const AppLayoutAndRoutes = () => {
         <QythonTour
           tourId="profile"
           route="/profile"
-          steps={profileTourSteps}
+          steps={billingEnabled ? profileTourSteps : profileTourSteps.filter(step => step.id !== 'billing')}
           onStepChange={handleProfileStepChange}
         />
       )}
@@ -281,32 +292,37 @@ const AppLayoutAndRoutes = () => {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Core routes (eagerly loaded) */}
-                <Route path="/" element={<LandingPage />} />
+                <Route
+                  path="/"
+                  element={(!editionKnown || !initialCheckComplete)
+                    ? <PageLoader />
+                    : isHosted ? <LandingPage /> : <Navigate to={isLoggedIn ? '/copilot' : '/login'} replace />}
+                />
                 <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
                 <Route path="/register" element={<Register setIsLoggedIn={setIsLoggedIn} />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Legal routes (lazy) */}
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-of-use" element={<TermsOfUse />} />
-                <Route path="/encarregado" element={<DPO />} />
-                <Route path="/subprocessors" element={<Subprocessors />} />
-                <Route path="/paciente" element={<PatientNotice />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/benchmark" element={<BenchmarkPage />} />
+                <Route path="/privacy-policy" element={onlyIf(isHosted, <PrivacyPolicy />, '/terms-of-use')} />
+                <Route path="/terms-of-use" element={!editionKnown ? <PageLoader /> : isHosted ? <TermsOfUse /> : <LocalTerms />} />
+                <Route path="/encarregado" element={onlyIf(isHosted, <DPO />, '/terms-of-use')} />
+                <Route path="/subprocessors" element={onlyIf(isHosted, <Subprocessors />, '/terms-of-use')} />
+                <Route path="/paciente" element={onlyIf(isHosted, <PatientNotice />, '/terms-of-use')} />
+                <Route path="/contact" element={onlyIf(isHosted, <Contact />, '/')} />
+                <Route path="/careers" element={onlyIf(isHosted, <Careers />, '/')} />
+                <Route path="/benchmark" element={onlyIf(isHosted, <BenchmarkPage />, '/')} />
                 <Route path="/receita/:token" element={<PublicPrescription />} />
 
                 {/* Admin Routes (lazy) */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                 <Route path="/admin/users" element={<AdminRoute><UserManager /></AdminRoute>} />
                 <Route path="/admin/consultations" element={<AdminRoute><AdminConsultations /></AdminRoute>} />
-                <Route path="/admin/finance" element={<AdminRoute><AdminFinance /></AdminRoute>} />
+                <Route path="/admin/finance" element={onlyIf(billingEnabled, <AdminRoute><AdminFinance /></AdminRoute>, '/admin')} />
                 <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
                 <Route path="/admin/profile-updates" element={<AdminRoute><ProfileUpdateManager /></AdminRoute>} />
-                <Route path="/admin/pharmacies" element={<AdminRoute><PharmacyAdmin /></AdminRoute>} />
-                <Route path="/admin/analytics" element={<AdminRoute><AnalyticsDashboard /></AdminRoute>} />
+                <Route path="/admin/pharmacies" element={onlyIf(isHosted, <AdminRoute><PharmacyAdmin /></AdminRoute>, '/admin')} />
+                <Route path="/admin/analytics" element={onlyIf(isHosted, <AdminRoute><AnalyticsDashboard /></AdminRoute>, '/admin')} />
                 <Route path="/test-dna" element={<TestDNALoading />} />
 
                 {/* Waitlist Route (accessible only for waitlist users) */}
@@ -383,19 +399,19 @@ const AppLayoutAndRoutes = () => {
                 />
                 <Route
                   path="/pricing"
-                  element={
+                  element={onlyIf(billingEnabled, (
                     <ProtectedRoute isLoggedIn={isLoggedIn} initialCheckComplete={initialCheckComplete}>
                       <PricingPage />
                     </ProtectedRoute>
-                  }
+                  ), '/copilot')}
                 />
                 <Route
                   path="/dracma-purchase"
-                  element={
+                  element={onlyIf(billingEnabled, (
                     <ProtectedRoute isLoggedIn={isLoggedIn} initialCheckComplete={initialCheckComplete}>
                       <DracmaPurchase />
                     </ProtectedRoute>
-                  }
+                  ), '/copilot')}
                 />
                 <Route
                   path="/profile"
@@ -415,7 +431,6 @@ const AppLayoutAndRoutes = () => {
       {/* Visualizador de material persistente: vive FORA do <Routes>, então o quiz/material
           sobrevive à navegação entre seções (recolhe pra pílula e restaura ao voltar). */}
       {isLoggedIn && <MaterialViewerHost />}
-      <CookieConsent />
     </>
   );
 };

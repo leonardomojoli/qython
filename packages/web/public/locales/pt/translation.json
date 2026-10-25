@@ -2868,5 +2868,10 @@
   "termsLeave": "Sair",
   "termsAccept": "Aceitar e continuar",
   "termsLoadError": "Não foi possível carregar o termo de uso.",
-  "termsSaveError": "Não foi possível registrar o aceite. Tente de novo."
+  "termsSaveError": "Não foi possível registrar o aceite. Tente de novo.",
+  "arenaSimuladosTitle": "Simulados",
+  "arenaModeSimuladosSub": "Questões no estilo de cada prova",
+  "catalogHeroTitleLocal": "Escolha o concurso que você vai prestar",
+  "arenaXpEmptyTitleLocal": "Comece um simulado",
+  "arenaXpEmptyDescLocal": "Complete um simulado para ganhar seus primeiros XP."
 }

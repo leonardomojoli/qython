@@ -2868,5 +2868,10 @@
   "termsLeave": "Salir",
   "termsAccept": "Aceptar y continuar",
   "termsLoadError": "No fue posible cargar los términos de uso.",
-  "termsSaveError": "No fue posible registrar la aceptación. Intente de nuevo."
+  "termsSaveError": "No fue posible registrar la aceptación. Intente de nuevo.",
+  "arenaSimuladosTitle": "Simulacros",
+  "arenaModeSimuladosSub": "Preguntas al estilo de cada examen",
+  "catalogHeroTitleLocal": "Elija el examen que va a rendir",
+  "arenaXpEmptyTitleLocal": "Empiece un simulacro",
+  "arenaXpEmptyDescLocal": "Complete un simulacro para ganar sus primeros XP."
 }

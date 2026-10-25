@@ -2868,5 +2868,10 @@
   "termsLeave": "Sign out",
   "termsAccept": "Accept and continue",
   "termsLoadError": "Could not load the terms of use.",
-  "termsSaveError": "Could not record your acceptance. Please try again."
+  "termsSaveError": "Could not record your acceptance. Please try again.",
+  "arenaSimuladosTitle": "Practice exams",
+  "arenaModeSimuladosSub": "Questions in the style of each exam",
+  "catalogHeroTitleLocal": "Choose the exam you are preparing for",
+  "arenaXpEmptyTitleLocal": "Start a practice exam",
+  "arenaXpEmptyDescLocal": "Complete a practice exam to earn your first XP."
 }
