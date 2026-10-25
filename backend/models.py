@@ -4,7 +4,7 @@ import enum
 from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger, Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary,
-    String, Text, UniqueConstraint, JSON, Table, Index
+    String, Text, UniqueConstraint, JSON, Table, Index, DDL, event, text
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.ext.mutable import MutableDict
@@ -476,7 +476,7 @@ class User(Base):
     # doctor: bronze | prata | ouro (legacy basic/strong, pre-Latreo-v1.63 rename) ·
     # student (kind=student): verified | verified_strong
     verification_tier = Column(String(20), nullable=True)
-    latreo_doctor_id = Column(Integer, nullable=True)  # Latreo's doctor user id (for webhook mapping)
+    latreo_doctor_id = Column(Integer, nullable=True, index=True)  # Latreo's doctor user id (for webhook mapping)
     latreo_session_id = Column(String(40), nullable=True)  # last Latreo verification session id
     verified_at = Column(DateTime(timezone=True), nullable=True)
     last_verification_check_at = Column(DateTime(timezone=True), nullable=True)
@@ -496,9 +496,9 @@ class User(Base):
     training_data_consent_version = Column(String(20), nullable=True)
     # Soft delete — set when user exercises Art. 18 VI. Cascading deletion is
     # executed by data_export_service, this flag prevents login while async cleanup runs.
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
     notification_preferences = Column(JSON, nullable=True)  # Push/email notification preferences per type
-    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True, index=True)
     # MutableDict so in-place key updates persist — a plain JSON column doesn't
     # flag dirty on `d[k]=v` + reassign of the same ref, which caused lifecycle
     # emails (inactivity/deactivation/digest) to re-send every run.
@@ -1720,6 +1720,14 @@ class ConsentDocumentType(str, enum.Enum):
     ml_research_publication = "ml_research_publication"
 
 
+# Tipo Postgres compartilhado pelas duas tabelas de consentimento. Ligado ao
+# MetaData, o create_all o cria uma única vez, antes das tabelas. Antes cada coluna
+# declarava o próprio Enum com create_type=False: no SQLAlchemy 2.0 o Enum genérico
+# ignorava esse argumento e criava o tipo mesmo assim; a 2.1 passou a respeitá-lo,
+# e instalação nova quebrava com `type "consent_document_type" does not exist`.
+consent_document_type_enum = Enum(ConsentDocumentType, name='consent_document_type', metadata=Base.metadata)
+
+
 # Source types that produce training data subject to ML consent.
 # Used by data_collector_service to map source -> required consent scope.
 ML_TRAINING_SCOPES = frozenset({
@@ -1740,7 +1748,7 @@ class ConsentDocument(Base):
     __tablename__ = 'consent_documents'
 
     id = Column(Integer, primary_key=True)
-    type = Column(Enum(ConsentDocumentType, name='consent_document_type', create_type=False),
+    type = Column(consent_document_type_enum,
                   nullable=False, index=True)
     version = Column(String(20), nullable=False)  # 'v1', 'v2', ...
     locale = Column(String(10), nullable=False, default='pt-BR')  # i18n support
@@ -1773,7 +1781,7 @@ class UserConsent(Base):
                      nullable=False, index=True)
     document_id = Column(Integer, ForeignKey('consent_documents.id', ondelete='RESTRICT'),
                          nullable=False)
-    type = Column(Enum(ConsentDocumentType, name='consent_document_type', create_type=False),
+    type = Column(consent_document_type_enum,
                   nullable=False, index=True)
     version = Column(String(20), nullable=False)
     granted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
@@ -1790,12 +1798,14 @@ class UserConsent(Base):
 
     __table_args__ = (
         # Active = (revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now()))
-        # Partial unique guarantees only one ACTIVE consent per (user, type).
-        # Note: SQLAlchemy can't express the time predicate in a unique constraint,
-        # so we enforce in application code + the partial index defined in migration.
+        # O índice único parcial garante no banco um único consentimento NÃO
+        # REVOGADO por (usuário, tipo). A expiração por data não cabe num índice
+        # e segue verificada no código. Precisa estar aqui, e não só na migration:
+        # instalação nova cria o schema pelos modelos (bootstrap_db) e ficava sem a
+        # unicidade.
         Index('ix_user_consents_user_type', 'user_id', 'type'),
-        Index('ix_user_consents_active', 'user_id', 'type',
-              postgresql_where=Column('revoked_at').is_(None)),
+        Index('ix_user_consents_active', 'user_id', 'type', unique=True,
+              postgresql_where=text('revoked_at IS NULL')),
     )
 
     @property
@@ -1815,8 +1825,10 @@ class AuditLog(Base):
     """Append-only audit log of operations on personal data (LGPD Art. 37).
 
     Inserts only. Updates and deletes are blocked by Postgres trigger
-    `audit_log_no_modify` (created in migration). Snapshot of before/after
-    state stored as JSONB for forensic review.
+    `audit_log_no_modify`, created right after the table (see the `after_create`
+    listener below this class) and, for databases that predate it, by the
+    lgpd_core migration. Snapshot of before/after state stored as JSONB for
+    forensic review.
     """
     __tablename__ = 'audit_log'
 
@@ -1855,6 +1867,27 @@ class AuditLog(Base):
     def __repr__(self):
         return f"<AuditLog {self.action} target={self.target_type}:{self.target_id} at={self.occurred_at}>"
 
+
+
+# Trigger append-only do audit_log (LGPD Art. 37). Fica atrelado ao CREATE da
+# tabela para que o create_all de uma instalação nova o crie junto; antes ele só
+# existia na migration lgpd_core, que instalações novas não executam. Bancos
+# antigos já o têm pela migration e não passam por aqui (a tabela já existe).
+event.listen(AuditLog.__table__, "after_create", DDL("""
+    CREATE OR REPLACE FUNCTION audit_log_reject_modify()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        RAISE EXCEPTION
+            'audit_log is append-only — %% operations are forbidden (LGPD Art. 37 forensic integrity)',
+            TG_OP;
+    END;
+    $$ LANGUAGE plpgsql;
+""").execute_if(dialect="postgresql"))
+event.listen(AuditLog.__table__, "after_create", DDL("""
+    CREATE TRIGGER audit_log_no_modify
+    BEFORE UPDATE OR DELETE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION audit_log_reject_modify();
+""").execute_if(dialect="postgresql"))
 
 class DatasetExportLog(Base):
     """Proof of minimization for each ML dataset export.

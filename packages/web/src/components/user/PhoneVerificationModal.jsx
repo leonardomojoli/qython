@@ -69,6 +69,8 @@ const PhoneVerificationModal = ({ isOpen, onClose, phoneNumber, onVerified }) =>
 
     // Setup invisible reCAPTCHA
     const setupRecaptcha = useCallback(() => {
+        // Verificação por SMS depende do Firebase; sem ele não há o que configurar.
+        if (!auth) throw new Error('Firebase não configurado');
         if (!window.recaptchaVerifier) {
             try {
                 window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {

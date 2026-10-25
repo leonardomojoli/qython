@@ -1,21 +1,19 @@
 fastapi
 uvicorn
-sqlalchemy
+sqlalchemy[asyncio]>=2.1  # o extra [asyncio] e obrigatorio desde a 2.1: sem ele o greenlet
+# nao vem junto e toda a camada async (asyncpg) quebra.
 asyncpg  # driver async, usado pela aplicacao
-psycopg2-binary  # driver SINCRONO, exigido pelas migrations do alembic.
-# Nenhum `import psycopg2` aparece no codigo: o SQLAlchemy carrega o driver
-# pelo esquema da URL, entao a falta so aparece em runtime, no upgrade.
+psycopg[binary]  # driver SINCRONO (psycopg 3), usado pelas migrations e pelo bootstrap_db.
+# E o padrao do SQLAlchemy 2.1 para postgresql://; o psycopg2 deixou de ser.
 pydantic[email]
 email-validator
 python-multipart
-google-genai==2.8.0
+google-genai>=2.33
 tiktoken  # Token counting for context window management
-huggingface_hub<1.0  # pin under 1.0 — transformers (transitive via presidio path) requires <1.0
 
 # Manipulação de Arquivos e Mídia
 PyMuPDF
 python-pptx
-moviepy==1.0.3
 pytesseract
 python-magic
 opencv-python
@@ -34,20 +32,23 @@ rank-bm25  # BM25 esparso (import rank_bm25) p/ recuperação híbrida — vecto
 
 # Segurança e Autenticação
 python-jose
-passlib==1.7.4
-bcrypt==4.0.1
+bcrypt>=5  # usado direto em security.py; o passlib (abandonado) quebrava com bcrypt>=4.1
 firebase-admin
-cryptography  # Fernet field-level encryption (encryption_service.py)
+cryptography>=50  # Fernet field-level encryption (encryption_service.py). O piso protege a
+# biblioteca que cifra dado de paciente: o presidio-anonymizer 2.2.364 a puxava para a 48.
 
 # Privacy / LGPD compliance
-presidio-analyzer  # PII detection (multi-country) — local, no SaaS
-presidio-anonymizer  # Inline redaction with consistent placeholders
+# Sem presidio o codigo NAO deixa de redigir PII — cai num detector por regex, mais
+# fraco. O modelo do spaCy nao vem pelo pip: python -m spacy download pt_core_news_lg
+presidio-analyzer  # PII detection (multi-country) — local, no SaaS. Na .364 ele exige
+# numpy<2.5; aceito, o detector de PII mais novo vale mais que um minor do numpy.
+presidio-anonymizer  # Inline redaction with consistent placeholders. Fica na .362:
+# a .364 exige cryptography<49, e o piso do cryptography acima vence.
 # spaCy model PT-BR must be downloaded after install:
 #   python -m spacy download pt_core_news_lg
 
 # Utilitários e Outros
 python-dotenv
-fastapi-mail
 slowapi
 aiofiles
 aiohttp  # Async HTTP client for reference validation
@@ -72,10 +73,10 @@ defusedxml
 # instaladas no venv a mao, entao o servidor rodava e qualquer clone quebrava.
 # As abaixo sao importadas no TOPO dos modulos — sem elas o boot falha.
 alembic  # CLI das migrations; o compose roda `alembic upgrade head` no start
-chromadb==1.1.0  # cliente do banco vetorial. TRAVADO junto com a imagem
-# chromadb/chroma:1.1.0 do compose: o cliente fica congelado dentro da imagem do
+chromadb==1.5.9  # cliente do banco vetorial. TRAVADO junto com a imagem
+# chromadb/chroma:1.5.9 do compose: o cliente fica congelado dentro da imagem do
 # backend, o servidor e baixado a parte, e versoes desencontradas deixam de se
-# entender. 1.1.0 e o par que rodou em producao.
+# entender. Ao subir um, suba o outro.
 firebase-admin  # verificacao do token de login
 langchain-text-splitters  # chunking dos documentos da biblioteca
 numpy
@@ -83,13 +84,6 @@ requests
 starlette  # importado direto, nao so como transitiva do fastapi
 stripe
 Werkzeug
-
-# Redacao de PII antes de toda chamada a LLM externo (LGPD). Sem presidio o
-# codigo NAO deixa de redigir — cai num detector por regex, mais fraco. Numa
-# instalacao que toque dado de paciente real, mantenha estes instalados e baixe
-# o modelo: python -m spacy download pt_core_news_lg
-presidio-analyzer
-presidio-anonymizer
 
 # Opcionais: importados dentro de funcao, entao a ausencia degrada o recurso
 # sem derrubar a aplicacao. Descomente conforme o uso.
@@ -100,4 +94,11 @@ presidio-anonymizer
 
 # Importados no codigo e ausentes daqui, encontrados subindo a stack do zero.
 fpdf2  # modulo `fpdf`, usado na geracao de PDF dos materiais
-sentence-transformers  # embeddings locais da biblioteca (puxa torch, ~2 GB)
+sentence-transformers>=6  # embeddings locais da biblioteca. O piso importa: sem ele o
+# resolvedor chegou a escolher a 2.2.2 (2022), que nem importa com o huggingface_hub atual.
+transformers>=5  # idem: sem piso o resolvedor desceu ate a 4.17.0, tambem de 2022.
+torch  # explicito para o requirements.lock fixar a build CPU (indice do PyTorch);
+# vindo do PyPI ele arrasta gigabytes de nvidia-* inuteis sem GPU.
+
+# Servidor de producao da imagem Docker (antes era instalado por fora, sem versao).
+gunicorn
