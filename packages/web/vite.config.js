@@ -92,6 +92,13 @@ export default defineConfig(({ mode }) => {
             },
         }),
     ],
+    // Uma única cópia de React no bundle. No monorepo, libs instaladas na raiz
+    // (react-router, recharts, react-pdf...) resolveriam o React da raiz, que é do
+    // mobile e pode estar noutra versão: duas cópias = "Invalid hook call". O
+    // plugin-react deixou de configurar isto sozinho a partir da v5.
+    resolve: {
+        dedupe: ['react', 'react-dom'],
+    },
     build: {
         outDir: 'build',
         // Code-splitting. O Vite 8 (Rolldown) removeu o manualChunks em forma de
