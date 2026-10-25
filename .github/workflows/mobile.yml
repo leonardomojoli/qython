@@ -101,7 +101,7 @@ jobs:
       - name: Android SDK 37 e NDK 27.1
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
-            "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1" < /dev/null
+            "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1" < /dev/null
 
       - name: Dependências (workspace inteiro)
         run: npm ci
