@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import type { ChatSource } from '../../services/copilot';
 import { useTranslation } from 'react-i18next';
 import { referenceBadgeI18nKey, referenceUrl, linkifyCitations } from '@qython/shared/src/references';
-import { API_BASE_URL } from '../../config/env';
+import { getApiBaseUrl } from '../../config/env';
 
 interface Props {
   content: string;
@@ -139,7 +139,7 @@ export default function MarkdownRenderer({ content, sources }: Props) {
     image: (node: any) => {
       const src: string = node.attributes?.src || '';
       if (!src) return null;
-      const uri = src.startsWith('http') ? src : `${API_BASE_URL.replace(/\/$/, '')}${src}`;
+      const uri = src.startsWith('http') ? src : `${getApiBaseUrl()}${src}`;
       return (
         <TouchableOpacity
           key={node.key}

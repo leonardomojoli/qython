@@ -20,14 +20,6 @@ declare module '@react-native-voice/voice' {
   export default Voice;
 }
 
-declare module 'react-native-keep-awake' {
-  const KeepAwake: {
-    activate(): void;
-    deactivate(): void;
-  };
-  export default KeepAwake;
-}
-
 declare module 'react-native-share' {
   interface ShareOptions {
     url?: string;

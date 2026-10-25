@@ -1,7 +1,13 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: "com.google.gms.google-services"
+
+// google-services.json não é versionado: quem baixa o projeto não tem o
+// Firebase do Qython. Sem ele o app compila e roda normalmente, só sem login
+// com Google e sem push.
+if (file("google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -11,12 +17,11 @@ react {
     /* Folders */
     //   The root of your project, i.e. where "package.json" lives. Default is '../..'
     // root = file("../../")
-    //   The folder where the react-native NPM package is. Default is ../../node_modules/react-native
-    // reactNativeDir = file("../../node_modules/react-native")
-    //   The folder where the react-native Codegen package is. Default is ../../node_modules/@react-native/codegen
-    // codegenDir = file("../../node_modules/@react-native/codegen")
-    //   The cli.js file which is the React Native CLI entrypoint. Default is ../../node_modules/react-native/cli.js
-    // cliFile = file("../../node_modules/react-native/cli.js")
+    //   npm workspaces: as dependências ficam no node_modules da raiz do monorepo,
+    //   não em packages/mobile/node_modules como o template assume.
+    reactNativeDir = file("../../../../node_modules/react-native")
+    codegenDir = file("../../../../node_modules/@react-native/codegen")
+    cliFile = file("../../../../node_modules/react-native/cli.js")
 
     /* Variants */
     //   The list of variants to that are debuggable. For those we're going to
@@ -45,8 +50,8 @@ react {
     // extraPackagerArgs = []
 
     /* Hermes Commands */
-    //   The hermes compiler command to run. By default it is 'hermesc'
-    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
+    //   O plugin procura o hermes-compiler dentro de `root`, que aqui não tem node_modules.
+    hermesCommand = file("../../../../node_modules/hermes-compiler/hermesc/%OS-BIN%/hermesc").absolutePath
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
     // hermesFlags = ["-O", "-output-source-map"]
@@ -73,6 +78,29 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * Assinatura de release. O keystore nunca entra no repositório: caminho e
+ * senhas vêm de variáveis de ambiente (o CI decodifica o keystore de um
+ * secret) ou de propriedades Gradle, por exemplo em ~/.gradle/gradle.properties.
+ */
+def signingValue = { String name -> System.getenv(name) ?: findProperty(name) }
+def releaseStoreFile = signingValue("QYTHON_RELEASE_STORE_FILE")
+def releaseStorePassword = signingValue("QYTHON_RELEASE_STORE_PASSWORD")
+def releaseKeyAlias = signingValue("QYTHON_RELEASE_KEY_ALIAS")
+// Keystores PKCS12 (o padrão do keytool) usam a mesma senha para a chave.
+def releaseKeyPassword = signingValue("QYTHON_RELEASE_KEY_PASSWORD") ?: releaseStorePassword
+def releaseSigningProblem = null
+def missingSigning = [
+    QYTHON_RELEASE_STORE_FILE: releaseStoreFile,
+    QYTHON_RELEASE_STORE_PASSWORD: releaseStorePassword,
+    QYTHON_RELEASE_KEY_ALIAS: releaseKeyAlias
+].findAll { !it.value }.keySet()
+if (missingSigning) {
+    releaseSigningProblem = "faltam ${missingSigning.join(', ')}"
+} else if (!file(releaseStoreFile).isFile()) {
+    releaseSigningProblem = "keystore não encontrado em ${file(releaseStoreFile)}"
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -83,8 +111,9 @@ android {
         applicationId "ai.qython.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // O CI passa a versão da tag (v1.2.3 → 1.2.3) e um versionCode crescente.
+        versionCode((findProperty("qythonVersionCode") ?: "1") as Integer)
+        versionName findProperty("qythonVersionName") ?: "1.0"
     }
     signingConfigs {
         debug {
@@ -93,18 +122,39 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (!releaseSigningProblem) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+    }
+}
+
+// Release sem keystore não pode virar um APK sem assinatura nem assinado com a
+// chave de debug (que é pública: qualquer um publicaria uma "atualização").
+// Falha antes de compilar qualquer coisa, dizendo o que falta. Builds de debug
+// não passam por aqui.
+gradle.taskGraph.whenReady { graph ->
+    if (releaseSigningProblem && graph.hasTask("${project.path}:preReleaseBuild")) {
+        throw new GradleException(
+            "Build de release sem assinatura: ${releaseSigningProblem}.\n" +
+            "Defina QYTHON_RELEASE_STORE_FILE, QYTHON_RELEASE_STORE_PASSWORD e QYTHON_RELEASE_KEY_ALIAS " +
+            "(variáveis de ambiente ou -P/gradle.properties); QYTHON_RELEASE_KEY_PASSWORD é opcional. " +
+            "Para testar sem keystore, use assembleDebug."
+        )
     }
 }
 
