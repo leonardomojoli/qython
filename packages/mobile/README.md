@@ -7,9 +7,11 @@ na tela de login.
 ## Build local
 
 As dependências ficam no `node_modules` da raiz do monorepo (npm workspaces);
-`packages/mobile/node_modules` não existe e o Gradle já aponta para a raiz.
+só o que conflita com a versão usada pelo web fica em
+`packages/mobile/node_modules`. `react-native` e o plugin Gradle precisam
+estar na raiz, e é para lá que o Gradle aponta.
 
-Requisitos: Node 22, JDK 17, Android SDK 36, NDK 27.1.12297006.
+Requisitos: Node 22, JDK 17, Android SDK 37, NDK 27.1.12297006.
 
 ```bash
 npm ci                                   # na raiz do repositório

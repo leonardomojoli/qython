@@ -593,7 +593,7 @@ export default function MeusConcursosView() {
       )}
 
       {/* ── Form criar/editar ── */}
-      <Modal visible={showForm} animationType="slide" onRequestClose={() => !saving && setShowForm(false)}>
+      <Modal visible={showForm} animationType="slide" onRequestClose={() => { if (!saving) setShowForm(false); }}>
         <View style={[styles.modalRoot, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.surfaceBorder }]}>
             <Text style={[typography.h3, { color: theme.text }]}>{editingId ? t('mcEditTitle', 'Editar concurso') : t('mcCreateTitle', 'Criar concurso')}</Text>
@@ -899,7 +899,7 @@ export default function MeusConcursosView() {
       </Modal>
 
       {/* ── Dossiê ── */}
-      <Modal visible={!!dossierModal} animationType="slide" onRequestClose={() => !dossierModal?.researching && setDossierModal(null)}>
+      <Modal visible={!!dossierModal} animationType="slide" onRequestClose={() => { if (!dossierModal?.researching) setDossierModal(null); }}>
         <View style={[styles.modalRoot, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.surfaceBorder }]}>
             <Text style={[typography.h3, { color: theme.text, flexShrink: 1 }]}>📋 {t('mcDossierTitle', 'Dossiê da prova')}</Text>

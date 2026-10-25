@@ -1,11 +1,11 @@
 buildscript {
     ext {
-        buildToolsVersion = "36.0.0"
+        buildToolsVersion = "37.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 36
+        compileSdkVersion = 37
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
-        kotlinVersion = "2.1.20"
+        kotlinVersion = "2.2.0"
     }
     repositories {
         google()
@@ -20,16 +20,3 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
-
-// @react-native-voice/voice 3.2.4 é a última versão publicada e ainda é do
-// tempo do JCenter e da support library:
-// - chama jcenter(), que o Gradle 9 removeu. Aqui vira no-op; google() e
-//   mavenCentral() já valem para todos os projetos.
-// - declara com.android.support:appcompat-v7, que colide com o AndroidX. O
-//   código dela não usa nada da support library, então a dependência sai.
-allprojects {
-    ext.jcenter = { -> null }
-    configurations.configureEach {
-        exclude group: "com.android.support"
-    }
-}
