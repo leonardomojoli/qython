@@ -194,13 +194,16 @@ def process_and_store_document(document_text: str, library_id: int, document_id:
         raise
 
 
-def query_library(query_text: str, library_id: int, n_results: int = 5) -> List[str]:
+def query_library(query_text: str, library_id: int, n_results: int = 5, with_metadata: bool = False) -> list:
     """
     Busca os chunks mais relevantes de uma biblioteca.
 
     v2 (EMBED_SERVER_URL): denso (e5/cosseno) + BM25 esparso fundidos por RRF e depois
     re-ranqueados por cross-encoder → top-n. Acerta termo/sigla médica (BM25) e semântica
     (e5) ao mesmo tempo. Legado: dense puro top-n (MiniLM), exatamente como antes.
+
+    with_metadata=True devolve pares (texto, metadados do chunk: document_id, page,
+    doc_title), para quem precisa dizer de onde o trecho veio.
     """
     collection_name = _collection_name(library_id)
     client = get_chroma_client()
@@ -221,6 +224,9 @@ def query_library(query_text: str, library_id: int, n_results: int = 5) -> List[
             results = collection.query(query_embeddings=[query_embedding], n_results=n_results)
             relevant_chunks = results.get('documents', [[]])[0]
             logger.info(f"Busca na coleção '{collection_name}' retornou {len(relevant_chunks)} chunks.")
+            if with_metadata:
+                metas = (results.get('metadatas') or [[]])[0] or [{}] * len(relevant_chunks)
+                return list(zip(relevant_chunks, metas))
             return relevant_chunks
         except Exception as e:
             logger.warning(f"Erro ao consultar a coleção '{collection_name}': {e}")
@@ -234,6 +240,7 @@ def query_library(query_text: str, library_id: int, n_results: int = 5) -> List[
         dense_ids = dense.get('ids', [[]])[0]
         dense_docs = dense.get('documents', [[]])[0]
         id_to_doc = dict(zip(dense_ids, dense_docs))
+        id_to_meta = dict(zip(dense_ids, (dense.get('metadatas') or [[]])[0] or []))
         ranked_lists = [dense_ids]
 
         if ec.RAG_HYBRID:
@@ -241,6 +248,7 @@ def query_library(query_text: str, library_id: int, n_results: int = 5) -> List[
                 allc = collection.get()
                 all_ids = allc.get('ids', []) or []
                 all_docs = allc.get('documents', []) or []
+                all_metas = allc.get('metadatas', []) or []
                 bm25_max = int(os.getenv("RAG_BM25_MAX", "8000"))
                 if all_ids and len(all_ids) <= bm25_max:
                     from rank_bm25 import BM25Okapi
@@ -252,23 +260,28 @@ def query_library(query_text: str, library_id: int, n_results: int = 5) -> List[
                         ranked_lists.append(bm25_ids)
                     for i in top_idx:
                         id_to_doc.setdefault(all_ids[i], all_docs[i])
+                        if i < len(all_metas):
+                            id_to_meta.setdefault(all_ids[i], all_metas[i])
                 elif all_ids:
                     logger.info(f"BM25 pulado: '{collection_name}' tem {len(all_ids)} > {bm25_max} chunks.")
             except Exception as e_bm:
                 logger.warning(f"BM25 falhou (seguindo só com denso): {e_bm}")
 
         fused_ids = _rrf_fuse(ranked_lists)[:retrieve_k]
-        candidate_docs = [id_to_doc[i] for i in fused_ids if i in id_to_doc]
+        candidate_ids = [i for i in fused_ids if i in id_to_doc]
+        candidate_docs = [id_to_doc[i] for i in candidate_ids]
         if not candidate_docs:
             return []
 
         order = ec.rerank(query_text, candidate_docs, n_results)
-        final = ([candidate_docs[i] for i in order[:n_results]] if order is not None
-                 else candidate_docs[:n_results])
+        picked = order[:n_results] if order is not None else range(min(n_results, len(candidate_docs)))
+        final = [candidate_docs[i] for i in picked]
         logger.info(
             f"Busca v2 em '{collection_name}': {len(final)} chunks "
             f"(dense={len(dense_ids)}, fused={len(fused_ids)}, rerank={'on' if order is not None else 'off'})."
         )
+        if with_metadata:
+            return [(candidate_docs[i], id_to_meta.get(candidate_ids[i]) or {}) for i in picked]
         return final
     except Exception as e:
         logger.warning(f"Erro na busca v2 da coleção '{collection_name}': {e}", exc_info=True)
