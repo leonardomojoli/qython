@@ -16,8 +16,9 @@ import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { createDocument, downloadAndSharePdf } from '../../services/ambulatory';
 import PatientPickerModal from '../../components/ambulatory/PatientPickerModal';
+import Icd10Picker from '../../components/ambulatory/Icd10Picker';
 import GradientButton from '../../components/shared/GradientButton';
-import type { Patient, DocumentType } from '../../types/ambulatory';
+import type { Patient, DocumentType, Icd10Code } from '../../types/ambulatory';
 
 type DocumentSubType = 'sick_leave' | 'attendance' | 'fitness';
 
@@ -30,8 +31,8 @@ export default function DocumentsTab() {
   const [patientPickerVisible, setPatientPickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Sick leave fields
-  const [cid, setCid] = useState('');
+  // Sick leave fields. O CID vem da tabela oficial; o atestado leva só os códigos.
+  const [cidCodes, setCidCodes] = useState<Icd10Code[]>([]);
   const [days, setDays] = useState('');
   const [startDate, setStartDate] = useState('');
   const [description, setDescription] = useState('');
@@ -47,7 +48,7 @@ export default function DocumentsTab() {
 
   const resetForm = () => {
     setSelectedPatient(null);
-    setCid('');
+    setCidCodes([]);
     setDays('');
     setStartDate('');
     setDescription('');
@@ -62,7 +63,7 @@ export default function DocumentsTab() {
     switch (documentType) {
       case 'sick_leave':
         return {
-          ...(cid ? { cid } : {}),
+          ...(cidCodes.length ? { cid: cidCodes.map(item => item.code).join(', ') } : {}),
           days,
           ...(startDate ? { start_date: startDate } : {}),
           ...(description ? { description } : {}),
@@ -187,16 +188,7 @@ export default function DocumentsTab() {
             <Text style={[styles.label, { color: theme.textMuted }]}>
               {t('cidCode', 'CID-10')}
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, backgroundColor: theme.surface, borderColor: theme.surfaceBorder },
-              ]}
-              value={cid}
-              onChangeText={setCid}
-              placeholder="Ex: J06.9"
-              placeholderTextColor={theme.textMuted}
-            />
+            <Icd10Picker selected={cidCodes} onChange={setCidCodes} />
 
             <Text style={[styles.label, { color: theme.textMuted }]}>
               {t('daysOff', 'Dias de Afastamento')} *

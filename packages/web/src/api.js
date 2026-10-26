@@ -1197,6 +1197,17 @@ export const getDocumentPdf = async (documentId) => {
   }
 };
 
+// --- CID-10 (tabela oficial do DATASUS) ---
+
+export const searchIcd10 = async (params = {}) => {
+  try {
+    const response = await api.get('/icd10/search', { params });
+    return response.data;
+  } catch (error) {
+    handleError(error, 'buscar CID-10');
+  }
+};
+
 // --- Exam Orders API ---
 
 export const getExamOrders = async (patientId = null) => {
