@@ -1,0 +1,27 @@
+// Build próprio do Android da @react-native-voice/voice (ver settings.gradle).
+// O publicado chama jcenter(), declara a appcompat da antiga support library
+// (que colide com o AndroidX) e usa proguard-android.txt; Gradle 9 e AGP 9
+// recusam os três. As fontes Java continuam vindo do pacote no node_modules.
+apply plugin: "com.android.library"
+
+def voiceAndroidDir = gradle.ext.reactNativeVoiceDir
+
+android {
+    namespace "com.wenkesj.voice"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdkVersion
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = [new File(voiceAndroidDir, "src/main/java")]
+        }
+    }
+}
+
+dependencies {
+    // Versão definida pelo plugin Gradle do React Native, como nas outras libs.
+    implementation "com.facebook.react:react-android"
+}

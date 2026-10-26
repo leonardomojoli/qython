@@ -1,97 +1,117 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Qython Mobile
 
-# Getting Started
+App React Native 0.84 (bare, New Architecture) que conversa com o servidor
+Qython do próprio usuário. Não existe servidor central: o endereço é informado
+na tela de login.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Build local
 
-## Step 1: Start Metro
+As dependências ficam no `node_modules` da raiz do monorepo (npm workspaces);
+só o que conflita com a versão usada pelo web fica em
+`packages/mobile/node_modules`. `react-native` e o plugin Gradle precisam
+estar na raiz, e é para lá que o Gradle aponta.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+Requisitos: Node 22, JDK 17, Android SDK 37, NDK 27.1.12297006.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```bash
+npm ci                                   # na raiz do repositório
+cd packages/mobile/android
+./gradlew assembleDebug                  # APK de debug, JS servido pelo Metro
 ```
 
-## Step 2: Build and run your app
+Para rodar com Metro: `npm run start --workspace=packages/mobile` e, em outro
+terminal, `npm run android --workspace=packages/mobile`.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## Servidor
 
-### Android
+Na tela de login, o campo **Servidor** recebe o endereço do backend, por
+exemplo `http://192.168.0.10:8080` (sem esquema, assume `http://`). **Testar
+conexão** faz `GET <servidor>/api/health` e espera `{"status":"ok"}`. O valor
+fica salvo no aparelho (MMKV); trocar de servidor encerra a sessão.
 
-```sh
-# Using npm
-npm run android
+Builds de debug começam apontando para `http://10.0.2.2:8000` (o host visto do
+emulador). O release aceita HTTP porque o servidor costuma estar na rede local
+sem TLS; também aceita certificados instalados pelo usuário, para quem servir
+HTTPS com uma CA própria.
 
-# OR using Yarn
-yarn android
+## Firebase (opcional)
+
+Login com Google e push dependem do Firebase, que não vem no repositório. Sem
+os arquivos abaixo o app compila e funciona normalmente; o botão do Google
+some e o app não pede permissão de notificação.
+
+- Android: `android/app/google-services.json`
+- iOS: `ios/QythonMobile/GoogleService-Info.plist`
+
+Ambos estão no `.gitignore`.
+
+## Release assinado
+
+O release nunca usa a chave de debug (`android/app/debug.keystore` é pública).
+Sem keystore, `assembleRelease` falha antes de compilar, dizendo o que falta.
+
+### A chave oficial
+
+O keystore de release é a identidade permanente do app. O Android só instala
+uma atualização por cima da versão anterior se as duas tiverem sido assinadas
+com a mesma chave. Se o arquivo ou a senha se perderem, nenhuma versão futura
+instala por cima das que já foram distribuídas: quem usa o app teria de
+desinstalá-lo (perdendo os dados locais) e instalar de novo. Gere a chave uma
+vez só, faça backup e nunca a coloque no repositório.
+
+Gerar (o `keytool` pede a senha no terminal; em PKCS12 a senha da chave é a
+mesma do keystore):
+
+```bash
+keytool -genkeypair -v -keystore qython-release.keystore -storetype PKCS12 -alias qython -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Qython"
 ```
 
-### iOS
+Backup: copie `qython-release.keystore` para fora do repositório (um pendrive
+guardado e/ou um gerenciador de senhas que aceite anexos) e guarde a senha no
+gerenciador de senhas. Confira que o backup abre:
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+keytool -list -keystore qython-release.keystore
 ```
 
-Then, and every time you update your native dependencies, run:
+Cadastrar no GitHub. Cada `gh secret set` sem `--body` lê o valor do
+terminal, então a senha não fica no histórico do shell:
 
-```sh
-bundle exec pod install
+```bash
+base64 -w0 qython-release.keystore | gh secret set ANDROID_KEYSTORE_BASE64 --repo leonardomojoli/qython
+gh secret set ANDROID_KEYSTORE_PASSWORD --repo leonardomojoli/qython
+gh secret set ANDROID_KEY_ALIAS --repo leonardomojoli/qython --body qython
+gh secret set ANDROID_KEY_PASSWORD --repo leonardomojoli/qython
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+`ANDROID_KEY_PASSWORD` recebe a mesma senha do keystore. Depois de conferir o
+backup, apague a cópia local que não for o backup.
 
-```sh
-# Using npm
-npm run ios
+Build local assinado (variáveis de ambiente ou `~/.gradle/gradle.properties`):
 
-# OR using Yarn
-yarn ios
+| Variável | Conteúdo |
+|---|---|
+| `QYTHON_RELEASE_STORE_FILE` | caminho do keystore |
+| `QYTHON_RELEASE_STORE_PASSWORD` | senha do keystore |
+| `QYTHON_RELEASE_KEY_ALIAS` | alias da chave (`qython` no comando acima) |
+| `QYTHON_RELEASE_KEY_PASSWORD` | opcional; padrão = senha do keystore |
+
+```bash
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+### No GitHub Actions
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+O workflow `.github/workflows/mobile.yml` roda em tags `v*`, à mão (**Actions →
+Mobile → Run workflow**) e em pull requests que mexem no mobile:
 
-## Step 3: Modify your app
+- **Tag `v*`:** assina com a chave oficial, que vem dos secrets acima. Sem
+  eles, falha dizendo quais faltam. O APK sai como artifact e é anexado à
+  release da tag quando ela existir.
+- **Manual e pull request:** assina com uma chave descartável gerada no
+  próprio job. O APK (`qython-dev-<commit>-verificacao-NAO-OFICIAL.apk`) só
+  prova que o app compila e empacota. Não é uma versão oficial e não instala
+  por cima de uma, porque a assinatura é outra.
 
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+O resumo de cada execução mostra pacote, versão e SHA-256 do certificado e do
+APK, para quem baixa conferir se o arquivo é o oficial.

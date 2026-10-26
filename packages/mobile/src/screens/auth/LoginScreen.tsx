@@ -19,6 +19,14 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { loginWithEmail, loginWithGoogle } from '../../services/auth';
+import { isGoogleSignInAvailable } from '../../services/firebase';
+import {
+  checkServerHealth,
+  getServerUrl,
+  normalizeServerUrl,
+  setServerUrl,
+  type ServerHealth,
+} from '../../config/env';
 import { useButtonPress } from '../../hooks/useButtonPress';
 import type { AuthScreenProps } from '../../navigation/types';
 
@@ -36,6 +44,9 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [server, setServer] = useState(getServerUrl);
+  const [serverStatus, setServerStatus] = useState<ServerHealth | 'testing' | null>(null);
+  const googleAvailable = isGoogleSignInAvailable();
 
   // Fade-in + slide-up entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,19 +62,43 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
   const loginPress = useButtonPress();
   const googlePress = useButtonPress();
 
+  // Saved as soon as the field is left, so Register/ForgotPassword (which use
+  // the same api instance) already talk to the server typed here.
+  const commitServer = () => {
+    const url = setServerUrl(server);
+    setServer(url);
+    return url;
+  };
+
+  const handleTestServer = async () => {
+    if (!normalizeServerUrl(server)) {
+      Alert.alert('', t('serverRequired', 'Informe o endereço do servidor Qython.'));
+      return;
+    }
+    const url = commitServer();
+    setServerStatus('testing');
+    setServerStatus(await checkServerHealth(url));
+  };
+
   const handleLogin = async () => {
+    if (!normalizeServerUrl(server)) {
+      Alert.alert('', t('serverRequired', 'Informe o endereço do servidor Qython.'));
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       Alert.alert('', t('fillEmailAndPassword', 'Preencha email e senha.'));
       return;
     }
 
+    commitServer();
     setLoading(true);
     try {
       await loginWithEmail(email.trim(), password);
       onLoginSuccess();
     } catch (error: any) {
-      const message =
-        error.response?.data?.detail || t('loginError', 'Erro ao fazer login. Tente novamente.');
+      const message = !error.response
+        ? t('serverConnectionError', 'Erro de conexão com o servidor. Tente novamente mais tarde.')
+        : error.response.data?.detail || t('loginError', 'Erro ao fazer login. Tente novamente.');
       Alert.alert('', message);
     } finally {
       setLoading(false);
@@ -89,15 +124,24 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
 
   const isLoading = loading || googleLoading;
 
+  const serverStatusText =
+    serverStatus === 'ok'
+      ? t('serverOk', 'Conectado ao Qython')
+      : serverStatus === 'unreachable'
+        ? t('serverUnreachable', 'Servidor não respondeu. Confira o endereço e se o celular está na mesma rede.')
+        : serverStatus === 'not-qython'
+          ? t('serverNotQython', 'Algo respondeu nesse endereço, mas não é um servidor Qython.')
+          : null;
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Animated.View
-        style={[
-          styles.content,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-        ]}>
+      {/* Scrolls once the form outgrows the screen (small phones, keyboard open) */}
+      <Animated.ScrollView
+        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
         {/* Brand */}
         <View style={styles.logoContainer}>
           <Image source={qythonLogo} style={styles.logoImage} resizeMode="contain" />
@@ -108,6 +152,58 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
 
         {/* Form */}
         <View style={styles.form}>
+          {/* Server — there is no central Qython server; each install points at its own */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              {t('serverLabel', 'Servidor')}
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.surfaceBorder,
+                  color: theme.text,
+                },
+              ]}
+              value={server}
+              onChangeText={(text) => {
+                setServer(text);
+                setServerStatus(null);
+              }}
+              onEndEditing={commitServer}
+              placeholder={t('serverPlaceholder', 'http://192.168.0.10:8080')}
+              placeholderTextColor={theme.textMuted}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+            <View style={styles.serverStatusRow}>
+              <View style={styles.serverStatusText}>
+                {serverStatus === 'testing' ? (
+                  <ActivityIndicator size="small" color={theme.textMuted} />
+                ) : serverStatusText ? (
+                  <Text
+                    style={[
+                      styles.serverStatusMessage,
+                      { color: serverStatus === 'ok' ? theme.success : theme.error },
+                    ]}>
+                    {serverStatusText}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={handleTestServer}
+                disabled={isLoading || serverStatus === 'testing'}
+                hitSlop={8}>
+                <Text style={[styles.linkAction, { color: theme.primary }]}>
+                  {t('testConnection', 'Testar conexão')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.textSecondary }]}>
               {t('emailOrUsername', 'Email')}
@@ -206,49 +302,54 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
             </Pressable>
           </Animated.View>
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: theme.surfaceBorder }]} />
-            <Text style={[styles.dividerText, { color: theme.textMuted }]}>
-              {t('or', 'ou')}
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: theme.surfaceBorder }]} />
-          </View>
+          {/* Google Sign-In needs Firebase, which builds from source don't have */}
+          {googleAvailable && (
+            <>
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={[styles.dividerLine, { backgroundColor: theme.surfaceBorder }]} />
+                <Text style={[styles.dividerText, { color: theme.textMuted }]}>
+                  {t('or', 'ou')}
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: theme.surfaceBorder }]} />
+              </View>
 
-          {/* Google Sign-In */}
-          <Animated.View
-            style={{
-              transform: [
-                { scale: googlePress.scale },
-                {
-                  translateY: googlePress.translateY.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 2],
-                  }),
-                },
-              ],
-            }}>
-            <Pressable
-              onPressIn={googlePress.onPressIn}
-              onPressOut={googlePress.onPressOut}
-              onPress={handleGoogleLogin}
-              disabled={isLoading}
-              style={[
-                styles.googleButton,
-                { borderColor: theme.surfaceBorder, backgroundColor: theme.surface },
-              ]}>
-              {googleLoading ? (
-                <ActivityIndicator color={theme.text} />
-              ) : (
-                <>
-                  <Text style={styles.googleLogo}>G</Text>
-                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
-                    {t('loginWithGoogle', 'Entrar com Google')}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </Animated.View>
+              {/* Google Sign-In */}
+              <Animated.View
+                style={{
+                  transform: [
+                    { scale: googlePress.scale },
+                    {
+                      translateY: googlePress.translateY.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 2],
+                      }),
+                    },
+                  ],
+                }}>
+                <Pressable
+                  onPressIn={googlePress.onPressIn}
+                  onPressOut={googlePress.onPressOut}
+                  onPress={handleGoogleLogin}
+                  disabled={isLoading}
+                  style={[
+                    styles.googleButton,
+                    { borderColor: theme.surfaceBorder, backgroundColor: theme.surface },
+                  ]}>
+                  {googleLoading ? (
+                    <ActivityIndicator color={theme.text} />
+                  ) : (
+                    <>
+                      <Text style={styles.googleLogo}>G</Text>
+                      <Text style={[styles.googleButtonText, { color: theme.text }]}>
+                        {t('loginWithGoogle', 'Entrar com Google')}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </Animated.View>
+            </>
+          )}
 
           {/* Forgot Password Link */}
           <Pressable
@@ -279,7 +380,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
             qython.ai
           </Text>
         </View>
-      </Animated.View>
+      </Animated.ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -289,9 +390,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    // Room for the absolute footer once the form is taller than the screen.
+    paddingVertical: spacing.xxl,
   },
   logoContainer: {
     alignItems: 'center',
@@ -324,6 +427,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
     minHeight: 52,
+  },
+  serverStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  serverStatusText: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  serverStatusMessage: {
+    ...typography.caption,
   },
   passwordContainer: {
     position: 'relative',

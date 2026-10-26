@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
-import { API_BASE_URL } from '../../config/env';
+import { getApiBaseUrl } from '../../config/env';
 import { getAuthToken } from '../../services/auth';
 
 export interface LatreoResult {
@@ -79,7 +79,7 @@ export default function LatreoVerificationModal({ visible, onClose, onVerified, 
         const token = await getAuthToken();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers.Authorization = `Bearer ${token}`;
-        const resp = await fetch(`${API_BASE_URL}/verification/lastreo/session`, {
+        const resp = await fetch(`${getApiBaseUrl()}/verification/lastreo/session`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ locale: locale || null, kind }),

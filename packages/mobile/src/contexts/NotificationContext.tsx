@@ -3,7 +3,7 @@ import api from '../services/api';
 import { getAuthToken } from '../services/auth';
 import { setForegroundHandler } from '../services/notifications';
 import ToastOverlay from '../components/common/NotificationToast';
-import { WS_BASE_URL } from '../config/env';
+import { getWsBaseUrl } from '../config/env';
 
 const WS_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 30000];
 const WS_PING_INTERVAL = 30000;
@@ -82,7 +82,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     cleanupWs();
 
-    const url = `${WS_BASE_URL}/api/notifications/ws?token=${token}`;
+    const url = `${getWsBaseUrl()}/api/notifications/ws?token=${token}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 

@@ -77,3 +77,4 @@ yarn-error.log
 # Firebase
 **/GoogleService-Info.plist
 !**/GoogleService-Info.plist.example
+**/google-services.json
