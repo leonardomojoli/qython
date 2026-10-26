@@ -203,12 +203,12 @@ async def _run_simulado_generation_task(job_id: int, exam: ArenaExam, user_id: i
             try:
                 import json
                 questions = quiz_data.get("questionario_objetivo", [])
-                input_summary = f"Exam: {exam.title}\nSpecialty: {exam.specialty}\nQuestions: {len(questions)}"
+                input_summary = f"Exam: {exam.exam_code}\nQuestions: {len(questions)}"
                 output_summary = json.dumps(questions[:3], ensure_ascii=False)[:5000]  # Sample for training
                 job.training_data_id = await collect_data(
                     db, user_id, "simulado_generation",
                     input_summary, output_summary,
-                    {"exam_title": exam.title, "specialty": exam.specialty, "num_questions": len(questions)},
+                    {"exam_code": exam.exam_code, "num_questions": len(questions)},
                     quality=0
                 )
                 await db.commit()
