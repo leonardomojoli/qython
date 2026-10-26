@@ -1,5 +1,7 @@
 # tests/backend/test_icd10_candidates.py
-"""Tests for ICD-10 coding from the official table (backend/services/icd10_search.py).
+"""Tests for ICD-10 from the official table (backend/services/icd10_search.py): the
+candidate search behind consultation coding, and the autocomplete behind
+/api/icd10/search and /api/icd10/popular.
 
 Run directly (no pytest harness in this repo):
     python3 tests/backend/test_icd10_candidates.py
@@ -12,6 +14,8 @@ With ICD10_TEST_DATABASE_URL set (Postgres, e.g. postgresql://qython@127.0.0.1/q
 seeds the table into a throwaway schema (qython_test_icd10, dropped at the end; the
 database's own tables are not touched) and checks that the candidate search brings
 the right code for classic cases: inferior MI -> I21.1, HAS -> I10, DM2 -> E11.9.
+It also checks the autocomplete ordering ("hipertensao" -> I10 first, "infarto
+infer" -> I21.1 first) and that the common codes come with official descriptions.
 
 With LLM_BASE_URL set too (a llama-server, see test_llm_provider_live.py), runs the
 real selection and checks the model only returns table codes and gets the classic
@@ -20,6 +24,7 @@ cases right.
 import asyncio
 import json
 import os
+import re
 import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
@@ -204,6 +209,29 @@ def test_datasus_file_parsing():
     assert by_code["I21.1"]["search_description"] == "infarto agudo transmural da parede inferior do miocardio"
 
 
+SPECIALTIES_JS = os.path.join(os.path.dirname(__file__), '..', '..', 'packages', 'shared', 'src',
+                              'ambulatory', 'specialties.js')
+
+
+def test_popular_codes_exist_with_official_rows():
+    by_code = {r["code"]: r for r in load_icd10_rows()}
+    for code in [c for codes in s.POPULAR_CODES.values() for c in codes] + s.GENERAL_POPULAR_CODES:
+        assert code in by_code, code
+        assert by_code[code]["classification"] != "*", code
+    # A lista antiga chamava o M79.3 (paniculite) de fibromialgia.
+    assert "M79.7" in s.POPULAR_CODES["Reumatologia"] and by_code["M79.7"]["description"] == "Fibromialgia"
+    assert "M79.3" not in s.POPULAR_CODES["Reumatologia"]
+
+
+def test_popular_specialties_use_the_shared_names():
+    names = set(re.findall(r"^\s*'([^']+)',", open(SPECIALTIES_JS, encoding="utf-8").read(), re.M))
+    assert "Cardiologia" in names and "Ginecologia e Obstetrícia" in names, names
+    assert set(s.POPULAR_CODES) <= names, set(s.POPULAR_CODES) - names
+    assert s.popular_codes_for("endocrinologia") == s.POPULAR_CODES["Endocrinologia e Metabologia"]
+    assert s.popular_codes_for("GINECOLOGIA E OBSTETRICIA") == s.POPULAR_CODES["Ginecologia e Obstetrícia"]
+    assert s.popular_codes_for("Anestesiologia") == [] and s.popular_codes_for(None) == []
+
+
 CANDIDATES = [
     {"code": "I21.0", "description": "Infarto agudo transmural da parede anterior do miocárdio",
      "category": "I21", "category_description": "Infarto agudo do miocárdio"},
@@ -308,6 +336,50 @@ async def _check_candidates(db):
     assert not failures, failures
 
 
+# (o que se digita, especialidade, o primeiro resultado (None: qualquer um), códigos
+# que precisam aparecer)
+AUTOCOMPLETE = [
+    ("I21", None, "I21.0", ["I21.1", "I21.9"]),
+    ("i21.1", None, "I21.1", []),
+    ("e119", None, "E11.9", []),
+    ("hipertensão", None, "I10", ["I15.0"]),
+    ("hipert", None, "I10", []),
+    ("infarto infer", None, "I21.1", ["I22.1"]),
+    ("infarto", "Cardiologia", "I21.9", ["I21.4", "I21.0"]),
+    ("HAS", None, "I10", []),
+    ("dm2", None, "E11.9", ["E11.0"]),
+    ("diabetes tipo 2", None, "E11.9", []),
+    ("fibromialgia", None, "M79.7", []),
+    ("pneumonia", None, "J18.9", ["J18.0"]),
+    ("doenca de chagas", None, None, ["B57.2"]),
+]
+
+
+async def _check_autocomplete(db):
+    from sqlalchemy import text
+    asterisk = {r[0] for r in (await db.execute(text(
+        "SELECT code FROM icd10_codes WHERE classification = '*'"))).all()}
+    failures = []
+    for query, specialty, first, expected in AUTOCOMPLETE:
+        rows = await s.autocomplete(db, query, specialty, 10)
+        codes = [r["code"] for r in rows]
+        assert len(codes) <= 10 and not asterisk & set(codes), (query, codes)
+        assert all(set(r) == {"code", "description"} for r in rows), rows
+        ok = (first is None or (codes and codes[0] == first)) and all(c in codes for c in expected)
+        print(f"      {'ok ' if ok else 'ERRO'} {query!r}: {codes[:5]}")
+        if not ok:
+            failures.append((query, first, expected, codes))
+    assert not failures, failures
+    assert await s.autocomplete(db, "zz") == [] and await s.autocomplete(db, "de") == []
+
+    general = await s.popular(db)
+    assert [r["code"] for r in general] == s.GENERAL_POPULAR_CODES, general
+    rheuma = await s.popular(db, "Reumatologia")
+    assert {"code": "M79.7", "description": "Fibromialgia", "specialty": "Reumatologia"} in rheuma, rheuma
+    assert [r["code"] for r in await s.popular(db, "cardiologia", 3)] == ["I10", "I11.9", "I20.9"]
+    assert await s.popular(db, "Anestesiologia") == []
+
+
 async def _check_live_selection(db):
     from google.genai import types
 
@@ -337,6 +409,10 @@ async def _check_live_selection(db):
 
 def test_db_candidates_contain_expected_codes():
     asyncio.run(_with_seeded_db(_check_candidates))
+
+
+def test_db_autocomplete_and_popular():
+    asyncio.run(_with_seeded_db(_check_autocomplete))
 
 
 def test_live_selection_returns_table_codes():
