@@ -3,10 +3,10 @@
 import enum
 from datetime import datetime, timezone
 from sqlalchemy import (
-    BigInteger, Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary,
+    BigInteger, Boolean, Column, Computed, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary,
     String, Text, UniqueConstraint, JSON, Table, Index, DDL, event, text
 )
-from sqlalchemy.dialects.postgresql import INET, JSONB
+from sqlalchemy.dialects.postgresql import INET, JSONB, TSVECTOR
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 from .db_base import Base
@@ -1279,6 +1279,42 @@ class ServerMetrics(Base):
 
     def __repr__(self):
         return f"<ServerMetrics CPU:{self.cpu_percent}% RAM:{self.memory_percent}%>"
+
+
+# =============================================================================
+# CID-10
+# =============================================================================
+
+class Icd10Code(Base):
+    """Código da CID-10 que pode ser usado para codificar diagnóstico: subcategoria
+    (I21.1) ou categoria sem subdivisão (I10). Tabela oficial em português do
+    DATASUS/CBCD, semeada por seeds/seed_icd10.py. A extração de CID-10 das consultas
+    só sugere códigos desta tabela, com a descrição dela."""
+    __tablename__ = 'icd10_codes'
+
+    code = Column(String(6), primary_key=True)  # com ponto: "I21.1", "I10"
+    description = Column(Text, nullable=False)  # descrição oficial
+    category = Column(String(3), nullable=False, index=True)  # "I21"
+    category_description = Column(Text, nullable=False)
+    classification = Column(String(1), nullable=True)  # '+' etiologia, '*' manifestação (cruz/asterisco)
+    sex_restriction = Column(String(1), nullable=True)  # 'F' | 'M'
+    # Descrição e categoria sem acento e em minúsculas (services/icd10_search.normalize).
+    # As notas do médico chegam muitas vezes sem acento, e o stemmer do português
+    # trata "hipertensão" e "hipertensao" como palavras diferentes.
+    search_description = Column(Text, nullable=False)
+    search_category = Column(Text, nullable=False)
+    search_vector = Column(TSVECTOR, Computed(
+        "setweight(to_tsvector('portuguese'::regconfig, search_description), 'A') || "
+        "setweight(to_tsvector('portuguese'::regconfig, search_category), 'B')",
+        persisted=True,
+    ))
+
+    __table_args__ = (
+        Index('ix_icd10_codes_search_vector', 'search_vector', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<Icd10Code {self.code}>"
 
 
 # =============================================================================
