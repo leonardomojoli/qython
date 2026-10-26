@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpload, faMagicWandSparkles, faClockRotateLeft, faCamera, faSpinner, faCrown } from '@fortawesome/free-solid-svg-icons';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import UpgradeModal from '../shared/UpgradeModal';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 const AvatarGeneratorModal = ({
   isOpen,
@@ -26,6 +27,9 @@ const AvatarGeneratorModal = ({
   refreshUser // Para atualizar após upload
 }) => {
   const { t } = useTranslation();
+  // Gerar imagem só existe no Gemini; com IA local e sem chave, fica o upload de foto.
+  const { config } = usePublicConfig();
+  const canGenerate = !config?.ai || config.ai.image_generation;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('upload');
   const [isUploading, setIsUploading] = useState(false);
@@ -222,7 +226,9 @@ const AvatarGeneratorModal = ({
           {activeTab === 'generate' && (
             <div className={styles.generateContainer}>
               <p className={styles.generateHint}>
-                {t('aiAvatarHint') || 'Descreva o avatar que você deseja criar com IA'}
+                {canGenerate
+                  ? (t('aiAvatarHint') || 'Descreva o avatar que você deseja criar com IA')
+                  : t('needsGeminiImage', 'Gerar imagens exige uma chave do Gemini. Você ainda pode enviar uma foto.')}
               </p>
               <div className={styles.promptRow}>
                 <input
@@ -231,12 +237,12 @@ const AvatarGeneratorModal = ({
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={t('enterPromptToGenerateAvatar') || 'Ex: médico futurista em estilo cyberpunk'}
                   className={styles.promptInput}
-                  disabled={isGenerating}
+                  disabled={isGenerating || !canGenerate}
                 />
                 <button
                   onClick={handleGenerateAvatar}
                   className={styles.generateButton}
-                  disabled={isGenerating || !prompt.trim()}
+                  disabled={isGenerating || !prompt.trim() || !canGenerate}
                 >
                   {isGenerating ? (
                     <FontAwesomeIcon icon={faSpinner} spin />

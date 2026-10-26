@@ -5,11 +5,12 @@ import { faSearch, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons'
 import { useTranslation } from 'react-i18next';
 import styles from './ICD10Autocomplete.module.css';
 
-import { API_URL as API_BASE_URL } from '../../config';
+import { searchIcd10 } from '../../api';
 
 /**
  * ICD10Autocomplete - Search and select ICD-10 codes with auto-complete
- * Supports multiple selection with chips display
+ * Supports multiple selection with chips display. Codes and descriptions come
+ * from the official table (/api/icd10/search).
  */
 function ICD10Autocomplete({
     selectedCodes = [],
@@ -39,26 +40,16 @@ function ICD10Autocomplete({
 
         setIsLoading(true);
         try {
-            const params = new URLSearchParams({
+            const data = await searchIcd10({
                 q: searchQuery,
-                limit: '10',
+                limit: 10,
                 ...(specialty && { specialty })
             });
-
-            const response = await fetch(`${API_BASE_URL}/icd10/search?${params}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                // Filter out already selected codes
-                const filtered = data.filter(
-                    item => !selectedCodes.some(s => s.code === item.code)
-                );
-                setResults(filtered);
-            }
+            // Filter out already selected codes
+            const filtered = (data || []).filter(
+                item => !selectedCodes.some(s => s.code === item.code)
+            );
+            setResults(filtered);
         } catch (error) {
             console.error('ICD-10 search error:', error);
             setResults([]);

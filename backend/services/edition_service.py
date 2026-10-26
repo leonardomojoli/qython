@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import Config
 from ..models import User
-from . import firebase_service
+from . import firebase_service, llm_provider
 from .system_settings_service import SystemSettingsService
 
 
@@ -61,4 +61,7 @@ async def public_config(db: AsyncSession) -> dict:
         },
         "google_login": firebase_service.is_firebase_configured(),
         "password_reset_by_email": email_verification_required(),
+        # Provedor de IA e o que ele faz (busca na web, imagem, áudio): o front avisa
+        # nos recursos que dependem do Gemini quando a IA de texto é local.
+        "ai": llm_provider.capabilities(),
     }

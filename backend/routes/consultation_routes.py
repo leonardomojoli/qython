@@ -693,9 +693,9 @@ async def extract_icd10(
 
         language_code = current_user.language_preference or 'pt-BR'
 
-        # Executa a extração em thread separada
-        suggested_codes = await run_in_threadpool(
-            extract_icd10_from_notes,
+        # Busca os candidatos na tabela da CID-10 e roda o modelo fora do event loop
+        suggested_codes = await extract_icd10_from_notes(
+            db,
             payload.clinical_notes,
             payload.specialty,
             language_code

@@ -23,22 +23,18 @@ import logging
 import os
 import json
 from typing import Tuple, Optional, Dict, Any
-from google import genai
 from google.genai import types
 from ..config import Config
-from ..middleware.pii_redaction import redact_for_llm
 
 logger = logging.getLogger("qython_logger")
 
 # Usar modelo rápido para critique (custo-efetivo)
 CRITIQUE_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL", "gemini-2.5-flash-lite")
 
-# Timeout para chamadas de critique
-CRITIQUE_TIMEOUT = 30.0  # segundos
-
-# Cliente para self-critique
-http_options = types.HttpOptions(client_args={'timeout': CRITIQUE_TIMEOUT})
-critique_client = genai.Client(api_key=Config.GEMINI_API_KEY, http_options=http_options)
+# O mesmo cliente de texto do resto do backend (Gemini ou IA local, ver llm_provider),
+# fora do event loop e com redação de PII. Antes era um genai.Client próprio, nascido
+# na importação.
+from .llm_services import _generate_off_loop  # noqa: E402
 
 # === CONSTITUTIONAL PRINCIPLES ===
 MEDICAL_CONSTITUTION = """
@@ -163,10 +159,10 @@ async def critique_response(
         )
 
         # A resposta avaliada é o texto da consulta, com dados do paciente: passa pela
-        # mesma redação das demais chamadas ao LLM externo (llm_services).
-        result = critique_client.models.generate_content(
+        # mesma redação das demais chamadas ao LLM (feita dentro de _generate_off_loop).
+        result = await _generate_off_loop(
             model=CRITIQUE_MODEL,
-            contents=redact_for_llm(prompt, preserve_tokens=False)[0],
+            contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,  # Baixa temperatura para consistência
                 max_output_tokens=2048
@@ -249,10 +245,10 @@ async def refine_response(
         )
 
         # A resposta avaliada é o texto da consulta, com dados do paciente: passa pela
-        # mesma redação das demais chamadas ao LLM externo (llm_services).
-        result = critique_client.models.generate_content(
+        # mesma redação das demais chamadas ao LLM (feita dentro de _generate_off_loop).
+        result = await _generate_off_loop(
             model=CRITIQUE_MODEL,
-            contents=redact_for_llm(prompt, preserve_tokens=False)[0],
+            contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3,
                 max_output_tokens=16384

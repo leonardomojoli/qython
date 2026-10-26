@@ -1,0 +1,7 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — Prova de Residências Médicas (Uruguai)
+Texto original do Qython, sem questões reais. Formato aproximado: confira o edital vigente.
+
+- Questões de múltipla escolha de resposta única, em espanhol do Uruguai.
+- Casos clínicos e perguntas diretas das grandes áreas (Medicina Interna, Cirurgia, Pediatria, Ginecologia e Obstetrícia) e de medicina familiar e comunitária.
+- Condutas seguem as normas do Ministério de Salud Pública do Uruguai quando houver.

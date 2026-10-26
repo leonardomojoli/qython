@@ -1,0 +1,7 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — MCCQE Part I (Medical Council of Canada)
+Texto original do Qython, sem questões reais. Formato aproximado: confira as orientações oficiais vigentes.
+
+- Avalia o conhecimento e a tomada de decisão clínica esperados de quem começa a residência no Canadá, em inglês (a prova também existe em francês).
+- Aqui o formato é de resposta única entre 5 alternativas; a prova real também tem questões de decisão clínica com resposta curta.
+- Casos de todas as grandes áreas, com ênfase em conduta inicial, priorização, segurança do paciente, ética, aspectos legais e saúde da população no contexto canadense.

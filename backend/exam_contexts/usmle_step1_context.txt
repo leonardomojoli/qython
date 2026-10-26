@@ -1,0 +1,9 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — USMLE Step 1 (Estados Unidos)
+Texto original do Qython, sem questões reais. Formato aproximado: confira as orientações oficiais vigentes.
+
+- Questões de resposta única (single best answer), em inglês, com vinheta clínica seguida de uma pergunta (lead-in).
+- O foco é a ciência básica aplicada: o caso clínico serve para cobrar mecanismo de doença, fisiologia, farmacologia (mecanismo de ação, efeitos adversos), microbiologia, bioquímica, anatomia, histologia, genética, imunologia, bioestatística e ética.
+- Frequentemente exige dois passos: reconhecer o diagnóstico a partir da vinheta e depois responder sobre o mecanismo, a enzima, a estrutura ou o efeito adverso relacionado.
+- Exames laboratoriais com valores de referência em unidades usadas nos EUA.
+- Alternativas curtas e homogêneas, todas do mesmo tipo (todas enzimas, todas estruturas, todos fármacos).

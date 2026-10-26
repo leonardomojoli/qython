@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.config import Config as AppConfig, sync_database_url  # noqa: E402
 from backend.db_base import Base  # noqa: E402
-from backend import models  # noqa: F401,E402  (registra os 66 modelos em Base.metadata)
+from backend import models  # noqa: F401,E402  (registra os 67 modelos em Base.metadata)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | bootstrap_db | %(message)s")
 logger = logging.getLogger(__name__)

@@ -3,6 +3,7 @@
 Patient Orientations API - Templates and AI-generated patient education materials
 """
 
+import asyncio
 from datetime import datetime
 from typing import List, Optional
 
@@ -210,7 +211,8 @@ async def generate_orientation(
     await debit_dracmas_for_feature(current_user, "generate_orientation", db)
 
     # Generate with AI
-    result = generate_patient_orientation(
+    result = await asyncio.to_thread(
+        generate_patient_orientation,
         prompt=data.prompt,
         specialty=data.specialty or '',
         language_code=data.language_code or 'pt-BR'

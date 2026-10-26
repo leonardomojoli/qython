@@ -65,8 +65,6 @@ const UpgradeModal = ({
       title: t('unlockPremiumContent', 'Desbloqueie Conteudos Premium'),
       benefits: [
         t('aiMindMaps', 'Mapas Mentais com geracao de imagem por IA'),
-        t('aiPodcasts', 'Podcasts educacionais com vozes sintetizadas'),
-        t('aiVideoLessons', 'Videoaulas automaticas com narracao'),
       ]
     },
     avatar_history: {

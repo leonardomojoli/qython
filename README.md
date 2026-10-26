@@ -41,9 +41,9 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 
 ## Começando
 
-Você precisa de [Docker](https://docs.docker.com/get-docker/) e uma chave da
-[API do Google Gemini](https://aistudio.google.com/apikey) (o tier gratuito serve
-para experimentar — veja a ressalva em [Privacidade](#privacidade-e-escolha-de-modelo)).
+Você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com
+32 GB de RAM. A IA roda na própria máquina, sem chave de API: o compose sobe o
+[llama.cpp](https://github.com/ggml-org/llama.cpp) com o Gemma 4 26B-A4B.
 
 ```bash
 git clone https://github.com/leonardomojoli/qython.git
@@ -51,10 +51,9 @@ cd qython
 cp .env.example .env
 ```
 
-Edite o `.env` e preencha no mínimo:
+Edite o `.env` e preencha a chave que assina as sessões:
 
 ```bash
-GEMINI_API_KEY=sua-chave-aqui
 JWT_SECRET_KEY=$(openssl rand -hex 32)   # gere uma sua, não reutilize
 ```
 
@@ -66,9 +65,21 @@ docker compose up -d
 
 A aplicação sobe em **http://localhost:8080**.
 
-O primeiro `up` demora: a imagem do backend carrega modelos de ML e tem cerca
-de 3,5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
-vazio o schema é criado a partir dos modelos, e num banco já existente só as
+O primeiro `up` demora: a imagem do backend tem cerca de 3,5 GB e o modelo de IA,
+uns 15 GB, baixado na primeira subida do serviço `llm`. Depois disso o start é
+rápido.
+
+**Modelo de IA.** O padrão é a versão robusta do Gemma 4 (26B-A4B), que ocupa uns
+17 GB de RAM. As versões pequenas (E2B, E4B) rodam em máquinas mais modestas, mas
+erram fato clínico com frequência — nos nossos testes, dose de antibiótico pela
+metade e volume de adrenalina errado — e por isso não são o padrão. Com uma GPU de
+24 GB, o Gemma 4 31B é ainda melhor (`LLM_HF_REPO=ggml-org/gemma-4-31B-it-GGUF:Q4_0`).
+Em CPU, uma resposta leva de 30 segundos a alguns minutos. Nenhum modelo é livre de
+erro: confira toda informação clínica.
+Opcionalmente, uma chave do Gemini (`GEMINI_API_KEY` e `LLM_PROVIDER=gemini`) dá
+respostas melhores e busca na web, mas aí o texto de cada pedido vai para o Google.
+
+O banco se prepara sozinho — num banco vazio o schema é criado a partir dos modelos, e num banco já existente só as
 migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
 próprio arquivo explica por quê).
 

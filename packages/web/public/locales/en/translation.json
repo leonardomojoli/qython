@@ -2875,5 +2875,7 @@
   "arenaXpEmptyTitleLocal": "Start a practice exam",
   "arenaXpEmptyDescLocal": "Complete a practice exam to earn your first XP.",
   "sharePrescriptionPdf": "Share PDF",
-  "prescriptionPdfDownloaded": "Prescription PDF downloaded."
+  "prescriptionPdfDownloaded": "Prescription PDF downloaded.",
+  "needsGeminiImage": "Generating images requires a Gemini key. You can still upload a photo.",
+  "mindMapUpgradeMessage": "AI Mind Maps are available from the Resident Plan."
 }

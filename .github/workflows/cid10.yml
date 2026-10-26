@@ -1,0 +1,55 @@
+name: CID-10
+
+# Busca na tabela oficial da CID-10 (backend/services/icd10_search.py) contra um
+# Postgres de verdade: semeia a tabela do DATASUS e confere que casos clássicos (IAM
+# inferior -> I21.1, HAS -> I10, DM2 -> E11.9) trazem o código certo entre os
+# candidatos que o modelo recebe, e a ordem do autocomplete de /api/icd10/search.
+# Não roda modelo.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/services/icd10_search.py"
+      - "backend/routes/icd10_routes.py"
+      - "backend/seeds/seed_icd10.py"
+      - "backend/seeds/data/CID10CSV.zip"
+      - "backend/models.py"
+      - "packages/shared/src/ambulatory/specialties.js"
+      - "tests/backend/test_icd10_candidates.py"
+      - ".github/workflows/cid10.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  busca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: qython
+          POSTGRES_PASSWORD: qython
+          POSTGRES_DB: qython
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qython"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: qython   # os testes importam o backend como o pacote `qython.backend`
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependências (versões do lock)
+        run: pip install "sqlalchemy[asyncio]==2.1.6" "asyncpg==0.32.0" "google-genai==2.33.0" "cryptography==50.0.2"
+
+      - name: Testes
+        env:
+          ICD10_TEST_DATABASE_URL: postgresql://qython:qython@127.0.0.1:5432/qython
+        run: python3 qython/tests/backend/test_icd10_candidates.py

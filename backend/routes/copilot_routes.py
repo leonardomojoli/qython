@@ -476,12 +476,15 @@ async def handle_chat_message(
         # Use ContextWindowManager for robust multi-tier strategy
         from ..services.context_manager import ContextWindowManager
         from ..services.llm_services import client
-        
+        from ..services import llm_provider
+
         context_manager = ContextWindowManager(client)
         history_for_llm, total_tokens = await context_manager.get_managed_context(
             session_id=session_id,
             db=db,
-            max_tokens=800_000  # 80% of Gemini 2.0 Flash capacity
+            # Gemini: 80% de 1M. Modelo local: a janela é pequena e divide espaço com
+            # instruções, biblioteca e a própria resposta.
+            max_tokens=llm_provider.token_budget(0.8 if llm_provider.provider_name() == "gemini" else 0.3),
         )
         logger.info(f"[CONTEXT] Managed context: {len(history_for_llm)} entries, {total_tokens} tokens")
 

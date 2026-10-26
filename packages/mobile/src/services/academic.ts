@@ -217,9 +217,7 @@ export type MaterialType =
   | 'comparative_table'
   | 'clinical_case'
   | 'critical_appraisal'
-  | 'podcast'
   | 'slideshow_only'
-  | 'video_lesson'
   | 'quiz';
 
 export async function generateMaterial(

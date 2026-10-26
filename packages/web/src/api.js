@@ -677,32 +677,6 @@ export const sendLibraryChatMessage = async (libraryId, message, history) => {
   }
 };
 
-export const getActivePodcastJob = async () => {
-  try {
-    const response = await api.get('/academic/podcast_job/active');
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar tarefa de podcast ativa');
-  }
-};
-
-export const getPodcastJobStatus = async (jobId) => {
-  try {
-    const response = await api.get(`/academic/podcast_job/${jobId}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'verificar status da tarefa de podcast');
-  }
-};
-
-export const clearPodcastJob = async (jobId) => {
-  try {
-    await api.delete(`/academic/podcast_job/${jobId}`);
-  } catch (error) {
-    handleError(error, 'limpar tarefa de podcast');
-  }
-};
-
 export const getMaterialJobStatus = async (materialId) => {
   try {
     const response = await api.get(`/academic/material/${materialId}/status`);
@@ -805,32 +779,6 @@ export const updateCardDossier = async (cardId, data) => {
 };
 
 // Added new functions to handle video lesson jobs.
-export const getActiveVideoLessonJob = async () => {
-  try {
-    const response = await api.get('/academic/video_lesson_job/active');
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar tarefa de videoaula ativa');
-  }
-};
-
-export const getVideoLessonJobStatus = async (jobId) => {
-  try {
-    const response = await api.get(`/academic/video_lesson_job/${jobId}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'verificar status da tarefa de videoaula');
-  }
-};
-
-export const clearVideoLessonJob = async (jobId) => {
-  try {
-    await api.delete(`/academic/video_lesson_job/${jobId}`);
-  } catch (error) {
-    handleError(error, 'limpar tarefa de videoaula');
-  }
-};
-
 export const getActiveSimuladoJob = async () => {
   try {
     const response = await api.get('/academic/arena/simulado_job/active');
@@ -1246,6 +1194,17 @@ export const getDocumentPdf = async (documentId) => {
   } catch (error) {
     handleError(error, 'gerar PDF do documento');
     throw error;
+  }
+};
+
+// --- CID-10 (tabela oficial do DATASUS) ---
+
+export const searchIcd10 = async (params = {}) => {
+  try {
+    const response = await api.get('/icd10/search', { params });
+    return response.data;
+  } catch (error) {
+    handleError(error, 'buscar CID-10');
   }
 };
 

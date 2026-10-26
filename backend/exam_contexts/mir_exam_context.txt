@@ -1,0 +1,8 @@
+ALTERNATIVAS: 4
+GUIA DE ESTILO — MIR (Médico Interno Residente, Espanha)
+Texto original do Qython, sem questões reais. Formato aproximado: confira a convocatória vigente.
+
+- Questões de múltipla escolha com 4 alternativas e uma única correta, em espanhol. Resposta errada desconta pontos, então os distratores precisam ser convincentes.
+- Cobre todas as especialidades clínicas e as ciências básicas; parte das questões vem associada a imagem (radiografia, ECG, dermatologia) — aqui, descreva o achado da imagem no próprio enunciado.
+- Mistura casos clínicos curtos com perguntas diretas de conhecimento (critério diagnóstico, tratamento de primeira escolha, fisiopatologia).
+- Condutas seguem as guias clínicas usadas na Espanha e na Europa.

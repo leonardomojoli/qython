@@ -10,11 +10,12 @@
 #
 #   docker compose up -d --build
 #
-# Os serviços pesados de ML (whisper, embedder) ficam atrás de profiles porque
-# baixam alguns GB de modelo. Sem eles o sistema funciona: a transcrição cai no
-# Groq e a busca da biblioteca usa o pipeline de embeddings legado, local.
+# A transcrição de áudio roda na máquina (whisper), sem serviço pago: o modelo é
+# baixado e carregado só na primeira transcrição. O embedder da busca híbrida
+# (e5 + reranker) fica atrás de um profile; sem ele a biblioteca usa o pipeline de
+# embeddings local mais leve.
 #
-#   docker compose --profile ml up -d     # sobe também whisper + embedder
+#   docker compose --profile ml up -d     # sobe também o embedder
 
 services:
   db:
@@ -61,12 +62,25 @@ services:
       chroma:
         condition: service_started
     env_file: .env
+    # Alcança uma IA local rodando fora do Docker (llama-server, Ollama) pelo nome
+    # host.docker.internal, que no Linux só existe declarado assim.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # URL neutra, sem driver: backend/database.py troca para asyncpg (aplicação)
       # e config.sync_database_url para psycopg 3 (migrations e bootstrap_db).
       DATABASE_URL: postgresql://${POSTGRES_USER:-qython}:${POSTGRES_PASSWORD:-qython}@db:5432/${POSTGRES_DB:-qython}
       CHROMA_SERVER_HOST: chroma
       CHROMA_SERVER_PORT: "8000"
+      # Transcrição local pelo serviço whisper abaixo. Para usar o Groq, defina
+      # WHISPER_SERVER_URL vazio e GROQ_API_KEY no .env.
+      WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
+      # IA local pelo serviço llm abaixo. Com GEMINI_API_KEY no .env e
+      # LLM_PROVIDER=gemini, o texto vai para o Gemini.
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:8080/v1}
+      LLM_MODEL: ${LLM_MODEL:-gemma-4}
+      LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-16384}
     volumes:
       - uploads:/app/backend/static/uploads
       - permanent:/app/backend/static/permanent_uploads
@@ -97,16 +111,37 @@ services:
     ports:
       - "${WEB_PORT:-8080}:80"
 
-  # --- perfil "ml": self-host dos modelos, opcional ---
+  # IA local: llama.cpp com o Gemma 4 26B-A4B, a versão robusta. Os pequenos (E2B, E4B)
+  # erram fato clínico de memória — dose de amoxicilina pela metade, volume de adrenalina
+  # errado — e não servem de padrão. O 26B pede ~17 GB de RAM (máquina de 32 GB); sendo
+  # MoE (~4B ativos por token), roda em CPU numa velocidade parecida com a de um 4B. Na
+  # primeira subida baixa ~15 GB do Hugging Face para o volume llmmodels. Com GPU de
+  # 24 GB, LLM_HF_REPO=ggml-org/gemma-4-31B-it-GGUF:Q4_0.
+  # A quantização vai explícita: sem ela o llama.cpp procura Q4_K_M, que o Gemma 4 não
+  # tem, e cai no primeiro arquivo do repositório — o BF16, de 15 GB.
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11870
+    restart: unless-stopped
+    command: >
+      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0}
+      -c ${LLM_CONTEXT_TOKENS:-16384} -t ${LLM_THREADS:-4} --jinja
+      --host 0.0.0.0 --port 8080
+    environment:
+      LLAMA_CACHE: /models
+    volumes:
+      - llmmodels:/models
 
+  # Transcrição local (faster-whisper). WHISPER_MODEL no .env troca o modelo; o
+  # padrão large-v3-turbo usa ~1 GB de RAM depois da primeira transcrição.
   whisper:
-    profiles: ["ml"]
     image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     command: uvicorn backend.whisper_server:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 75
     volumes:
       - models:/root/.cache/huggingface
+
+  # --- perfil "ml": busca híbrida da biblioteca, opcional ---
 
   embedder:
     profiles: ["ml"]
@@ -123,3 +158,4 @@ volumes:
   uploads:
   permanent:
   models:
+  llmmodels:
