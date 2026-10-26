@@ -8,6 +8,7 @@ import FeedbackManager from './FeedbackManager';
 import PromptManager from './PromptManager';
 import MLDatasetStats from './MLDatasetStats';
 import { api } from '../../api';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import { FaUsers, FaUserClock, FaFileMedical, FaDollarSign, FaChartLine, FaBrain, FaDatabase, FaPills, FaStore, FaClipboardList, FaShareAlt } from 'react-icons/fa';
 import InlineLoading from '../shared/InlineLoading';
 
@@ -17,6 +18,12 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const navigate = useNavigate();
+    // Receita, rede de farmácias e dataset de treino são do SaaS; convites saem por
+    // e-mail e só existem com o Resend configurado.
+    const { config } = usePublicConfig();
+    const isHosted = config?.edition === 'hosted';
+    const billingEnabled = Boolean(config?.billing_enabled);
+    const canInvite = Boolean(config?.registration?.email_verification);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -76,6 +83,7 @@ const AdminDashboard = () => {
                     >
                         <FaBrain /> IA & Prompts
                     </button>
+                    {isHosted && (
                     <button
                         onClick={() => setActiveTab('ml-dataset')}
                         style={{
@@ -86,6 +94,7 @@ const AdminDashboard = () => {
                     >
                         <FaDatabase /> ML Dataset
                     </button>
+                    )}
                 </div>
             </div>
 
@@ -140,6 +149,7 @@ const AdminDashboard = () => {
                         </div>
 
                         {/* 5. Receita -> Vai para Auditoria Financeira */}
+                        {billingEnabled && (
                         <div
                             className="stat-card"
                             style={clickableCardStyle}
@@ -149,9 +159,12 @@ const AdminDashboard = () => {
                             <h3><FaDollarSign /> Receita Total</h3>
                             <div className="value">US$ {stats?.total_revenue?.toFixed(2) || '0.00'}</div>
                         </div>
+                        )}
                     </div>
 
                     {/* Pharmacy Module Stats */}
+                    {isHosted && (
+                    <>
                     <h3 style={{ margin: '30px 0 15px', color: '#bb86fc', fontSize: '1rem', fontWeight: '600' }}>
                         <FaPills style={{ marginRight: '8px' }} /> Módulo Farmácia
                     </h3>
@@ -195,9 +208,11 @@ const AdminDashboard = () => {
                             <div className="trend neutral">Via QR code / link</div>
                         </div>
                     </div>
+                    </>
+                    )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                        <InvitationManager />
+                    <div style={{ display: 'grid', gridTemplateColumns: canInvite ? '1fr 1fr' : '1fr', gap: '20px', marginTop: '20px' }}>
+                        {canInvite && <InvitationManager />}
                         <FeedbackManager />
                     </div>
                 </>
@@ -207,7 +222,7 @@ const AdminDashboard = () => {
                 <PromptManager />
             )}
 
-            {activeTab === 'ml-dataset' && (
+            {isHosted && activeTab === 'ml-dataset' && (
                 <MLDatasetStats />
             )}
 

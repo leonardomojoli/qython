@@ -12,6 +12,7 @@ import ProfileHeader from './ProfileHeader';
 import PersonalInformationSection from './PersonalInformationSection';
 import GeneralSettingsSection from './GeneralSettingsSection';
 import BillingSection from '../billing/BillingSection';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import ConnectorsSection from '../connectors/ConnectorsSection';
 import SecuritySection from './SecuritySection';
 import AvatarGeneratorModal from './AvatarGeneratorModal';
@@ -62,8 +63,10 @@ function Profile({ isSidebarOpen }) {
     changeLanguage(newLang);
   };
 
-  // Nova estrutura de abas
+  // Nova estrutura de abas. Faturamento só existe com cobrança (edição hosted).
   const [activeTab, setActiveTab] = useState('perfil');
+  const { config: publicConfig } = usePublicConfig();
+  const billingEnabled = Boolean(publicConfig?.billing_enabled);
 
   // Estados para os dados
   const [achievements, setAchievements] = useState([]);
@@ -538,7 +541,9 @@ function Profile({ isSidebarOpen }) {
         <div className={styles.tabContainer} data-tour="profile-tabs">
           <button data-tour="profile-tab-perfil" className={activeTab === 'perfil' ? styles.activeTab : ''} onClick={() => setActiveTab('perfil')}>{t('profile')}</button>
           <button data-tour="profile-tab-estatisticas" className={activeTab === 'estatisticas' ? styles.activeTab : ''} onClick={() => setActiveTab('estatisticas')}>{t('usageStatistics')}</button>
-          <button data-tour="profile-tab-faturamento" className={activeTab === 'faturamento' ? styles.activeTab : ''} onClick={() => setActiveTab('faturamento')}>{t('billing')}</button>
+          {billingEnabled && (
+            <button data-tour="profile-tab-faturamento" className={activeTab === 'faturamento' ? styles.activeTab : ''} onClick={() => setActiveTab('faturamento')}>{t('billing')}</button>
+          )}
           <button data-tour="profile-tab-configuracoes" className={activeTab === 'configuracoes' ? styles.activeTab : ''} onClick={() => setActiveTab('configuracoes')}>{t('settings')}</button>
         </div>
 

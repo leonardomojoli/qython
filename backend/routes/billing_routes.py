@@ -17,6 +17,7 @@ from ..models import User, Transaction
 from ..security import get_current_active_user
 from ..services import billing_service, binance_service, dlocal_service
 from ..services.system_settings_service import SystemSettingsService
+from ..config import Config
 
 logger = logging.getLogger("qython_logger")
 
@@ -282,7 +283,8 @@ async def get_balance(
     Returns the user's current drachma balance from the ledger system.
     Used by frontend to check if user can afford a feature.
     """
-    if current_user.is_admin:
+    # Sem cobrança (edição local) o saldo não limita nada; o front já entende "infinito".
+    if current_user.is_admin or not Config.BILLING_ENABLED:
         return {"balance": "infinito"}
 
     breakdown = await billing_service.get_user_balance_breakdown(current_user, db)

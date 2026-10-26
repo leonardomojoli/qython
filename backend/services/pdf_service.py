@@ -143,10 +143,12 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
         # Construindo HTML
         # Header do Médico
         doctor_info = f"<b>{doctor.full_name}</b>"
-        if hasattr(doctor, 'crm') and doctor.crm:
-             doctor_info += f"<br><small>CRM: {doctor.crm}</small>"
+        # O registro profissional mora em identifier_number (como nos outros documentos);
+        # o antigo `doctor.crm` não existe no modelo e a receita saía sem o CRM.
+        if getattr(doctor, 'identifier_number', None):
+            doctor_info += f"<br><small>CRM: {doctor.identifier_number}</small>"
         else:
-             doctor_info += f"<br><small>{doctor.email}</small>"
+            doctor_info += f"<br><small>{doctor.email}</small>"
 
         logo_html = f'<img src="{logo_url}">' if logo_url else 'Qython'
 
@@ -155,7 +157,8 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
         for idx, item in enumerate(prescription.items):
             med = item.get('medication', '')
             dosage = item.get('dosage', '')
-            qtd = item.get('quantity', '')
+            qtd = item.get('quantity')
+            qtd_html = f'<div style="font-size: 0.85em; margin-top: 4px; color: #7f8c8d;">Qtd: {qtd}</div>' if qtd else ''
             
             # Instruções combinadas
             instr_parts = []
@@ -171,7 +174,7 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
                 <td style="width: 45%">
                     <div style="font-weight: bold; font-size: 1.1em;">{med}</div>
                     <div style="color: #555;">{dosage}</div>
-                    <div style="font-size: 0.85em; margin-top: 4px; color: #7f8c8d;">Qtd: {qtd}</div>
+                    {qtd_html}
                 </td>
                 <td style="width: 50%; color: #333;">{instr_html}</td>
             </tr>
@@ -213,7 +216,7 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
             </div>
 
             <div id="footer">
-                <p>Documento gerado digitalmente pela plataforma Qython.app em {date_str} | Página <span class="page-number"></span></p>
+                <p>Documento gerado no Qython em {date_str} | Página <span class="page-number"></span></p>
             </div>
 
             <h2>{presc_type}</h2>
@@ -436,7 +439,7 @@ def render_document_pdf(document, doctor, patient) -> bytes:
             </div>
             
             <div id="footer">
-                <p>Documento gerado digitalmente pela plataforma Qython.app em {date_str} | Página <span class="page-number"></span></p>
+                <p>Documento gerado no Qython em {date_str} | Página <span class="page-number"></span></p>
             </div>
 
             <h2>{doc_title}</h2>
@@ -528,7 +531,7 @@ def render_exam_order_pdf(order, doctor, patient) -> bytes:
             </div>
             
             <div id="footer">
-                <p>Documento gerado digitalmente pela plataforma Qython.app em {date_str} | Página <span class="page-number"></span></p>
+                <p>Documento gerado no Qython em {date_str} | Página <span class="page-number"></span></p>
             </div>
 
             <h2>Pedido de Exames</h2>
@@ -846,7 +849,7 @@ def render_orientation_pdf(orientation, doctor, patient=None) -> bytes:
             </div>
 
             <div id="footer">
-                <p>Documento gerado digitalmente pela plataforma Qython.app em {date_str} | Página <span class="page-number"></span></p>
+                <p>Documento gerado no Qython em {date_str} | Página <span class="page-number"></span></p>
             </div>
 
             {patient_html}

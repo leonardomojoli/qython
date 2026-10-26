@@ -34,7 +34,7 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 |---|---|
 | **Copiloto clínico** | Chat médico com embasamento por busca (Google Search grounding), citações inline numeradas, hierarquia de evidência (meta-análise > diretriz > relato de caso) e recuperação da sua própria biblioteca. |
 | **Biblioteca** | Ingestão de PDF, áudio e vídeo. OCR, transcrição, indexação vetorial. Busca híbrida (embeddings e5 + BM25 + reranking cross-encoder). |
-| **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, podcasts e videoaulas a partir da sua biblioteca. |
+| **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, questionários, casos clínicos e slides a partir da sua biblioteca. |
 | **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, ranking e gamificação. |
 | **Consultas** | Anamnese guiada por especialidade (33 especialidades), evolução clínica, prescrição. |
 | **Mobile** | App React Native (Android/iOS) com modo offline e sync delta. |
@@ -66,20 +66,26 @@ docker compose up -d
 
 A aplicação sobe em **http://localhost:8080**.
 
-O primeiro `up` demora: a imagem do backend carrega modelos de ML e passa dos
-5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
+O primeiro `up` demora: a imagem do backend carrega modelos de ML e tem cerca
+de 3,5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
 vazio o schema é criado a partir dos modelos, e num banco já existente só as
 migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
 próprio arquivo explica por quê).
 
-Crie sua conta pela tela de cadastro e então promova-a a administrador:
+Abra o endereço e crie a primeira conta. Ela vira a administradora da
+instalação, sem captcha, SMS nem confirmação por e-mail: essas travas só valem
+quando o serviço de cada uma está configurado no `.env`. Em seguida aparece o
+termo de uso, que precisa ser aceito antes de usar o app. Crie essa conta logo
+depois de subir a instalação, porque até ela existir quem abrir o endereço
+primeiro vira o administrador.
+
+Contas criadas depois entram sem acesso às funções de IA até o administrador
+liberar pelo painel de administração. Sem e-mail configurado, "Esqueci minha
+senha" não tem como mandar o link; a senha se redefine pelo terminal:
 
 ```bash
-docker compose exec backend python -m scripts.check_admin voce@exemplo.com
+docker compose exec backend python -m backend.scripts.reset_password voce@exemplo.com
 ```
-
-O script encontra a conta pelo e-mail, marca como admin e ativa — a instalação
-nova não tem nenhum usuário privilegiado até esse passo.
 
 ### Modelos locais (opcional)
 
@@ -135,10 +141,12 @@ O Qython foi construído para lidar com dado clínico, e isso impõe uma escolha
 vale entender antes de configurar:
 
 - **Redação de PII** (`backend/middleware/pii_redaction.py`) roda com Presidio antes
-  de qualquer chamada a LLM externo. Nomes, CPF, CNS, CRM, telefone e e-mail são
-  substituídos por marcadores. ⚠️ O Presidio precisa de um modelo do spaCy, que
-  não vem no `pip install`. Sem ele o sistema **não deixa de redigir**, mas cai
-  num detector por regex, mais fraco — e avisa só no log. Para a redação forte:
+  das chamadas ao LLM externo que levam texto clínico: copiloto, consultas, revisão
+  automática das consultas e resumo de conversas longas. Nomes, CPF, CNS, telefone
+  e e-mail são substituídos por marcadores. A geração de material de estudo a
+  partir da biblioteca não passa por ela. A imagem já traz o modelo médio do spaCy
+  (`pt_core_news_md`); o grande reconhece nomes melhor e é usado quando instalado
+  (fica dentro do container, então repita depois de atualizar a imagem):
   ```bash
   docker compose exec backend python -m spacy download pt_core_news_lg
   ```

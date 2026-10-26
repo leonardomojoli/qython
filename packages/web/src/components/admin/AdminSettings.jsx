@@ -10,10 +10,16 @@ import {
 } from 'react-icons/fa';
 import { SiStripe } from 'react-icons/si';
 import styles from './AdminSettings.module.css';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 const AdminSettings = () => {
     const { addNotification } = useNotification();
     const { t } = useTranslation();
+    // Métricas e modo de manutenção dependem do monitor de servidor, que só roda no
+    // SaaS; gateways de pagamento, da cobrança.
+    const { config } = usePublicConfig();
+    const isHosted = config?.edition === 'hosted';
+    const billingEnabled = Boolean(config?.billing_enabled);
 
     // Loading states
     const [loading, setLoading] = useState(true);
@@ -287,6 +293,7 @@ const AdminSettings = () => {
 
             <div className={styles.settingsGrid}>
                 {/* Server Metrics Card */}
+                {isHosted && (
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
                         <FaChartLine size={24} style={{ color: '#03dac6' }} />
@@ -325,8 +332,10 @@ const AdminSettings = () => {
                         <p className={styles.noData}>Nenhuma métrica disponível</p>
                     )}
                 </div>
+                )}
 
                 {/* Payment Gateways Card */}
+                {billingEnabled && (
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
                         <FaCreditCard size={24} style={{ color: '#bb86fc' }} />
@@ -377,6 +386,7 @@ const AdminSettings = () => {
                         </div>
                     </div>
                 </div>
+                )}
 
                 {/* Access Control Card */}
                 <div className={styles.card}>
@@ -428,6 +438,7 @@ const AdminSettings = () => {
                 </div>
 
                 {/* Maintenance Mode Card */}
+                {isHosted && (
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
                         <FaServer size={24} style={{ color: '#ff6b6b' }} />
@@ -512,6 +523,7 @@ const AdminSettings = () => {
                         </button>
                     </div>
                 </div>
+                )}
 
                 {/* Audit Log Card */}
                 <div className={styles.card}>
