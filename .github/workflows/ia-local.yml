@@ -1,0 +1,71 @@
+name: IA local
+
+# Fiação do provedor OpenAI-compatível (backend/services/llm_provider.py) contra um
+# llama-server de verdade, com um modelo minúsculo (Qwen3 0.6B, 429 MB). Prova que os
+# pedidos do backend — instrução de sistema, conversa, schema JSON, teto de saída,
+# raciocínio desligado — chegam ao servidor e voltam no formato que o código lê. Não
+# mede qualidade de resposta: isso se avalia com o Gemma 4, fora do CI.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/services/llm_provider.py"
+      - "backend/services/llm_services.py"
+      - "tests/backend/test_llm_provider*.py"
+      - ".github/workflows/ia-local.yml"
+
+permissions:
+  contents: read
+
+env:
+  LLAMA_BUILD: b11880
+  MODEL_URL: https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_0.gguf
+
+jobs:
+  fiacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: qython   # os testes importam o backend como o pacote `qython.backend`
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependências do provedor (versões do lock)
+        run: pip install "google-genai==2.33.0" "openai==3.37.0"
+
+      - name: Modelo em cache
+        uses: actions/cache@v4
+        with:
+          path: ~/modelos
+          key: qwen3-0.6b-q4_0
+
+      - name: Sobe o llama-server
+        run: |
+          mkdir -p ~/llama ~/modelos
+          curl -sSL -o /tmp/llama.tar.gz \
+            "https://github.com/ggml-org/llama.cpp/releases/download/$LLAMA_BUILD/llama-$LLAMA_BUILD-bin-ubuntu-x64.tar.gz"
+          tar -xzf /tmp/llama.tar.gz -C ~/llama
+          [ -f ~/modelos/qwen3.gguf ] || curl -sSL -o ~/modelos/qwen3.gguf "$MODEL_URL"
+          SERVER=$(find ~/llama -name llama-server -type f | head -1)
+          nohup "$SERVER" -m ~/modelos/qwen3.gguf -c 4096 --jinja --host 127.0.0.1 --port 8081 > ~/llama.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8081/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat ~/llama.log; exit 1
+
+      - name: Testes da tradução (sem servidor)
+        run: python3 qython/tests/backend/test_llm_provider.py
+
+      - name: Testes ao vivo
+        env:
+          LLM_BASE_URL: http://127.0.0.1:8081/v1
+        run: python3 qython/tests/backend/test_llm_provider_live.py
+
+      - name: Log do servidor em caso de falha
+        if: failure()
+        run: tail -100 ~/llama.log || true
