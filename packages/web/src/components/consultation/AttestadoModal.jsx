@@ -15,6 +15,7 @@ import {
 import { createDocument, getDocumentPdf } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import PatientPickerModal from './PatientPickerModal';
+import ICD10Autocomplete from './ICD10Autocomplete';
 
 function AttestadoModal({ isEmbedded = false }) {
     const { t } = useTranslation();
@@ -25,11 +26,13 @@ function AttestadoModal({ isEmbedded = false }) {
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [isPatientPickerOpen, setIsPatientPickerOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // CID-10 do atestado, escolhido na tabela oficial ([{code, description}]).
+    // O documento leva só os códigos: o diagnóstico por extenso fica de fora.
+    const [cidCodes, setCidCodes] = useState([]);
 
     // Form fields for each document type
     const [formData, setFormData] = useState({
         // Atestado (sick_leave)
-        cid: '',
         days: '',
         startDate: new Date().toISOString().split('T')[0],
         description: '',
@@ -66,7 +69,7 @@ function AttestadoModal({ isEmbedded = false }) {
         switch (activeDocType) {
             case 'sick_leave':
                 return {
-                    cid: formData.cid,
+                    cid: cidCodes.map(item => item.code).join(', '),
                     days: formData.days,
                     start_date: formData.startDate,
                     description: formData.description,
@@ -140,8 +143,8 @@ function AttestadoModal({ isEmbedded = false }) {
             }
 
             // Reset form
+            setCidCodes([]);
             setFormData({
-                cid: '',
                 days: '',
                 startDate: new Date().toISOString().split('T')[0],
                 description: '',
@@ -168,15 +171,13 @@ function AttestadoModal({ isEmbedded = false }) {
                     <>
                         <div className={styles.row}>
                             <div className={styles.col}>
-                                <label htmlFor="cid" className={styles.label}>{t('cid', 'CID-10')} <span className={styles.optional}>({t('optional', 'opcional')})</span></label>
-                                <input
-                                    id="cid"
-                                    name="cid"
-                                    type="text"
-                                    className={styles.input}
-                                    value={formData.cid}
-                                    onChange={handleInputChange}
-                                    placeholder="Ex: J11.1"
+                                <label className={styles.label}>{t('cid', 'CID-10')} <span className={styles.optional}>({t('optional', 'opcional')})</span></label>
+                                <ICD10Autocomplete
+                                    selectedCodes={cidCodes}
+                                    onSelect={(item) => setCidCodes(prev => [...prev, item])}
+                                    onRemove={(code) => setCidCodes(prev => prev.filter(item => item.code !== code))}
+                                    maxSelections={3}
+                                    disabled={isSubmitting}
                                 />
                             </div>
                             <div className={styles.col}>
