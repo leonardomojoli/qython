@@ -32,7 +32,7 @@ PERGUNTAS = [
         "pergunta": "Dose de amoxicilina para otite média aguda em criança de 20 kg? Responda em até 3 linhas.",
         "gabarito": "80–90 mg/kg/dia em 2 tomadas: ~800–900 mg de 12/12 h",
         "certo": [r"(?:80|90)\s*(?:a|-|–|e)?\s*(?:90)?\s*mg\s*/\s*kg"
-                  r"|800\s*(?:a|-|–)\s*900\s*mg|1\.?[68]00\s*(?:a|-|–)\s*1\.?800\s*mg"],
+                  r"|800\s*(?:mg\s*)?(?:a|-|–)\s*900\s*mg|1\.?[68]00\s*(?:mg\s*)?(?:a|-|–)\s*1\.?800\s*mg"],
         # a dose "padrão" de 25–50 mg/kg/dia, metade da dose alta da OMA; ou a conta para 20 kg
         # errada (o E4B escreveu "80 a 90 mg/kg/dia" e depois "160 a 180 mg por dose")
         "errado": [r"\b(?:20|25|30|40|45|50)\s*(?:a|-|–)\s*(?:40|45|50|60)\s*mg\s*/\s*kg",
@@ -84,7 +84,16 @@ _SEM_BASE = re.compile(
 )
 
 
+def _normalizar(texto: str) -> str:
+    """O modelo local às vezes escreve em LaTeX ("$90 \\text{ mg/kg/dia}$") ou por extenso
+    ("mg por kg por dia"); a correção lê os dois como mg/kg."""
+    texto = re.sub(r"\\text\{([^}]*)\}", r"\1", texto).replace("$", "")
+    texto = re.sub(r"\\(?:geq|ge)\b", "≥", texto)
+    return re.sub(r"mg\s+por\s+kg(?:\s+por\s+dia)?", "mg/kg/dia", texto, flags=re.IGNORECASE)
+
+
 def julgar(texto: str, q: dict) -> str:
+    texto = _normalizar(texto)
     certo = all(re.search(p, texto, re.IGNORECASE) for p in q["certo"])
     parcial = any(re.search(p, texto, re.IGNORECASE) for p in q["certo"])
     errado = any(re.search(p, texto, re.IGNORECASE) for p in q["errado"])
