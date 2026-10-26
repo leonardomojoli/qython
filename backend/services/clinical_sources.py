@@ -218,14 +218,14 @@ def _significant(text: str) -> List[str]:
 def _uncovered_indications(indications: List[str], posologies: List[str], question: str) -> List[str]:
     """Indicações do catálogo que a pergunta cita e a posologia não menciona. Ex.: OMA está
     entre as indicações da amoxicilina, mas a posologia pediátrica registrada (25–50 mg/kg/dia)
-    é a geral, metade da dose alta usada na otite. O aviso vai no texto da fonte porque o
-    modelo pequeno segue a fonte mais do que a instrução de sistema."""
-    asked = set(_significant(question))
+    é a geral, metade da dose alta usada na otite. Basta a primeira palavra da indicação
+    ("pneumonia" cita "pneumonia adquirida na comunidade")."""
+    asked = {w[:6] for w in _significant(question)}
     dosing = " ".join(deaccent(p) for p in posologies)
     out = []
     for ind in indications:
-        words = _significant(ind)[:2]
-        if words and all(w in asked for w in words) and words[0] not in dosing and ind not in out:
+        words = _significant(ind)
+        if words and words[0][:6] in asked and words[0][:6] not in dosing and ind not in out:
             out.append(ind)
     return out
 
@@ -247,27 +247,33 @@ def catalog_source(principle_rows: List[Dict], question: str = "") -> Source:
         if label not in names:
             names.append(label)
         for ind in re.split(r'\s*;\s*', med.get("common_indications") or ""):
-            if ind and ind not in indications:
+            if ind and deaccent(ind) not in {deaccent(i) for i in indications}:
                 indications.append(ind)
 
     lines = []
     klass = " · ".join(x for x in (first.get("therapeutic_class"), first.get("atc_code") and f"ATC {first['atc_code']}") if x)
     lines.append(f"Princípio ativo: {principle}" + (f" ({klass})" if klass else ""))
-    lines.append("Posologia usual registrada no catálogo, por apresentação:")
-    for (posology, max_dose, route), names in by_dose.items():
-        detail = posology or "posologia não registrada"
-        if max_dose:
-            detail += f" Dose máxima: {max_dose}."
-        via = f" [via {route}]" if route else ""
-        lines.append(f"- {', '.join(names)}{via}: {detail}")
-    if indications:
-        lines.append("Indicações comuns: " + "; ".join(indications[:12]) + ".")
     uncovered = _uncovered_indications(indications, [k[0] for k in by_dose], question)
     if uncovered:
+        # Com a posologia geral à vista, o modelo a usava para a indicação perguntada mesmo
+        # com um aviso logo abaixo (bateria de out/2026: 25–50 mg/kg/dia de amoxicilina para
+        # OMA, metade da dose). A posologia sai; fica o que o catálogo diz sobre a indicação.
+        presentations = [n for names in by_dose.values() for n in names]
+        lines.append("Apresentações: " + "; ".join(presentations) + ".")
         lines.append(
-            f"Atenção: a posologia acima é a geral do medicamento; o catálogo não traz dose específica "
-            f"para {', '.join(uncovered)}. Para a dose nessa indicação, use outra fonte."
+            f"O catálogo NÃO traz a dose para {', '.join(uncovered)}: a posologia registrada é a geral "
+            f"do medicamento e não vale para essa indicação. A dose dessa indicação tem de vir de outra fonte."
         )
+    else:
+        lines.append("Posologia usual registrada no catálogo, por apresentação:")
+        for (posology, max_dose, route), names in by_dose.items():
+            detail = posology or "posologia não registrada"
+            if max_dose:
+                detail += f" Dose máxima: {max_dose}."
+            via = f" [via {route}]" if route else ""
+            lines.append(f"- {', '.join(names)}{via}: {detail}")
+    if indications:
+        lines.append("Indicações comuns: " + "; ".join(indications[:12]) + ".")
     lines.append(
         f"Ajuste renal: {_yes_no(first.get('renal_adjustment'))}. "
         f"Ajuste hepático: {_yes_no(first.get('hepatic_adjustment'))}."

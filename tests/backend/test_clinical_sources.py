@@ -102,11 +102,14 @@ def test_catalog_source_groups_presentations():
 def test_catalog_warns_when_dose_is_not_for_the_asked_indication():
     rows = cs.match_medications(CATALOGO, "amoxicilina")["amoxicilina"]
     src = cs.catalog_source(rows, "Dose de amoxicilina para otite média aguda em criança?")
-    assert "não traz dose específica para Otite média aguda" in src.text
-    assert "não traz dose específica" not in cs.catalog_source(rows, "Dose de amoxicilina?").text
+    assert "NÃO traz a dose para Otite média aguda" in src.text
+    assert "25-50 mg/kg/dia" not in src.text  # a posologia geral sai, não só ganha aviso
+    general = cs.catalog_source(rows, "Dose de amoxicilina?").text
+    assert "NÃO traz a dose" not in general and "25-50 mg/kg/dia" in general
+    assert "NÃO traz a dose" in cs.catalog_source(rows, "amoxicilina na otite?").text  # primeira palavra basta
     epi = [dict(r, common_indications="Anafilaxia; parada cardiorrespiratória")
            for r in cs.match_medications(CATALOGO, "adrenalina")["epinefrina"]]
-    assert "não traz dose específica" not in cs.catalog_source(epi, "adrenalina na anafilaxia").text
+    assert "NÃO traz a dose" not in cs.catalog_source(epi, "adrenalina na anafilaxia").text
 
 
 def test_rank_prefers_matching_population_and_numbers():
