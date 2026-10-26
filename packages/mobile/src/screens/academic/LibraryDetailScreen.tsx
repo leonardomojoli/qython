@@ -316,7 +316,7 @@ export default function LibraryDetailScreen({ library, onBack, onLibraryUpdated 
                   />
                 ))}
               </View>
-            ) : null
+            ) : undefined
           }
         />
       )}

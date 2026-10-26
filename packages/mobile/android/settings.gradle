@@ -1,6 +1,25 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+// npm workspaces: as dependências ficam todas no node_modules da raiz do
+// monorepo; packages/mobile/node_modules não existe.
+pluginManagement { includeBuild("../../../node_modules/@react-native/gradle-plugin") }
 plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    // O lockfile do monorepo fica na raiz; sem apontá-lo aqui, o cache do
+    // autolinking não percebe um `npm ci` com dependências novas.
+    def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+    ex.autolinkLibrariesFromCommand(
+        (isWindows ? ["cmd", "/c"] : []) + ["npx", "@react-native-community/cli", "config"],
+        file("../"),
+        settings.layout.rootDirectory.files("../package.json", "../react-native.config.js", "../../../package-lock.json")
+    )
+}
+// @react-native-voice/voice 3.2.4 (a última publicada, de 2022) tem um
+// build.gradle que o Gradle 9 e o AGP 9 recusam. O projeto autolinkado passa a
+// usar o build de react-native-voice/, que compila as mesmas fontes Java.
+def voice = findProject(':react-native-voice_voice')
+if (voice != null) {
+    gradle.ext.reactNativeVoiceDir = voice.projectDir
+    voice.projectDir = file('react-native-voice')
+}
 rootProject.name = 'QythonMobile'
 include ':app'
-includeBuild('../node_modules/@react-native/gradle-plugin')
+includeBuild('../../../node_modules/@react-native/gradle-plugin')
