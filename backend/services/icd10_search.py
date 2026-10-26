@@ -470,3 +470,142 @@ def official_selection(data, candidates: Sequence[Dict]) -> List[Dict]:
         if len(selected) == MAX_SELECTED:
             break
     return selected
+
+
+# --------------------------------------------------------------------------- #
+# Autocomplete (routes/icd10_routes.py)
+# --------------------------------------------------------------------------- #
+# Códigos frequentes no ambulatório, pelo nome canônico da especialidade
+# (@qython/shared/src/ambulatory/specialties.js). Só o código: a descrição vem da
+# tabela. Vieram da lista curada que o autocomplete usava antes, que tinha
+# descrições próprias e um erro, M79.3 como "Fibromialgia": M79.3 é paniculite, e
+# fibromialgia é M79.7.
+POPULAR_CODES = {
+    "Cardiologia": ["I10", "I11.9", "I20.9", "I21.9", "I25.9", "I48", "I50.9"],
+    "Endocrinologia e Metabologia": ["E11.9", "E10.9", "E03.9", "E05.9", "E66.9", "E78.0"],
+    "Pneumologia": ["J06.9", "J18.9", "J44.9", "J45.9"],
+    "Gastroenterologia": ["K21.0", "K29.7", "K80.2", "K58.9"],
+    "Neurologia": ["G43.9", "G40.9", "G20", "I64", "G35"],
+    "Psiquiatria": ["F32.9", "F41.1", "F41.0", "F31.9", "F20.9"],
+    "Nefrologia": ["N18.9", "N39.0", "N17.9"],
+    "Reumatologia": ["M06.9", "M32.9", "M79.7", "M15.9"],
+    "Urologia": ["N40", "N20.0", "N30.9"],
+    "Dermatologia": ["L20.9", "L40.9", "L30.9"],
+    "Ginecologia e Obstetrícia": ["N92.0", "N80.9", "D25.9"],
+    "Pediatria": ["J00", "J20.9", "A09"],
+}
+# Sem especialidade: queixas que aparecem em qualquer consultório.
+GENERAL_POPULAR_CODES = ["R10.4", "R51", "R05", "R50.9", "M54.5", "R53"]
+# No autocomplete, os frequentes de qualquer especialidade vêm antes dos demais:
+# "hipertensao" traz o I10 antes do I15.0 (renovascular), "pneumonia" traz o J18.9
+# antes da broncopneumonia.
+_COMMON_CODES = sorted({c for codes in POPULAR_CODES.values() for c in codes} | set(GENERAL_POPULAR_CODES))
+
+
+def popular_codes_for(specialty: Optional[str]) -> List[str]:
+    """Códigos frequentes da especialidade. Aceita o nome sem acento e abreviado
+    ("endocrinologia" acha "Endocrinologia e Metabologia"); vazio se não conhecer."""
+    wanted = normalize(specialty or "").strip()
+    if not wanted:
+        return []
+    for name, codes in POPULAR_CODES.items():
+        if normalize(name) == wanted:
+            return codes
+    for name, codes in POPULAR_CODES.items():
+        if normalize(name).startswith(wanted):
+            return codes
+    return []
+
+
+# O que o médico digita parece código quando começa por letra e dígito: "i21",
+# "I21.1", "e119".
+_CODE_QUERY = re.compile(r"^[a-z]\d{1,2}(\.?\d)?$")
+_WORD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+# Palavras curtas demais para filtrar e que toda descrição tem.
+_AUTOCOMPLETE_STOPWORDS = {"a", "o", "e", "de", "da", "do", "das", "dos", "em", "no", "na", "ao", "as", "os"}
+_AUTOCOMPLETE_MAX_WORDS = 8
+
+_AUTOCOMPLETE_CODE_SQL = text("""
+    SELECT code, description FROM icd10_codes
+    WHERE replace(code, '.', '') LIKE :prefix AND classification IS DISTINCT FROM '*'
+    ORDER BY code
+    LIMIT :limit
+""")
+
+
+def _autocomplete_words(normalized: str) -> List[str]:
+    words = [w for w in _WORD.findall(normalized) if w not in _AUTOCOMPLETE_STOPWORDS]
+    return words[:_AUTOCOMPLETE_MAX_WORDS]
+
+
+def _word_prefix_conditions(column: str, words: Sequence[str], params: Dict, key: str) -> str:
+    """Cada palavra precisa ser o começo de uma palavra da coluna ("infer" acha
+    "inferior", não "infarto"). O LIKE é o filtro barato; a regex confere o início
+    da palavra."""
+    conditions = []
+    for i, word in enumerate(words):
+        params[f"{key}l{i}"] = f"%{word}%"
+        params[f"{key}r{i}"] = rf"\m{word}"
+        conditions.append(f"({column} LIKE :{key}l{i} AND {column} ~ :{key}r{i})")
+    return " AND ".join(conditions)
+
+
+async def autocomplete(db: AsyncSession, query: str, specialty: Optional[str] = None,
+                       limit: int = 10) -> List[Dict]:
+    """Códigos da tabela para o que o médico está digitando: por código ("I21",
+    "e11.9"), por começo de palavra da descrição ("hipert", "infarto infer") ou por
+    sigla ("HAS", "DM2", pelos sinônimos da extração). [{code, description}]
+
+    A busca por radical da extração não serve aqui: o stemmer corta a palavra pela
+    metade ("infer" vira "inf", que acha "infarto"). Ordem: códigos frequentes da
+    especialidade; o que casa com o texto digitado antes do que só os sinônimos
+    acham; frequentes de qualquer especialidade; o que também casa com os sinônimos
+    ("infarto" traz o IAM antes do infarto do baço); palavras na descrição do código,
+    e não só no nome da categoria; descrição mais curta.
+    """
+    normalized = normalize(query).strip()
+    if not normalized:
+        return []
+    if _CODE_QUERY.match(normalized):
+        prefix = normalized.upper().replace(".", "") + "%"
+        rows = (await db.execute(_AUTOCOMPLETE_CODE_SQL, {"prefix": prefix, "limit": limit})).mappings().all()
+        if rows:
+            return [dict(r) for r in rows]
+
+    typed = _autocomplete_words(normalized)
+    vocabulary = _autocomplete_words(table_vocabulary(normalized))
+    if not typed and not vocabulary:
+        return []
+    params: Dict = {
+        "boost": popular_codes_for(specialty), "common": _COMMON_CODES, "limit": limit,
+    }
+    full_text = "(search_description || ' ' || search_category)"
+    typed_match = _word_prefix_conditions(full_text, typed, params, "t") if typed else None
+    vocabulary_match = _word_prefix_conditions(full_text, vocabulary, params, "v") if vocabulary else None
+    in_description = _word_prefix_conditions("search_description", typed, params, "d") if typed else None
+    order = ["code = ANY(CAST(:boost AS text[]))", typed_match, "code = ANY(CAST(:common AS text[]))",
+             vocabulary_match, in_description]
+    sql = text(f"""
+        SELECT code, description FROM icd10_codes
+        WHERE classification IS DISTINCT FROM '*'
+          AND ({" OR ".join(f"({m})" for m in (typed_match, vocabulary_match) if m)})
+        ORDER BY {", ".join(f"({o}) DESC" for o in order if o)}, length(description), code
+        LIMIT :limit
+    """)
+    rows = (await db.execute(sql, params)).mappings().all()
+    return [dict(r) for r in rows]
+
+
+async def popular(db: AsyncSession, specialty: Optional[str] = None, limit: int = 10) -> List[Dict]:
+    """Códigos frequentes, com a descrição da tabela, na ordem da lista. Sem
+    especialidade, os gerais; especialidade sem lista, nenhum.
+    [{code, description, specialty}]"""
+    codes = (popular_codes_for(specialty) if specialty else GENERAL_POPULAR_CODES)[:limit]
+    if not codes:
+        return []
+    rows = (await db.execute(text(
+        "SELECT code, description FROM icd10_codes WHERE code = ANY(CAST(:codes AS text[]))"
+    ), {"codes": codes})).all()
+    descriptions = dict(rows)
+    return [{"code": code, "description": descriptions[code], "specialty": specialty or ""}
+            for code in codes if code in descriptions]
