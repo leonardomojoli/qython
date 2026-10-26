@@ -28,7 +28,7 @@ import {
   getMyXpProfile,
 } from '../../services/academic';
 import type { ArenaExam, Season, JobStatus, XpProfile, RankingEntry } from '../../types/academic';
-import { WEB_BASE_URL } from '../../config/env';
+import { QYTHON_SITE_URL } from '../../config/env';
 import { ARENA_ALLOWED_PLANS } from '../../types/academic';
 import SeasonBanner from '../../components/academic/SeasonBanner';
 import ExamCard from '../../components/academic/ExamCard';
@@ -245,7 +245,7 @@ export default function ArenaTab() {
       });
       await Share.share({
         title: t('shareResult', 'Compartilhar Resultado'),
-        message: `${message}\n\n${WEB_BASE_URL}`,
+        message: `${message}\n\n${QYTHON_SITE_URL}`,
       });
     } catch {
       // User cancelled share

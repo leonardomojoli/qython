@@ -11,7 +11,7 @@ export async function setAuthToken(token: string): Promise<void> {
 }
 
 export async function clearAuthTokens(): Promise<void> {
-  await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY]);
+  await AsyncStorage.removeMany([AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY]);
 }
 
 export interface LoginResponse {
@@ -40,7 +40,8 @@ export async function loginWithEmail(
 export async function loginWithGoogle(): Promise<LoginResponse> {
   try {
     const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-    const auth = require('@react-native-firebase/auth').default;
+    const { getAuth, GoogleAuthProvider, signInWithCredential } = require('@react-native-firebase/auth');
+    const auth = getAuth();
 
     // 1. Google Sign-In popup
     await GoogleSignin.hasPlayServices();
@@ -52,11 +53,11 @@ export async function loginWithGoogle(): Promise<LoginResponse> {
       throw new Error('No ID token returned from Google Sign-In');
     }
 
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    await auth().signInWithCredential(googleCredential);
+    const googleCredential = GoogleAuthProvider.credential(idToken);
+    await signInWithCredential(auth, googleCredential);
 
     // 3. Get Firebase ID token
-    const firebaseToken = await auth().currentUser?.getIdToken(true);
+    const firebaseToken = await auth.currentUser?.getIdToken(true);
     if (!firebaseToken) {
       throw new Error('Failed to get Firebase ID token');
     }
@@ -74,8 +75,8 @@ export async function loginWithGoogle(): Promise<LoginResponse> {
   } catch (error: any) {
     // Clean up Firebase auth state on failure
     try {
-      const auth = require('@react-native-firebase/auth').default;
-      await auth().signOut();
+      const { getAuth, signOut } = require('@react-native-firebase/auth');
+      await signOut(getAuth());
     } catch {
       // ignore
     }
@@ -128,8 +129,8 @@ export async function logout(): Promise<void> {
     // Ignore logout errors
   }
   try {
-    const auth = require('@react-native-firebase/auth').default;
-    await auth().signOut();
+    const { getAuth, signOut } = require('@react-native-firebase/auth');
+    await signOut(getAuth());
   } catch {
     // Firebase may not be configured
   }

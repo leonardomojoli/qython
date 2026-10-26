@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  type TextInputProps,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -125,8 +126,8 @@ export default function PatientFormModal({ visible, patient, onClose, onSaved }:
     opts?: {
       placeholder?: string;
       multiline?: boolean;
-      keyboardType?: TextInput['props']['keyboardType'];
-      autoCapitalize?: TextInput['props']['autoCapitalize'];
+      keyboardType?: TextInputProps['keyboardType'];
+      autoCapitalize?: TextInputProps['autoCapitalize'];
     },
   ) => (
     <View style={styles.fieldGroup}>

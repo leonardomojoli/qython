@@ -61,8 +61,8 @@ export default function PhoneVerificationModal({ visible, phoneNumber, onClose, 
     setLoading(true);
     setError(null);
     try {
-      const auth = require('@react-native-firebase/auth').default;
-      const conf = await auth().signInWithPhoneNumber(toE164(phoneNumber));
+      const { getAuth, signInWithPhoneNumber } = require('@react-native-firebase/auth');
+      const conf = await signInWithPhoneNumber(getAuth(), toE164(phoneNumber));
       setConfirmation(conf);
       setStep('code');
     } catch (e: any) {
@@ -84,13 +84,13 @@ export default function PhoneVerificationModal({ visible, phoneNumber, onClose, 
     setLoading(true);
     setError(null);
     try {
-      const auth = require('@react-native-firebase/auth').default;
+      const { getAuth, signOut } = require('@react-native-firebase/auth');
       await confirmation.confirm(code);
-      const token = await auth().currentUser?.getIdToken(true);
+      const token = await getAuth().currentUser?.getIdToken(true);
       // We only needed the signed token as proof of ownership — drop the Firebase
       // session so it doesn't collide with Google sign-in state on the device.
       try {
-        await auth().signOut();
+        await signOut(getAuth());
       } catch {
         // ignore
       }
