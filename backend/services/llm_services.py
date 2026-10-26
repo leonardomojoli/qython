@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ..models import AcademicLibrary
 from ..config import Config
-from . import clinical_sources, llm_provider
+from . import clinical_sources, icd10_search, llm_provider
 
 from .enhancementprompts import PROMPTS, PATIENT_DATA_RULE
 from .academic_services import vector_db_service
@@ -927,9 +927,15 @@ def generate_case_summary(improved_text: str, language_code: str = 'pt-BR') -> t
     return "Erro: Não foi possível gerar o resumo. O serviço de IA está temporariamente indisponível. Tente novamente.", None, None
 
 
-def extract_icd10_from_notes(clinical_notes: str, specialty: str = "", language_code: str = 'pt-BR') -> list:
+async def extract_icd10_from_notes(db: AsyncSession, clinical_notes: str, specialty: str = "",
+                                   language_code: str = 'pt-BR') -> list:
     """
-    Extract relevant ICD-10 codes from clinical notes using LLM.
+    Sugere até 3 códigos CID-10 para as notas clínicas.
+
+    O modelo não escreve código: services/icd10_search tira da tabela oficial
+    (DATASUS) os candidatos que as notas justificam, e o modelo escolhe entre eles
+    por um schema com enum dos códigos. Código e descrição devolvidos vêm da tabela,
+    em português, qualquer que seja o idioma do usuário.
     Returns a list of dicts with 'code', 'description', and 'confidence'.
     """
     logger.info(f"Iniciando extract_icd10_from_notes, specialty={specialty}, language_code={language_code}")
@@ -938,65 +944,24 @@ def extract_icd10_from_notes(clinical_notes: str, specialty: str = "", language_
         logger.warning("Notas clínicas muito curtas para extração de CID-10")
         return []
 
-    # Language-specific instructions
-    output_instructions = {
-        'pt-BR': "Responda em português brasileiro.",
-        'pt': "Responda em português.",
-        'en': "Respond in English.",
-        'en-US': "Respond in English (US).",
-        'es': "Responda en español.",
-        'es-ES': "Responda en español."
-    }
-    lang_instruction = output_instructions.get(language_code, output_instructions['pt-BR'])
-
-    # JSON Schema for structured output
-    icd10_schema = {
-        "type": "array",
-        "description": "Array of ICD-10 codes extracted from clinical notes",
-        "items": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "description": "ICD-10 code (e.g., I10, E11.9)"
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Description of the diagnosis"
-                },
-                "confidence": {
-                    "type": "string",
-                    "description": "Confidence level: alta, média, or baixa"
-                }
-            },
-            "required": ["code", "description", "confidence"]
-        }
-    }
-
-    prompt = f"""Analise as notas clínicas abaixo e extraia os códigos CID-10 mais relevantes.
-
-INSTRUÇÕES:
-1. Identifique até 3 diagnósticos mais prováveis
-2. Para cada diagnóstico, forneça o código CID-10 correto e a descrição
-3. Ordene por relevância/probabilidade (mais provável primeiro)
-4. {lang_instruction}
-5. Se não for possível determinar diagnósticos, retorne um array vazio []
-
-NOTAS CLÍNICAS:
-{clinical_notes}
-
-ESPECIALIDADE: {specialty if specialty else "Clínica Geral"}"""
-
     try:
-        model_to_use = Config.SIMPLE_TASK_LLM_MODEL  # Usar modelo mais leve para esta tarefa
-        response = client.models.generate_content(
-            model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(prompt),
+        candidates = await icd10_search.search_candidates(db, clinical_notes)
+        if not candidates:
+            logger.info("CID-10: nenhum candidato na tabela para estas notas")
+            return []
+
+        # A lista de candidatos vai na instrução de sistema, que não passa pela
+        # redação de PII: é texto da tabela, e o Presidio leria epônimos ("doença de
+        # Crohn") como nome de pessoa. As notas vão no conteúdo e são redigidas.
+        response = await _generate_off_loop(
+            model=f'models/{Config.SIMPLE_TASK_LLM_MODEL}',  # Usar modelo mais leve para esta tarefa
+            contents=icd10_search.selection_prompt(clinical_notes, specialty),
             config=types.GenerateContentConfig(
+                system_instruction=icd10_search.selection_instruction(candidates),
                 temperature=0.1,  # Very low temperature for structured output
-                max_output_tokens=500,
+                max_output_tokens=256,
                 response_mime_type="application/json",
-                response_schema=icd10_schema
+                response_schema=icd10_search.selection_schema([c["code"] for c in candidates]),
             )
         )
 
@@ -1008,30 +973,14 @@ ESPECIALIDADE: {specialty if specialty else "Clínica Geral"}"""
         response_text = response.text.strip()
         logger.debug(f"Resposta bruta de extract_icd10 (structured): {response_text}")
 
-        # Parse JSON with repair capability (as fallback, but should be valid with response_mime_type)
-        icd_codes, parse_success, parse_error = try_parse_json_with_repair(
-            response_text,
-            context="[CID-10]"
-        )
-
+        data, parse_success, parse_error = try_parse_json_with_repair(response_text, context="[CID-10]")
         if not parse_success:
             logger.warning(f"Falha ao parsear JSON de CID-10: {parse_error}")
             return []
 
-        if isinstance(icd_codes, list):
-            # Validar estrutura
-            validated = []
-            for item in icd_codes:
-                if isinstance(item, dict) and 'code' in item and 'description' in item:
-                    validated.append({
-                        'code': item.get('code', '').upper(),
-                        'description': item.get('description', ''),
-                        'confidence': item.get('confidence', 'média')
-                    })
-            logger.info(f"CID-10 extraídos com sucesso: {len(validated)} códigos")
-            return validated
-
-        return []
+        selected = icd10_search.official_selection(data, candidates)
+        logger.info(f"CID-10 extraídos com sucesso: {len(selected)} códigos de {len(candidates)} candidatos")
+        return selected
     except Exception as e:
         logger.error(f"Erro em extract_icd10_from_notes: {str(e)}", exc_info=True)
         return []
