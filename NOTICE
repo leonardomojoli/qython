@@ -81,9 +81,10 @@ official descriptions.
   - Publication and distribution rights of the Portuguese edition: Edusp,
     Editora da Universidade de São Paulo.
 
-This table is a separate work aggregated with Qython and is NOT covered by the
-AGPL. Its terms (http://www2.datasus.gov.br/cid10/V2008/copyright.htm) allow
-free use in user installations, and use by system developers "desde que sejam
-dados os devidos créditos e não seja cobrado pelo seu uso"; the files may not
-be sold. Qython is distributed at no charge and gives this credit here.
-Whoever charges for a copy of Qython must remove or replace this file.
+This table is a separate data component aggregated with Qython. It is NOT
+licensed under the AGPL, and the AGPL grants no rights to it. Its own terms
+(http://www2.datasus.gov.br/cid10/V2008/copyright.htm) allow free use in user
+installations, and use by system developers "desde que sejam dados os devidos
+créditos e não seja cobrado pelo seu uso"; the files may not be sold. Qython is
+distributed at no charge and gives this credit here. Whoever sells a copy of
+Qython, or charges for its use, must first remove or replace this file.
