@@ -305,11 +305,11 @@
   line-height: 1.5;
 }
 
-.sourceLink:hover {
+a.sourceLink:hover {
   color: var(--brand-primary);
 }
 
-.sourceLink:hover .sourceTitle {
+a.sourceLink:hover .sourceTitle {
   text-decoration: underline;
 }
 

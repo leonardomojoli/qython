@@ -290,7 +290,8 @@ async def search_pubmed(
 
 async def fetch_pubmed_details(
     pmids: List[str],
-    session: aiohttp.ClientSession
+    session: aiohttp.ClientSession,
+    with_abstract: bool = False
 ) -> List[Dict]:
     """
     Busca detalhes dos artigos no PubMed usando EFetch.
@@ -299,6 +300,8 @@ async def fetch_pubmed_details(
     Args:
         pmids: Lista de PMIDs
         session: Sessão aiohttp
+        with_abstract: inclui o resumo (`abstract`) e a revista (`journal`). Fica de fora
+            por padrão porque a referência é gravada na mensagem e vai para o front.
 
     Returns:
         Lista de dicts com uri, title, author, year
@@ -336,7 +339,7 @@ async def fetch_pubmed_details(
                     return []
 
                 xml_text = await response.text()
-                return parse_pubmed_xml(xml_text)
+                return parse_pubmed_xml(xml_text, with_abstract=with_abstract)
 
         except asyncio.TimeoutError:
             last_error = "timeout"
@@ -352,7 +355,7 @@ async def fetch_pubmed_details(
     return []
 
 
-def parse_pubmed_xml(xml_text: str) -> List[Dict]:
+def parse_pubmed_xml(xml_text: str, with_abstract: bool = False) -> List[Dict]:
     """
     Parseia XML do PubMed EFetch e extrai metadados.
     """
@@ -417,7 +420,7 @@ def parse_pubmed_xml(xml_text: str) -> List[Dict]:
             pub_types = [pt.text.strip() for pt in article.findall('.//PublicationType')
                          if pt is not None and pt.text]
 
-            results.append({
+            entry = {
                 'uri': f'https://pubmed.ncbi.nlm.nih.gov/{pmid}/',
                 'title': display_title,
                 'author': author,
@@ -426,7 +429,23 @@ def parse_pubmed_xml(xml_text: str) -> List[Dict]:
                 'pub_types': pub_types,
                 'source': 'pubmed_lookup',
                 'verified': True
-            })
+            }
+            if with_abstract:
+                # Resumo estruturado vem em vários AbstractText com Label (BACKGROUND,
+                # METHODS...); itertext pega o texto dentro de <i>, <sup> etc.
+                parts = []
+                for node in article.findall('.//Abstract/AbstractText'):
+                    text = ' '.join(''.join(node.itertext()).split())
+                    if not text:
+                        continue
+                    label = node.get('Label')
+                    parts.append(f"{label}: {text}" if label else text)
+                entry['abstract'] = '\n'.join(parts)
+                journal_elem = article.find('.//Journal/ISOAbbreviation')
+                if journal_elem is None:
+                    journal_elem = article.find('.//Journal/Title')
+                entry['journal'] = journal_elem.text if journal_elem is not None else None
+            results.append(entry)
 
     except ET.ParseError as e:
         logger.warning(f"[PUBMED] Erro parseando XML: {e}")
