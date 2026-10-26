@@ -42,9 +42,8 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 ## Começando
 
 Você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com
-16 GB de RAM (8 GB com o modelo menor, veja abaixo). A IA roda na própria máquina,
-sem chave de API: o compose sobe o [llama.cpp](https://github.com/ggml-org/llama.cpp)
-com o Gemma 4.
+32 GB de RAM. A IA roda na própria máquina, sem chave de API: o compose sobe o
+[llama.cpp](https://github.com/ggml-org/llama.cpp) com o Gemma 4 26B-A4B.
 
 ```bash
 git clone https://github.com/leonardomojoli/qython.git
@@ -67,12 +66,16 @@ docker compose up -d
 A aplicação sobe em **http://localhost:8080**.
 
 O primeiro `up` demora: a imagem do backend tem cerca de 3,5 GB e o modelo de IA,
-uns 5 GB, baixado na primeira subida do serviço `llm`. Depois disso o start é
+uns 15 GB, baixado na primeira subida do serviço `llm`. Depois disso o start é
 rápido.
 
-**Modelo de IA.** O padrão é o Gemma 4 E4B, que pede uns 6 GB de RAM. Em máquinas
-com 8 GB, use o E2B (`LLM_HF_REPO=ggml-org/gemma-4-E2B-it-GGUF:Q4_0` no `.env`); é mais
-rápido e erra mais. Em CPU, uma resposta leva de 30 segundos a alguns minutos.
+**Modelo de IA.** O padrão é a versão robusta do Gemma 4 (26B-A4B), que ocupa uns
+17 GB de RAM. As versões pequenas (E2B, E4B) rodam em máquinas mais modestas, mas
+erram fato clínico com frequência — nos nossos testes, dose de antibiótico pela
+metade e volume de adrenalina errado — e por isso não são o padrão. Com uma GPU de
+24 GB, o Gemma 4 31B é ainda melhor (`LLM_HF_REPO=ggml-org/gemma-4-31B-it-GGUF:Q4_0`).
+Em CPU, uma resposta leva de 30 segundos a alguns minutos. Nenhum modelo é livre de
+erro: confira toda informação clínica.
 Opcionalmente, uma chave do Gemini (`GEMINI_API_KEY` e `LLM_PROVIDER=gemini`) dá
 respostas melhores e busca na web, mas aí o texto de cada pedido vai para o Google.
 

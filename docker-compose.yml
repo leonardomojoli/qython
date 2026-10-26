@@ -111,16 +111,19 @@ services:
     ports:
       - "${WEB_PORT:-8080}:80"
 
-  # IA local: llama.cpp com o Gemma 4. Na primeira subida baixa o modelo (~5 GB) do
-  # Hugging Face para o volume llmmodels; depois sobe em segundos. LLM_HF_REPO troca o
-  # modelo (ex.: ggml-org/gemma-4-E2B-it-GGUF:Q4_0 para máquinas com 8 GB de RAM).
+  # IA local: llama.cpp com o Gemma 4 26B-A4B, a versão robusta. Os pequenos (E2B, E4B)
+  # erram fato clínico de memória — dose de amoxicilina pela metade, volume de adrenalina
+  # errado — e não servem de padrão. O 26B pede ~17 GB de RAM (máquina de 32 GB); sendo
+  # MoE (~4B ativos por token), roda em CPU numa velocidade parecida com a de um 4B. Na
+  # primeira subida baixa ~15 GB do Hugging Face para o volume llmmodels. Com GPU de
+  # 24 GB, LLM_HF_REPO=ggml-org/gemma-4-31B-it-GGUF:Q4_0.
   # A quantização vai explícita: sem ela o llama.cpp procura Q4_K_M, que o Gemma 4 não
   # tem, e cai no primeiro arquivo do repositório — o BF16, de 15 GB.
   llm:
     image: ghcr.io/ggml-org/llama.cpp:server-b11870
     restart: unless-stopped
     command: >
-      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-E4B-it-GGUF:Q4_0}
+      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0}
       -c ${LLM_CONTEXT_TOKENS:-16384} -t ${LLM_THREADS:-4} --jinja
       --host 0.0.0.0 --port 8080
     environment:
