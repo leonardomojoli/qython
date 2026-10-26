@@ -125,6 +125,11 @@ class Config:
     # Referências: lista curta e forte comunica mais confiança que lista longa e desigual.
     # Fonte "web" (source_type 'other') só aparece quando NÃO há este tanto de fonte forte.
     REF_MAX = int(os.getenv("REF_MAX", "5"))
+    # IA local (sem busca na web): para pergunta clínica, o copiloto busca fontes ANTES de
+    # responder (catálogo de medicamentos, biblioteca, PubMed) e responde a partir delas.
+    # COPILOT_PUBMED=0 tira o PubMed, para instalação sem internet.
+    COPILOT_LOCAL_SOURCES = os.getenv("COPILOT_LOCAL_SOURCES", "1") == "1"
+    COPILOT_PUBMED = os.getenv("COPILOT_PUBMED", "1") == "1"
     REF_WEB_FALLBACK_MIN_STRONG = int(os.getenv("REF_WEB_FALLBACK_MIN_STRONG", "2"))
     MEDICAL_IMAGE_ANALYST_MODEL = os.getenv("MEDICAL_IMAGE_ANALYST_MODEL")
     IMAGE_GEN_MODEL = os.getenv("IMAGE_GEN_MODEL")

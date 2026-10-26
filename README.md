@@ -32,7 +32,7 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 
 | Módulo | Descrição |
 |---|---|
-| **Copiloto clínico** | Chat médico com embasamento por busca (Google Search grounding), citações inline numeradas, hierarquia de evidência (meta-análise > diretriz > relato de caso) e recuperação da sua própria biblioteca. |
+| **Copiloto clínico** | Chat médico que responde a partir de fontes, com citações inline numeradas. Com a IA local, busca antes de responder no catálogo de medicamentos, na sua biblioteca e no PubMed; com o Gemini, na busca do Google. Hierarquia de evidência (meta-análise > diretriz > relato de caso). |
 | **Biblioteca** | Ingestão de PDF, áudio e vídeo. OCR, transcrição, indexação vetorial. Busca híbrida (embeddings e5 + BM25 + reranking cross-encoder). |
 | **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, questionários, casos clínicos e slides a partir da sua biblioteca. |
 | **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, ranking e gamificação. |

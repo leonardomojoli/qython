@@ -1015,29 +1015,41 @@ function Chat({
                                 fullTitle = parts.length > 0 ? parts.join(' ') : t('untitledSource');
                               }
                               const displayTitle = truncateTitle(fullTitle, 70);
+                              const sourceContent = (
+                                <>
+                                  {sourceIndicator && (
+                                    <span className={styles.sourceBadge}>{sourceIndicator}</span>
+                                  )}
+                                  <span className={styles.sourceTitle}>{displayTitle}</span>
+                                  {source.author && (
+                                    <span className={styles.sourceAuthor}> — {source.author}</span>
+                                  )}
+                                  {source.year && (
+                                    <span className={styles.sourceYear}> ({source.year})</span>
+                                  )}
+                                </>
+                              );
 
                               return (
                                 <div key={idx} id={`qref-${idx + 1}`} className={styles.sourceItem}>
                                   <span className={styles.sourceNumber}>[{idx + 1}]</span>
-                                  <a
-                                    href={sourceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={styles.sourceLink}
-                                    title={fullTitle}
-                                  >
-                                    {sourceIndicator && (
-                                      <span className={styles.sourceBadge}>{sourceIndicator}</span>
-                                    )}
-                                    <span className={styles.sourceTitle}>{displayTitle}</span>
-                                    {source.author && (
-                                      <span className={styles.sourceAuthor}> — {source.author}</span>
-                                    )}
-                                    {source.year && (
-                                      <span className={styles.sourceYear}> ({source.year})</span>
-                                    )}
-                                    <FontAwesomeIcon icon={faExternalLinkAlt} className={styles.sourceLinkIcon} />
-                                  </a>
+                                  {/* Catálogo e biblioteca (fontes da IA local) não têm link. */}
+                                  {sourceUrl ? (
+                                    <a
+                                      href={sourceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={styles.sourceLink}
+                                      title={fullTitle}
+                                    >
+                                      {sourceContent}
+                                      <FontAwesomeIcon icon={faExternalLinkAlt} className={styles.sourceLinkIcon} />
+                                    </a>
+                                  ) : (
+                                    <span className={styles.sourceLink} title={fullTitle}>
+                                      {sourceContent}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
