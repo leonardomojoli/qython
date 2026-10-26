@@ -187,19 +187,21 @@ def match_medications(meds: List[Dict], text: str) -> Dict[str, List[Dict]]:
 # "Sífilis primária: 2.400.000 UI IM dose única". População e via não são indicação.
 _DOSED_LABEL_RE = re.compile(r'(?:^|[.;]\s*)([^\W\d][^:.;()]{2,40}):')
 _NOT_CONDITION = {'criancas', 'crianca', 'adultos', 'adulto', 'lactentes', 'neonatos', 'idosos',
-                  'gestantes', 'maximo', 'manutencao', 'ataque', 'inicial', 'infusao', 'graves'}
+                  'gestantes', 'maximo', 'manutencao', 'ataque', 'inicial', 'infusao', 'graves',
+                  'tratamento', 'profilaxia', 'resposta', 'dose', 'doses', 'casos', 'uso'}
 
 
 def match_by_dosed_condition(meds: List[Dict], text: str) -> Dict[str, List[Dict]]:
     """Pergunta que cita a doença e não o fármaco ("primeira droga na anafilaxia?"): entram os
     medicamentos cuja posologia traz dose rotulada com essa doença. Rótulo com várias
-    palavras só casa se a pergunta tiver todas."""
-    asked = set(_significant(text))
+    palavras só casa se a pergunta tiver todas, inteiras: por prefixo, o "se sem resposta:"
+    da adenosina casava com o "Responda em 3 linhas" da pergunta."""
+    asked = set(re.findall(r'[a-z]{4,}', deaccent(text)))
     found: Dict[str, List[Dict]] = {}
     for med in meds:
         for label in _DOSED_LABEL_RE.findall(med.get("usual_posology") or ""):
-            words = [w for w in re.findall(r'[a-z]{4,}', deaccent(label))]
-            if words and not set(words) & _NOT_CONDITION and all(w[:5] in {a[:5] for a in asked} for w in words):
+            words = re.findall(r'[a-z]{4,}', deaccent(label))
+            if words and not set(words) & _NOT_CONDITION and all(w in asked for w in words):
                 found.setdefault(deaccent(med["active_principle"]).strip(), []).append(med)
                 break
     return dict(list(found.items())[:2])
@@ -389,6 +391,7 @@ _QUERY_STOP = {'with', 'from', 'that', 'this', 'dose', 'doses', 'dosing', 'dosag
                'recommended', 'recommendation', 'clinical'}
 _CHILD_TERMS = ('crianc', 'pediatr', 'paediatr', 'infantil', 'lactente', 'neonat', 'recem-nasc',
                 'child', 'infant', 'newborn', 'adolescen')
+_PREGNANCY_TERMS = ('gestant', 'gravid', 'gestac', 'puerper', 'obstetr', 'pregnan', 'maternal')
 _NUMERIC_RE = re.compile(r'\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|ml|mm\s?hg|mmol|ui|iu|units?|g)\b', re.IGNORECASE)
 
 
@@ -397,15 +400,18 @@ def rank_abstracts(candidates: List[Dict], query: str, question: str = "") -> Li
     sozinha trouxe, na bateria, o consenso PEDIÁTRICO de sepse para uma pergunta de adulto e
     revisões de adrenalina NASAL sem a dose IM. Pontua: termos da busca no título (peso maior)
     e no resumo; resumo com valor numérico (dose, pressão, lactato); população que não bate com
-    a da pergunta (criança × adulto) sai da lista: é armadilha, não fonte fraca. Empate
+    a da pergunta (criança, gestante × adulto) sai da lista: é armadilha, não fonte fraca. Empate
     mantém a ordem do PubMed."""
     terms = {w[:6] for w in re.findall(r'[a-z0-9-]{4,}', deaccent(query)) if w not in _QUERY_STOP}
     asked = deaccent(f"{question} {query}")
     asks_child = any(t in asked for t in _CHILD_TERMS)
+    asks_pregnancy = any(t in asked for t in _PREGNANCY_TERMS)
 
     def wrong_population(d: Dict) -> bool:
         title = deaccent(d.get("title") or "")
         about_child = any(t in title for t in _CHILD_TERMS)
+        if any(t in title for t in _PREGNANCY_TERMS) and not asks_pregnancy:
+            return True
         return (about_child and not asks_child) or (asks_child and not about_child and 'adult' in title)
 
     def score(d: Dict) -> float:
