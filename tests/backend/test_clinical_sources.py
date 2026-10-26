@@ -84,6 +84,10 @@ def test_condition_named_in_posology_brings_the_drug():
     assert list(cs.match_by_dosed_condition(meds, "Tratamento da sífilis primária no adulto?")) == ["penicilina benzatina"]
     assert cs.match_by_dosed_condition(meds, "Sífilis secundária?") == {}  # rótulo de 2 palavras exige as 2
     assert cs.match_by_dosed_condition(meds, "Dose em crianças com asma?") == {}  # população não é doença
+    generic = meds + [_med(9, "Adenosina 3mg/mL", "adenosina", "6mg IV rápido; se sem resposta: 12mg IV"),
+                      _med(10, "Oseltamivir 75mg", "oseltamivir", "Tratamento: 75mg VO 12/12h; profilaxia: 75mg 1x/dia")]
+    assert list(cs.match_by_dosed_condition(generic, "Tratamento da sífilis primária? Responda em 2 linhas.")) \
+        == ["penicilina benzatina"]
 
 
 def test_catalog_source_groups_presentations():
@@ -116,6 +120,10 @@ def test_rank_prefers_matching_population_and_numbers():
     assert [d["pmid"] for d in ranked] == ["3", "2"]  # o pediátrico sai
     ranked = cs.rank_abstracts([adult, pediatric], "septic shock criteria children", "Choque séptico em criança?")
     assert ranked[0]["pmid"] == "1"
+    maternal = {"pmid": "4", "title": "Maternal Sepsis: A Review of National and International Guidelines",
+                "abstract": "Sepsis definitions vary."}
+    assert [d["pmid"] for d in cs.rank_abstracts([maternal, adult], "Sepsis-3 septic shock", "Sepsis-3?")] == ["3"]
+    assert cs.rank_abstracts([maternal], "sepsis pregnancy", "Sepse na gestante?")[0]["pmid"] == "4"
 
 
 def test_library_sources_keep_document_and_page():
