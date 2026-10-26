@@ -2875,5 +2875,7 @@
   "arenaXpEmptyTitleLocal": "Comece um simulado",
   "arenaXpEmptyDescLocal": "Complete um simulado para ganhar seus primeiros XP.",
   "sharePrescriptionPdf": "Compartilhar PDF",
-  "prescriptionPdfDownloaded": "PDF da receita baixado."
+  "prescriptionPdfDownloaded": "PDF da receita baixado.",
+  "needsGeminiImage": "Gerar imagens exige uma chave do Gemini. Você ainda pode enviar uma foto.",
+  "mindMapUpgradeMessage": "Mapas Mentais com IA estão disponíveis a partir do Plano Residente."
 }

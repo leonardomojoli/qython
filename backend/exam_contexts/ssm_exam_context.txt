@@ -1,0 +1,7 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — Concorso SSM (Scuole di Specializzazione in Medicina, Itália)
+Texto original do Qython, sem questões reais. Formato aproximado: confira o bando vigente.
+
+- Questões de múltipla escolha com 5 alternativas e uma única correta, em italiano, para o acesso às escolas de especialização médica.
+- Mistura cenários clínicos com perguntas diretas de conhecimento sobre todas as áreas da medicina, das ciências básicas às especialidades clínicas e cirúrgicas.
+- Condutas seguem as diretrizes usadas na Itália e na Europa.

@@ -25,8 +25,6 @@ import EmptyState from '../../components/pharmacy/EmptyState';
 import LibraryChatModal from '../../components/academic/LibraryChatModal';
 import MaterialGeneratorModal from '../../components/academic/MaterialGeneratorModal';
 import MaterialCard from '../../components/academic/MaterialCard';
-import PodcastPlayer from '../../components/academic/PodcastPlayer';
-import VideoLessonPlayer from '../../components/academic/VideoLessonPlayer';
 import SlideshowViewer from '../../components/academic/SlideshowViewer';
 import GradientButton from '../../components/shared/GradientButton';
 import ClinicalCasePlayer from '../../components/academic/ClinicalCasePlayer';
@@ -49,8 +47,6 @@ export default function LibraryDetailScreen({ library, onBack, onLibraryUpdated 
   const [loading, setLoading] = useState(true);
   const [chatVisible, setChatVisible] = useState(false);
   const [generatorVisible, setGeneratorVisible] = useState(false);
-  const [activePodcast, setActivePodcast] = useState<LibraryMaterial | null>(null);
-  const [activeVideo, setActiveVideo] = useState<LibraryMaterial | null>(null);
   const [activeSlideshow, setActiveSlideshow] = useState<LibraryMaterial | null>(null);
   const [activeClinicalCase, setActiveClinicalCase] = useState<LibraryMaterial | null>(null);
   const [activeContent, setActiveContent] = useState<LibraryMaterial | null>(null);
@@ -121,12 +117,6 @@ export default function LibraryDetailScreen({ library, onBack, onLibraryUpdated 
     if (material.status !== 'completed') return;
 
     switch (material.material_type) {
-      case 'podcast':
-        setActivePodcast(material);
-        break;
-      case 'video_lesson':
-        setActiveVideo(material);
-        break;
       case 'slideshow_only':
         if (material.result?.slideshow || material.result?.slides) {
           setActiveSlideshow(material);
@@ -328,28 +318,6 @@ export default function LibraryDetailScreen({ library, onBack, onLibraryUpdated 
               </View>
             ) : null
           }
-        />
-      )}
-
-      {/* Active podcast player */}
-      {activePodcast && (
-        <PodcastPlayer
-          title={activePodcast.title || t('podcast', 'Podcast')}
-          audioUrl={activePodcast.result?.audio_url || activePodcast.result?.url || ''}
-          duration={activePodcast.result?.duration}
-          script={activePodcast.result?.script}
-          onClose={() => setActivePodcast(null)}
-        />
-      )}
-
-      {/* Active video player */}
-      {activeVideo && (
-        <VideoLessonPlayer
-          title={activeVideo.title || t('videoLesson', 'Video Aula')}
-          videoUrl={activeVideo.result?.video_url || activeVideo.result?.url || ''}
-          duration={activeVideo.result?.duration}
-          chapters={activeVideo.result?.chapters}
-          onClose={() => setActiveVideo(null)}
         />
       )}
 

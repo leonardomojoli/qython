@@ -21,16 +21,14 @@ from google import genai
 from google.genai import types
 
 from ..database import get_db, AsyncSessionLocal
-from ..models import User, Transaction, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, PodcastGenerationJob, VideoLessonJob, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
+from ..models import User, Transaction, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
 from ..services.billing_service import debit_dracmas_for_feature
 from ..services.academic_services import library_service, vector_db_service
 from ..services.academic_services.transcription_service import transcribe_audio
 from ..services.academic_services import exam_generation_service
 from ..services.academic_services import exam_research_service
-from ..services.academic_services.material_generation_service import generate_study_material, generate_narration_script_from_slideshow
+from ..services.academic_services.material_generation_service import generate_study_material
 from ..services.academic_services.question_qa import check_questions, build_repair_instruction, summarize, should_repair
-from ..services.academic_services import audio_generation_service
-from ..services.academic_services import video_generation_service
 from ..services.academic_services import file_processing_service
 from ..utils import allowed_file, UPLOAD_FOLDER, THUMBNAIL_FOLDER
 from ..security import get_current_active_user
@@ -48,13 +46,9 @@ router = APIRouter()
 
 
 def _generated_content_expiry():
-    """Quando um podcast, videoaula ou slide gerado expira. None = nunca (edição local)."""
+    """Quando um slide gerado expira. None = nunca (edição local)."""
     ttl = Config.GENERATED_CONTENT_TTL_HOURS
     return datetime.now(timezone.utc) + timedelta(hours=ttl) if ttl else None
-
-# Constantes para a nova lógica de podcast
-PODCAST_CONTENT_TARGET_LENGTH = 45000
-PODCAST_CONTENT_TRIGGER_LENGTH = 50000
 
 class UploadResponse(BaseModel):
     message: str
@@ -128,43 +122,6 @@ class LibraryChatPayload(BaseModel):
 class DriveImportPayload(BaseModel):
     file_ids: List[str] = Field(..., min_length=1, max_length=50)
 
-class PodcastGenerationJobResponse(BaseModel):
-    id: int
-    user_id: int
-    status: str
-    result_path: Optional[str] = None
-    error_message: Optional[str] = None
-    progress_percent: int = 0
-    current_step: Optional[str] = None
-    total_chunks: int = 0
-    completed_chunks: int = 0
-    expires_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
-    training_data_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
-class VideoLessonJobResponse(BaseModel):
-    id: int
-    user_id: int
-    status: str
-    result_path: Optional[str] = None
-    srt_path: Optional[str] = None
-    error_message: Optional[str] = None
-    progress_percent: int = 0
-    current_step: Optional[str] = None
-    total_steps: int = 0
-    completed_steps: int = 0
-    expires_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
-    training_data_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
 class SimuladoGenerationJobResponse(BaseModel):
     id: int
     user_id: int
@@ -216,183 +173,6 @@ async def upload_file(
     except Exception as e:
         logger.error(f"Erro no upload para o usuário {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro no upload do arquivo")
-
-def _summarize_text_for_podcast(content: str) -> str:
-    """
-    Usa um LLM para sumarizar um texto longo, transformando-o em um roteiro de podcast
-    com um tamanho alvo.
-    """
-    logger.info(f"Conteúdo extenso detectado ({len(content)} chars). Iniciando sumarização para podcast...")
-    
-    prompt = f"""
-    Você é um especialista em roteirização de conteúdo educacional para podcasts.
-    Sua tarefa é ler o extenso material fornecido abaixo e criar um roteiro coeso e informativo para um podcast.
-
-    REGRAS CRÍTICAS:
-    1.  **Formato de Saída:** O roteiro DEVE ser um diálogo entre "Dr. Qython" e "Dra. Epione".
-    2.  **Tamanho Alvo:** O roteiro final deve ter aproximadamente {PODCAST_CONTENT_TARGET_LENGTH} caracteres. Você deve condensar, sumarizar e extrair os pontos mais importantes do material original para atingir este alvo.
-    3.  **Qualidade:** O roteiro deve fluir naturalmente e ser didático, não apenas uma lista de fatos.
-
-    MATERIAL EXTENSO PARA SUMARIZAR:
-    ---
-    {content}
-    ---
-    """
-    
-    try:
-        response = llm_services.client.models.generate_content(
-            model=f'models/{llm_services.PRIMARY_LLM_MODEL}',
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=8192) # Aumentar tokens se necessário
-        )
-        summarized_script = response.text
-        logger.info(f"Sumarização concluída. Novo tamanho do roteiro: {len(summarized_script)} chars.")
-        return summarized_script
-    except Exception as e:
-        logger.error(f"Falha ao sumarizar o conteúdo para o podcast: {e}", exc_info=True)
-        raise RuntimeError("Falha ao processar e sumarizar o conteúdo da biblioteca.")
-
-
-async def _run_podcast_generation_task(job_id: int, input_data: str, user_id: int):
-    async with AsyncSessionLocal() as db:
-        try:
-            result = await db.execute(select(PodcastGenerationJob).filter_by(id=job_id))
-            job = result.scalars().first()
-            if not job:
-                logger.error(f"Tarefa de podcast com ID {job_id} não encontrada.")
-                return
-
-            job.status = 'processing'
-            job.current_step = 'Preparando conteúdo...'
-            job.progress_percent = 5
-            await db.commit()
-
-            if len(input_data) > PODCAST_CONTENT_TRIGGER_LENGTH:
-                job.current_step = 'Sumarizando conteúdo extenso...'
-                job.progress_percent = 10
-                await db.commit()
-                processed_input_data = await run_in_threadpool(_summarize_text_for_podcast, input_data)
-            else:
-                processed_input_data = input_data
-
-            job.current_step = 'Gerando roteiro do podcast...'
-            job.progress_percent = 20
-            await db.commit()
-
-            # Agora, usamos o 'processed_input_data' para gerar o roteiro final (se necessário) e o áudio
-            material_content, _, _ = await run_in_threadpool(generate_study_material, processed_input_data, 'podcast', user_id)
-
-            script = material_content.get('podcast_script')
-            if not script:
-                raise RuntimeError("Falha ao gerar o roteiro do podcast a partir do conteúdo processado.")
-
-            job.current_step = 'Iniciando síntese de áudio...'
-            job.progress_percent = 30
-            await db.commit()
-
-            # Progress callback for audio generation
-            def update_audio_progress(current, total, percent, step):
-                # Scale percent from 30-95% range (30% is script done, 95% is audio done)
-                scaled_percent = 30 + int((percent / 100) * 65)
-                # We need to update in a sync context, so we'll do it after
-                pass
-
-            # Store progress info for final update
-            audio_path = await run_in_threadpool(
-                audio_generation_service.generate_podcast_from_script,
-                script
-            )
-            if not audio_path:
-                raise RuntimeError("Geração de áudio retornou um caminho vazio.")
-
-            job.current_step = 'Finalizando...'
-            job.progress_percent = 95
-            await db.commit()
-
-            # --- DATA FLYWHEEL: Salvar roteiro do podcast ---
-            job.training_data_id = await collect_data(
-                db, user_id, "podcast_script",
-                processed_input_data[:5000], script,  # Limitar input para economia
-                {"type": "podcast"}, quality=1
-            )
-
-            # Save podcast script to a text file alongside the audio
-            script_path = None
-            if audio_path and script:
-                import os
-                script_file = audio_path.rsplit('.', 1)[0] + '_script.txt'
-                script_full_path = os.path.join('static', script_file) if not script_file.startswith('static') else script_file
-                try:
-                    with open(script_full_path, 'w', encoding='utf-8') as f:
-                        f.write(script)
-                    script_path = script_file if not script_file.startswith('static') else script_file.replace('static/', '', 1)
-                except Exception as script_error:
-                    logger.warning(f"Failed to save podcast script: {script_error}")
-
-            job.result_path = audio_path
-            job.script_path = script_path
-            job.status = 'completed'
-            job.progress_percent = 100
-            job.current_step = 'Concluído'
-            job.expires_at = _generated_content_expiry()
-            await db.commit()
-            logger.info(f"Podcast para a tarefa {job_id} gerado com sucesso. Expires at: {job.expires_at}")
-
-            # Send notification: material ready (podcast)
-            try:
-                from ..services.notification_service import send_notification, NotificationType
-                user_result = await db.execute(select(User).where(User.id == user_id))
-                user = user_result.scalar_one_or_none()
-                lang = getattr(user, 'language_preference', 'pt-BR') or 'pt-BR'
-                lang_short = lang.split('-')[0]
-                titles = {'pt': 'Material pronto!', 'en': 'Material ready!', 'es': '¡Material listo!'}
-                bodies = {'pt': 'Seu podcast foi gerado com sucesso.', 'en': 'Your podcast was generated successfully.', 'es': 'Su podcast fue generado con éxito.'}
-                await send_notification(
-                    db, user_id, NotificationType.MATERIAL_READY,
-                    titles.get(lang_short, titles['pt']),
-                    bodies.get(lang_short, bodies['pt']),
-                    data={'route': f'/academic/job/{job_id}'},
-                )
-                await db.commit()
-
-                # Send email notification if user has email_enabled
-                if user:
-                    prefs = user.notification_preferences or {}
-                    if prefs.get('email_enabled', True):
-                        from ..services.email_service import send_material_ready_email
-                        send_material_ready_email(
-                            user.email, user.full_name, 'podcast',
-                            bodies.get(lang_short, bodies['pt']),
-                            f'{Config.WEB_BASE_URL}/academic/job/{job_id}', lang_short
-                        )
-            except Exception as ne:
-                logger.error(f"[NOTIFICATIONS] Failed to send material ready notification: {ne}")
-
-        except Exception as e:
-            logger.error(f"Erro na tarefa de fundo (job_id={job_id}): {e}", exc_info=True)
-            if 'job' in locals() and job:
-                job.status = 'error'
-                job.error_message = str(e)
-                await db.commit()
-
-                # Send notification: material failed (podcast)
-                try:
-                    from ..services.notification_service import send_notification, NotificationType
-                    user_result = await db.execute(select(User).where(User.id == user_id))
-                    user = user_result.scalar_one_or_none()
-                    lang = getattr(user, 'language_preference', 'pt-BR') or 'pt-BR'
-                    lang_short = lang.split('-')[0]
-                    fail_titles = {'pt': 'Erro na geração', 'en': 'Generation failed', 'es': 'Error en la generación'}
-                    fail_bodies = {'pt': 'Ocorreu um erro ao gerar seu material. Tente novamente.', 'en': 'An error occurred generating your material. Please try again.', 'es': 'Ocurrió un error al generar su material. Intente nuevamente.'}
-                    await send_notification(
-                        db, user_id, NotificationType.MATERIAL_FAILED,
-                        fail_titles.get(lang_short, fail_titles['pt']),
-                        fail_bodies.get(lang_short, fail_bodies['pt']),
-                        data={'route': '/academic'},
-                    )
-                    await db.commit()
-                except Exception as ne:
-                    logger.error(f"[NOTIFICATIONS] Failed to send material failed notification: {ne}")
 
 async def _run_simulado_generation_task(job_id: int, exam: ArenaExam, user_id: int):
     async with AsyncSessionLocal() as db:
@@ -599,6 +379,52 @@ _QUESTION_KEYS = {
     'questionnaire_subjective': 'questionario_subjetivo',
 }
 
+# Questões por chamada num modelo local. Em CPU (~7 tokens/s) e numa janela de 16k, um
+# pedido de 25–50 questões não cabe nem termina; 5 por vez respondem em poucos minutos.
+LOCAL_QUESTION_BATCH = 5
+LOCAL_DEFAULT_QUESTIONS = 10
+
+
+def _split_blocks_for_local(blocks: list, size: int) -> list:
+    """Blocos da prova em sub-blocos de até `size` questões, com o mesmo texto e rótulo.
+    O laço de geração já passa adiante os enunciados criados, então não há repetição."""
+    out = []
+    for blk in blocks:
+        try:
+            remaining = int(blk.get('num_questions') or 0)
+        except (TypeError, ValueError):
+            remaining = 0
+        while remaining > 0:
+            out.append({**blk, 'num_questions': min(size, remaining)})
+            remaining -= size
+    return out
+
+
+def _generate_questions_in_batches(input_data, material_type, user_id, prior_questions, question_count,
+                                   banca_profile, num_alternatives, model_override, fallback_override,
+                                   thinking_override, allow_support_texts):
+    """generate_study_material em lotes de LOCAL_QUESTION_BATCH, juntando as questões. Cada
+    lote recebe os enunciados dos anteriores para não repetir. Síncrono: rodar em thread."""
+    key = _QUESTION_KEYS[material_type]
+    merged, stems = [], list(prior_questions or [])
+    first = usage = model_name = None
+    remaining = question_count
+    while remaining > 0:
+        n = min(LOCAL_QUESTION_BATCH, remaining)
+        content, usage, model_name = generate_study_material(
+            input_data, material_type, user_id, stems, n, banca_profile, num_alternatives,
+            model_override, fallback_override, thinking_override, allow_support_texts)
+        batch = _extract_question_list(content, key)
+        if first is None:
+            first = content
+        merged.extend(batch)
+        stems.extend(q.get('pergunta') for q in batch if isinstance(q, dict) and q.get('pergunta'))
+        remaining -= n
+        logger.info(f"[LOCAL_BATCH] {material_type}: {len(merged)}/{question_count} questões")
+    result = dict(first) if isinstance(first, dict) else {}
+    result[key] = merged
+    return result, usage, model_name
+
 
 _ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
@@ -674,7 +500,19 @@ async def _run_material_generation_task(material_id: int, input_data: str, mater
             material.status = 'processing'
             await db.commit()
 
-            material_content, usage, model_name = await run_in_threadpool(generate_study_material, input_data, material_type, user_id, prior_questions or [], question_count, banca_profile, num_alternatives, model_override, fallback_override, thinking_override, allow_support_texts)
+            # O Produtor não manda quantidade, e o prompt então pede 25 (o modelo chegou a 37,
+            # 23 minutos em CPU). Com IA local o padrão é 10, gerado em lotes.
+            if material_type in _QUESTION_KEYS and llm_provider.provider_name() != "gemini" and not question_count:
+                question_count = LOCAL_DEFAULT_QUESTIONS
+
+            if (material_type in _QUESTION_KEYS and llm_provider.provider_name() != "gemini"
+                    and (question_count or 0) > LOCAL_QUESTION_BATCH):
+                material_content, usage, model_name = await run_in_threadpool(
+                    _generate_questions_in_batches, input_data, material_type, user_id, prior_questions or [],
+                    question_count, banca_profile, num_alternatives, model_override, fallback_override,
+                    thinking_override, allow_support_texts)
+            else:
+                material_content, usage, model_name = await run_in_threadpool(generate_study_material, input_data, material_type, user_id, prior_questions or [], question_count, banca_profile, num_alternatives, model_override, fallback_override, thinking_override, allow_support_texts)
 
             # QA + AUTO-REPARO (mesma rede do gerador de provas; ver _run_blueprint_generation_task)
             qa_key = _QUESTION_KEYS.get(material_type)
@@ -771,6 +609,8 @@ async def _run_blueprint_generation_task(material_id: int, blocks: list, materia
             combined = []
             input_samples = []
             support_texts = []  # textos-base agregados de todos os blocos
+            if llm_provider.provider_name() != "gemini":
+                blocks = _split_blocks_for_local(blocks, LOCAL_QUESTION_BATCH)
             for blk in blocks:
                 btext = (blk.get('text') or '')
                 try:
@@ -879,146 +719,7 @@ async def _run_blueprint_generation_task(material_id: int, blocks: list, materia
                 await db.commit()
 
 
-async def _run_video_lesson_generation_task(job_id: int, input_data: str, user_id: int):
-    async with AsyncSessionLocal() as db:
-        try:
-            result = await db.execute(select(VideoLessonJob).filter_by(id=job_id))
-            job = result.scalars().first()
-            if not job:
-                logger.error(f"Video lesson job with ID {job_id} not found.")
-                return
-
-            job.status = 'processing'
-            job.current_step = 'Gerando slides...'
-            job.progress_percent = 10
-            job.total_steps = 4
-            job.completed_steps = 0
-            await db.commit()
-
-            # 1. Generate slideshow content
-            slideshow_material, _, _ = await run_in_threadpool(generate_study_material, input_data, 'slideshow_only', user_id)
-
-            # Validate the generated slideshow content
-            slideshow_json = slideshow_material.get("slideshow_content")
-            if not slideshow_json or not isinstance(slideshow_json, dict) or not slideshow_json.get("slides"):
-                raise ValueError("Failed to generate valid slideshow content from the source material. The returned JSON was empty or malformed.")
-
-            job.current_step = 'Gerando roteiro de narração...'
-            job.progress_percent = 30
-            job.completed_steps = 1
-            await db.commit()
-
-            # 2. Generate a narration script *from* the slideshow JSON
-            script = await run_in_threadpool(generate_narration_script_from_slideshow, slideshow_json)
-            if not script:
-                raise RuntimeError("Failed to generate narration script for the video lesson.")
-
-            job.current_step = 'Sintetizando áudio...'
-            job.progress_percent = 50
-            job.completed_steps = 2
-            await db.commit()
-
-            # 3. Generate audio from the new script
-            audio_path = await run_in_threadpool(audio_generation_service.generate_podcast_from_script, script)
-            if not audio_path:
-                raise RuntimeError("Audio generation returned an empty path.")
-
-            job.current_step = 'Renderizando vídeo...'
-            job.progress_percent = 75
-            job.completed_steps = 3
-            await db.commit()
-
-            # 4. Generate video from slideshow and audio (passing script for SRT generation)
-            video_result = await run_in_threadpool(
-                video_generation_service.create_video_from_slideshow,
-                slideshow_json, audio_path, user_id, script
-            )
-
-            # Handle both tuple (video_path, srt_path) and string returns
-            if isinstance(video_result, tuple):
-                video_path, srt_path = video_result
-            else:
-                video_path = video_result
-                srt_path = None
-
-            if not video_path:
-                raise RuntimeError("Video generation returned an empty path.")
-
-            job.result_path = video_path
-            job.srt_path = srt_path
-            job.status = 'completed'
-            job.current_step = 'Concluído'
-            job.progress_percent = 100
-            job.completed_steps = 4
-            job.expires_at = _generated_content_expiry()
-
-            # --- DATA FLYWHEEL: Salvar roteiro de video-aula ---
-            job.training_data_id = await collect_data(
-                db, user_id, "video_lesson_script",
-                input_data[:5000], script,
-                {"type": "video_lesson"}, quality=1
-            )
-
-            await db.commit()
-            logger.info(f"Video lesson for job {job_id} generated successfully.")
-
-            # Send notification: material ready (video)
-            try:
-                from ..services.notification_service import send_notification, NotificationType
-                user_result = await db.execute(select(User).where(User.id == user_id))
-                user = user_result.scalar_one_or_none()
-                lang = getattr(user, 'language_preference', 'pt-BR') or 'pt-BR'
-                lang_short = lang.split('-')[0]
-                titles = {'pt': 'Material pronto!', 'en': 'Material ready!', 'es': '¡Material listo!'}
-                bodies = {'pt': 'Sua videoaula foi gerada com sucesso.', 'en': 'Your video lesson was generated successfully.', 'es': 'Su videolección fue generada con éxito.'}
-                await send_notification(
-                    db, user_id, NotificationType.MATERIAL_READY,
-                    titles.get(lang_short, titles['pt']),
-                    bodies.get(lang_short, bodies['pt']),
-                    data={'route': f'/academic/job/{job_id}'},
-                )
-                await db.commit()
-
-                # Send email notification if user has email_enabled
-                if user:
-                    prefs = user.notification_preferences or {}
-                    if prefs.get('email_enabled', True):
-                        from ..services.email_service import send_material_ready_email
-                        send_material_ready_email(
-                            user.email, user.full_name, 'video',
-                            bodies.get(lang_short, bodies['pt']),
-                            f'{Config.WEB_BASE_URL}/academic/job/{job_id}', lang_short
-                        )
-            except Exception as ne:
-                logger.error(f"[NOTIFICATIONS] Failed to send material ready notification: {ne}")
-
-        except Exception as e:
-            logger.error(f"Error in video lesson background task (job_id={job_id}): {e}", exc_info=True)
-            if 'job' in locals() and job:
-                job.status = 'error'
-                job.error_message = str(e)
-                await db.commit()
-
-                # Send notification: material failed (video)
-                try:
-                    from ..services.notification_service import send_notification, NotificationType
-                    user_result = await db.execute(select(User).where(User.id == user_id))
-                    user = user_result.scalar_one_or_none()
-                    lang = getattr(user, 'language_preference', 'pt-BR') or 'pt-BR'
-                    lang_short = lang.split('-')[0]
-                    fail_titles = {'pt': 'Erro na geração', 'en': 'Generation failed', 'es': 'Error en la generación'}
-                    fail_bodies = {'pt': 'Ocorreu um erro ao gerar seu material. Tente novamente.', 'en': 'An error occurred generating your material. Please try again.', 'es': 'Ocurrió un error al generar su material. Intente nuevamente.'}
-                    await send_notification(
-                        db, user_id, NotificationType.MATERIAL_FAILED,
-                        fail_titles.get(lang_short, fail_titles['pt']),
-                        fail_bodies.get(lang_short, fail_bodies['pt']),
-                        data={'route': '/academic'},
-                    )
-                    await db.commit()
-                except Exception as ne:
-                    logger.error(f"[NOTIFICATIONS] Failed to send material failed notification: {ne}")
-
-@router.post("/process", response_model=Union[PodcastGenerationJobResponse, VideoLessonJobResponse, AcademicMaterialResponse], status_code=status.HTTP_202_ACCEPTED)
+@router.post("/process", response_model=AcademicMaterialResponse, status_code=status.HTTP_202_ACCEPTED)
 async def process_file(
     payload: ProcessPayload,
     background_tasks: BackgroundTasks,
@@ -1103,14 +804,12 @@ async def process_file(
             logger.info(f"[MATERIAL_CTX] {original} → {len(input_data)} chars (janela de {llm_provider.context_tokens()} tokens)")
 
         # Premium features require Residente+ plan
-        PREMIUM_MATERIAL_TYPES = ['podcast', 'video_lesson', 'mind_map']
+        PREMIUM_MATERIAL_TYPES = ['mind_map']
         PREMIUM_ALLOWED_PLANS = ['resident', 'staff', 'specialist']
 
         if payload.material_type in PREMIUM_MATERIAL_TYPES:
             if not current_user.is_admin and effective_plan(current_user) not in PREMIUM_ALLOWED_PLANS:
                 feature_names = {
-                    'podcast': 'Podcasts',
-                    'video_lesson': 'Videoaulas',
                     'mind_map': 'Mapas Mentais com IA'
                 }
                 feature_name = feature_names.get(payload.material_type, 'Este recurso')
@@ -1121,52 +820,12 @@ async def process_file(
 
         await track_activity(db, current_user.id, 'academic', 'material_generate', {'type': payload.material_type})
 
-        if payload.material_type == 'podcast':
-            if payload.source_type != 'library_id':
-                raise HTTPException(status_code=400, detail="Podcasts só podem ser gerados a partir de uma biblioteca.")
+        # Podcast e videoaula saíram (out/2026): dependem de voz sintetizada e de um modelo
+        # bom o bastante para roteiro longo, o que um PC de consultório sem GPU não tem.
+        if payload.material_type in ('podcast', 'video_lesson'):
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="Podcasts e videoaulas não são mais gerados pelo Qython.")
 
-            await debit_dracmas_for_feature(current_user, "generate_podcast", db)
-
-            result = await db.execute(select(PodcastGenerationJob).filter(
-                PodcastGenerationJob.user_id == current_user.id,
-                PodcastGenerationJob.status.in_(['pending', 'processing'])
-            ))
-            active_job = result.scalars().first()
-            if active_job:
-                raise HTTPException(status_code=409, detail="Você já tem uma geração de podcast em andamento.")
-
-            await run_in_threadpool(audio_generation_service.cleanup_dangling_jobs, db, current_user.id)
-
-            new_job = PodcastGenerationJob(user_id=current_user.id)
-            db.add(new_job)
-            
-            background_tasks.add_task(_run_podcast_generation_task, new_job.id, input_data, current_user.id)
-            
-            await db.commit()
-            await db.refresh(new_job)
-            return new_job
-
-        elif payload.material_type == 'video_lesson':
-            await debit_dracmas_for_feature(current_user, "generate_video_lesson", db)
-
-            result = await db.execute(select(VideoLessonJob).filter(
-                VideoLessonJob.user_id == current_user.id,
-                VideoLessonJob.status.in_(['pending', 'processing'])
-            ))
-            active_job = result.scalars().first()
-            if active_job:
-                raise HTTPException(status_code=409, detail="Você já tem uma geração de videoaula em andamento.")
-
-            new_job = VideoLessonJob(user_id=current_user.id)
-            db.add(new_job)
-            
-            background_tasks.add_task(_run_video_lesson_generation_task, new_job.id, input_data, current_user.id)
-            
-            await db.commit()
-            await db.refresh(new_job)
-            return new_job
-
-        elif payload.material_type in ['summary', 'detailed_text', 'mind_map', 'flashcards', 'slideshow_only', 'questionnaire_objective', 'questionnaire_subjective', 'comparative_table', 'clinical_case', 'critical_appraisal']:
+        if payload.material_type in ['summary', 'detailed_text', 'mind_map', 'flashcards', 'slideshow_only', 'questionnaire_objective', 'questionnaire_subjective', 'comparative_table', 'clinical_case', 'critical_appraisal']:
             # Cobrar pela geração de material de estudo
             # Mapa mental usa modelo Pro (mais caro)
             feature_cost_key = "generate_mind_map" if payload.material_type == 'mind_map' else "generate_study_material"
@@ -1398,14 +1057,17 @@ async def start_quiz(
 
         new_job = SimuladoGenerationJob(user_id=current_user.id)
         db.add(new_job)
-        
+        # O id só existe depois do flush: antes disto a tarefa era agendada com job_id=None
+        # e morria com "Tarefa de simulado com ID None não encontrada".
+        await db.flush()
+
         background_tasks.add_task(
             _run_simulado_generation_task,
             job_id=new_job.id,
             exam=exam,
             user_id=current_user.id
         )
-        
+
         await db.commit()
         await db.refresh(new_job)
         return new_job
@@ -1764,55 +1426,6 @@ async def get_document_content(document_id: int, db: AsyncSession = Depends(get_
     # Drive-backed: cache efêmero local + FileResponse (get_drive_cached_file mapeia os erros).
     cache_path = await library_service.get_drive_cached_file(db, document)
     return FileResponse(cache_path, filename=document.original_filename)
-
-@router.get("/podcast_job/active", response_model=Optional[PodcastGenerationJobResponse])
-async def get_active_podcast_job(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    result = await db.execute(select(PodcastGenerationJob).filter(
-        PodcastGenerationJob.user_id == current_user.id,
-        PodcastGenerationJob.status.in_(['pending', 'processing'])
-    ))
-    return result.scalars().first()
-
-@router.get("/podcast_job/{job_id}", response_model=PodcastGenerationJobResponse)
-async def get_podcast_job_status(job_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    result = await db.execute(select(PodcastGenerationJob).filter_by(id=job_id, user_id=current_user.id))
-    job = result.scalars().first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
-    return job
-
-@router.delete("/podcast_job/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def clear_podcast_job(job_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    success = await run_in_threadpool(audio_generation_service.clear_specific_podcast_job, db=db, user_id=current_user.id, job_id=job_id)
-    if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado ou já foi removido.")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@router.get("/video_lesson_job/active", response_model=Optional[VideoLessonJobResponse])
-async def get_active_video_lesson_job(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    result = await db.execute(select(VideoLessonJob).filter(
-        VideoLessonJob.user_id == current_user.id,
-        VideoLessonJob.status.in_(['pending', 'processing'])
-    ))
-    return result.scalars().first()
-
-@router.get("/video_lesson_job/{job_id}", response_model=VideoLessonJobResponse)
-async def get_video_lesson_job_status(job_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    result = await db.execute(select(VideoLessonJob).filter_by(id=job_id, user_id=current_user.id))
-    job = result.scalars().first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
-    return job
-
-@router.delete("/video_lesson_job/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def clear_video_lesson_job(job_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    success = await run_in_threadpool(
-        video_generation_service.clear_specific_video_lesson_job,
-        db=db, user_id=current_user.id, job_id=job_id
-    )
-    if not success:
-        raise HTTPException(status_code=404, detail="Job não encontrado ou já foi removido.")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.get("/material/{material_id}/status", response_model=AcademicMaterialResponse)
 async def get_material_status(

@@ -13,7 +13,7 @@ código lê (`.text`, `.candidates`, `.usage_metadata`).
 O que não tem equivalente fora do Gemini fica de fora, e `capabilities()` diz o que
 a instalação oferece, para o front esconder ou avisar:
   - busca do Google (tool google_search): a resposta vem sem grounding;
-  - geração de imagem e de áudio (TTS): exigem a chave do Gemini.
+  - geração de imagem: exige a chave do Gemini.
 
 Configuração (.env):
   LLM_PROVIDER    gemini | openai. Padrão: gemini se houver GEMINI_API_KEY.
@@ -75,8 +75,8 @@ def approx_tokens(text: str) -> int:
 
 
 def capabilities() -> dict:
-    """O que a IA desta instalação faz. Imagem e áudio dependem só de haver uma
-    chave do Gemini, mesmo com o texto num modelo local."""
+    """O que a IA desta instalação faz. Gerar imagem depende só de haver uma chave do
+    Gemini, mesmo com o texto num modelo local."""
     gemini_text = provider_name() == "gemini"
     has_gemini_key = bool(os.getenv("GEMINI_API_KEY"))
     return {
@@ -84,7 +84,6 @@ def capabilities() -> dict:
         "model": os.getenv("LLM_MODEL") if not gemini_text else None,
         "web_search": gemini_text,
         "image_generation": has_gemini_key,
-        "tts": has_gemini_key,
         "vision": True,
     }
 

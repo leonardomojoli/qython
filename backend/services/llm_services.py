@@ -1463,6 +1463,16 @@ def _strip_thinking_leak(text: str) -> str:
     return text.strip()
 
 
+_NO_WEB_SEARCH_INSTRUCTION = (
+    "\n\n**ESTA INSTALAÇÃO NÃO TEM BUSCA NA WEB.** Ignore as instruções acima de pesquisar "
+    "na web: responda com o seu conhecimento e com o conteúdo da biblioteca do usuário, quando "
+    "houver. Não escreva marcadores como `[n]`, não diga que pesquisou e não invente "
+    "referências, PMIDs, DOIs ou URLs. Se citar uma diretriz ou estudo pelo nome, use o bloco "
+    "`[REFS]` no final. Quando a resposta depender de dado que muda com frequência (dose, "
+    "diretriz recente), diga que vale conferir na fonte oficial."
+)
+
+
 async def chat_with_google_ai(message: str, history: List[Dict] = None, context_truncated: bool = False, include_clinical_reasoning: bool = False, language_code: str = 'pt-BR', file_content_context: str = None, image_data_list: list = None, library_id: int = None, db: AsyncSession = None, skip_topic_check: bool = False, user_id: int = None) -> str:
     logger.info(f"Iniciando chat_with_google_ai. History items: {len(history) if history else 0}. Truncated: {context_truncated}. Reasoning: {include_clinical_reasoning}, Lang: {language_code}, File Context: {bool(file_content_context)}, Images: {len(image_data_list) if image_data_list else 0}, Library ID: {library_id}")
 
@@ -1547,6 +1557,11 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # 5. Define o prompt de sistema a ser usado com base na escolha do usuário
     # USA current_prompts PARA SUPORTAR EDIÇÃO DINÂMICA VIA ADMIN PANEL
     system_prompt_text = current_prompts["clinical_reasoning"] if include_clinical_reasoning else current_prompts["neuralweb_chat"]
+
+    # Os prompts (editáveis no admin) mandam pesquisar na web e dizem que o sistema monta os
+    # marcadores [n]. Sem busca (IA local), o modelo copiava o "[n]" e fingia fontes.
+    if not llm_provider.capabilities()["web_search"]:
+        system_prompt_text += _NO_WEB_SEARCH_INSTRUCTION
 
     # 5.1 Injetar instrução de idioma no prompt do sistema
     # Isto garante que a resposta seja no idioma da UI do usuário
@@ -1641,6 +1656,9 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
 
     # Higieniza a resposta para remover quebras de linha excessivas
     cleaned_response_text = re.sub(r'\n{3,}', '\n\n', raw_response_text)
+    if not llm_provider.capabilities()["web_search"]:
+        # Marcador copiado da instrução, sem fonte por trás (ver _NO_WEB_SEARCH_INSTRUCTION).
+        cleaned_response_text = re.sub(r'\s*\[n\]', '', cleaned_response_text)
 
     # Substitui notação LaTeX inline por símbolos Unicode (Gemini às vezes usa LaTeX)
     latex_to_unicode = {

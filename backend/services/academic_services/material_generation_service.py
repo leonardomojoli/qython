@@ -10,6 +10,7 @@ import logging
 from pptx import Presentation
 from pptx.util import Inches
 from ..llm_services import client, PRIMARY_LLM_MODEL, FALLBACK_LLM_MODEL, MAX_RETRIES, INITIAL_BACKOFF, MAX_BACKOFF, _get_thinking_config_for_model
+from .. import llm_provider
 from google.genai import types
 import time
 from ...config import Config
@@ -1154,28 +1155,6 @@ CONTEÚDO PARA ANÁLISE:
 """
     return prompt
 
-def generate_podcast_script_prompt(theme, subject_context):
-    prompt = f"""
-Você é um roteirista de podcasts médicos educacionais. Sua tarefa é criar um roteiro de diálogo entre dois apresentadores sobre o tema '{theme}', baseado no contexto fornecido.
-PERSONAGENS:
-Dr. Qython: Um médico especialista, experiente e com uma didática clara. Ele explica os conceitos complexos.
-Dra. Epione: A co-apresentadora, que representa o estudante ou profissional em formação. Ela faz as perguntas, pede esclarecimentos e resume os pontos-chave.
-ESTRUTURA DO ROTEIRO:
-Duração Alvo: O roteiro deve ser dimensionado para um podcast de aproximadamente 5 a 7 minutos (cerca de 800-1000 palavras).
-Formato do Diálogo: Cada fala DEVE começar com o nome do personagem, seguido por dois pontos. Ex: Dr. Qython: ou Dr. Epione:.
-NÃO inclua sua resposta em um bloco de código JSON. Apenas o texto do roteiro.
-EXEMPLO DE SAÍDA ESPERADA:
-Dr. Qython: Olá, Dra. Epione! Hoje vamos falar sobre a avaliação de risco cardiovascular em cirurgias não cardíacas. É um tema crucial.
-Dra. Epione: Exato, Dr. Qython. Por onde começamos? Quais são os primeiros passos nessa avaliação?
-Dr. Qython: O primeiro passo é sempre uma boa anamnese e exame físico, focando em identificar o que chamamos de 'condições cardíacas ativas'...
-O diálogo deve ser natural, informativo e seguir uma progressão lógica.
-CONTEXTO PARA O ROTEIRO:
-\"\"\"
-{subject_context}
-\"\"\"
-"""
-    return prompt
-
 def generate_slideshow_only_prompt(subject_context):
     """
     Generates the prompt for creating a rich-content slideshow with explicit
@@ -1449,111 +1428,6 @@ CONTEÚDO BASE PARA O CASO:
 
 
 # --- AUSSIE ENGINEER'S FIX ---
-# New prompt and function specifically for generating a video lesson narration script.
-def generate_video_narration_prompt(slideshow_json_str: str):
-    """
-    Generates a prompt to create a narration script based on the structured
-    content of a slideshow.
-    """
-    prompt = f"""
-Você é um roteirista de videoaulas médicas. Sua tarefa é criar um roteiro de narração em formato de diálogo entre dois apresentadores, baseado no conteúdo de uma apresentação de slides fornecida em formato JSON.
-
-**PERSONAGENS:**
-- **Dr. Qython:** Um médico especialista, experiente e com uma didática clara. Ele explica os conceitos complexos de cada slide.
-- **Dra. Epione:** A co-apresentadora, que guia a aula, introduz os slides, faz perguntas pertinentes e resume os pontos-chave para o espectador.
-
-**ESTRUTURA DO ROTEIRO:**
-- **Formato do Diálogo:** Cada fala DEVE começar com o nome do personagem, seguido por dois pontos. Ex: `Dr. Qython:` ou `Dra. Epione:`.
-- **Fluxo da Aula:** O roteiro DEVE seguir a ordem dos slides da apresentação. A Dra. Epione geralmente introduz o tópico de um novo slide, e o Dr. Qython aprofunda o conteúdo.
-- **Sincronia com o Visual:** A narração deve corresponder diretamente ao conteúdo do slide que está sendo apresentado. Faça referências claras ao que está na tela (ex: "Como podemos ver nesta tabela...", "Este diagrama ilustra bem...").
-- **Tom:** Profissional, didático e conversacional, como dois professores apresentando uma aula juntos.
-- **SAÍDA:** A resposta deve ser APENAS o texto do roteiro, sem JSON, comentários ou qualquer outro texto.
-
-**EXEMPLO DE SAÍDA ESPERADA:**
-Dra. Epione: Olá a todos e bem-vindos. No primeiro slide, vamos começar com a definição e a fisiopatologia do Infarto Agudo do Miocárdio. Dr. Qython, pode nos explicar os pontos principais?
-Dr. Qython: Com certeza, Dra. Epione. Como vemos nos pontos, o infarto é essencialmente a necrose do músculo cardíaco causada por uma oclusão completa de uma artéria coronária. A causa mais comum é a trombose que se forma sobre uma placa de gordura que se rompeu.
-Dra. Epione: E o diagrama na tela ilustra exatamente esse processo, correto?
-Dr. Qython: Exato. Vemos a artéria, a placa rompida e o trombo bloqueando o fluxo sanguíneo.
-
-**APRESENTAÇÃO JSON PARA CRIAR O ROTEIRO:**
-```json
-{slideshow_json_str}
-ROTEIRO DA NARRAÇÃO:
-"""
-    return prompt
-
-def generate_narration_script_from_slideshow(slideshow_json: dict) -> str:
-    """
-    Uses an LLM to generate a narration script directly from a slideshow's JSON data.
-    Includes retry logic with fallback model support.
-    """
-    logger.info("Generating video lesson narration script from slideshow JSON...")
-
-    # Convert the dictionary to a nicely formatted JSON string for the prompt
-    slideshow_str = json.dumps(slideshow_json, indent=2, ensure_ascii=False)
-    prompt_text = generate_video_narration_prompt(slideshow_str)
-
-    # Build list of models to try (primary + fallback)
-    models_to_try = [PRIMARY_LLM_MODEL]
-    if FALLBACK_LLM_MODEL and FALLBACK_LLM_MODEL != PRIMARY_LLM_MODEL:
-        models_to_try.append(FALLBACK_LLM_MODEL)
-        logger.info(f"[VIDEO_NARRATION] Fallback configurado: primário={PRIMARY_LLM_MODEL}, fallback={FALLBACK_LLM_MODEL}")
-
-    last_error = None
-    script = None
-
-    for model_idx, model_to_use in enumerate(models_to_try):
-        is_fallback = model_idx > 0
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                logger.info(f"[VIDEO_NARRATION] Tentativa {attempt + 1}/{MAX_RETRIES} com modelo: {model_to_use}{' (fallback)' if is_fallback else ''}")
-
-                response = client.models.generate_content(
-                    model=f'models/{model_to_use}',
-                    contents=prompt_text,
-                    config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=16384)
-                )
-
-                script = response.text.strip() if response.text else None
-
-                if not script:
-                    logger.warning(f"[VIDEO_NARRATION] LLM retornou resposta vazia (tentativa {attempt + 1}, modelo: {model_to_use})")
-                    last_error = "LLM returned empty response"
-                    if attempt < MAX_RETRIES - 1:
-                        backoff = min(INITIAL_BACKOFF * (2 ** attempt), MAX_BACKOFF)
-                        logger.info(f"[VIDEO_NARRATION] Aguardando {backoff}s antes de retry...")
-                        time.sleep(backoff)
-                    continue
-
-                # Success
-                if is_fallback:
-                    logger.warning(f"[VIDEO_NARRATION] Sucesso com modelo de fallback: {model_to_use}")
-                logger.info(f"Video narration script generated successfully. Length: {len(script)} chars.")
-                return script
-
-            except Exception as e:
-                error_msg = str(e)
-                last_error = error_msg
-                logger.warning(f"[VIDEO_NARRATION] Erro na tentativa {attempt + 1}/{MAX_RETRIES} com modelo {model_to_use}: {error_msg}")
-
-                # Check for 503 (model overloaded) - worth retrying
-                if "503" in error_msg or "UNAVAILABLE" in error_msg or "overloaded" in error_msg.lower():
-                    if attempt < MAX_RETRIES - 1:
-                        backoff = min(INITIAL_BACKOFF * (2 ** attempt), MAX_BACKOFF)
-                        logger.info(f"[VIDEO_NARRATION] Erro 503/UNAVAILABLE. Aguardando {backoff}s antes de retry...")
-                        time.sleep(backoff)
-                    continue
-                else:
-                    # Other errors - don't retry, try next model
-                    break
-
-        # If we got a successful response, we already returned above
-        # If not, continue to next model
-
-    # If all models and retries failed, raise the last error
-    logger.error(f"[VIDEO_NARRATION] Todos os modelos e tentativas falharam. Último erro: {last_error}")
-    raise RuntimeError(f"Failed to generate narration script after all retries: {last_error}")
 # --- MAIN SERVICE FUNCTION ---
 def generate_study_material(document_content: str, material_type: str, user_id: int, prior_questions=None, question_count=None, banca_profile=None, num_alternatives=5, model_override=None, fallback_override=None, thinking_override=None, for_exam: bool = False) -> Tuple[dict, Any, str]:
     logger.info(f"Generating '{material_type}' material for user_id {user_id}.")
@@ -1568,8 +1442,6 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
     elif material_type == 'questionnaire_objective':
         prompt_text = generate_objective_quiz_prompt(subject_context, prior_questions, question_count, num_alternatives, for_exam=for_exam)
         # Now uses JSON output format
-    elif material_type == 'podcast':
-        prompt_text = generate_podcast_script_prompt("podcast", subject_context)
         is_json_output = False
     elif material_type == 'detailed_text':
         prompt_text = generate_detailed_text_prompt(subject_context)
@@ -1604,6 +1476,15 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
         # demais materiais seguem conservadores.
         quiz_temperature = 0.85 if material_type in ('questionnaire_objective', 'questionnaire_subjective') else 0.4
         genai_config = {'temperature': quiz_temperature, 'max_output_tokens': 32768}
+        # O teto de 32k cobre o raciocínio do Gemini, que conta como saída. Num modelo local
+        # em CPU (~7 tokens/s) ele vira horas quando a amostragem degenera: medido, tentativas
+        # de 7 mil tokens para 3 questões, contra ~600 numa geração normal. O teto passa a
+        # acompanhar o pedido, com folga de mais do dobro.
+        if llm_provider.provider_name() != "gemini":
+            if material_type in ('questionnaire_objective', 'questionnaire_subjective'):
+                genai_config['max_output_tokens'] = 450 * (question_count or 25) + 600
+            else:
+                genai_config['max_output_tokens'] = 6000
         if is_json_output:
             genai_config['response_mime_type'] = 'application/json'
         # Structured output schema por tipo: constrained decoding garante JSON válido
@@ -1792,8 +1673,6 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
         elif material_type == 'questionnaire_objective':
             part_dict = _pre_parsed_json
             _shuffle_quiz_positions(part_dict)  # fim do viés de posição (correta sempre em B/C/D)
-        elif material_type == 'podcast':
-            part_dict = {"podcast_script": raw_output}
         elif material_type == 'detailed_text':
             part_dict = {"detailed_text": raw_output}
         elif material_type == 'flashcards':

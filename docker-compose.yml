@@ -10,11 +10,12 @@
 #
 #   docker compose up -d --build
 #
-# Os serviços pesados de ML (whisper, embedder) ficam atrás de profiles porque
-# baixam alguns GB de modelo. Sem eles o sistema funciona: a transcrição cai no
-# Groq e a busca da biblioteca usa o pipeline de embeddings legado, local.
+# A transcrição de áudio roda na máquina (whisper), sem serviço pago: o modelo é
+# baixado e carregado só na primeira transcrição. O embedder da busca híbrida
+# (e5 + reranker) fica atrás de um profile; sem ele a biblioteca usa o pipeline de
+# embeddings local mais leve.
 #
-#   docker compose --profile ml up -d     # sobe também whisper + embedder
+#   docker compose --profile ml up -d     # sobe também o embedder
 
 services:
   db:
@@ -71,6 +72,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-qython}:${POSTGRES_PASSWORD:-qython}@db:5432/${POSTGRES_DB:-qython}
       CHROMA_SERVER_HOST: chroma
       CHROMA_SERVER_PORT: "8000"
+      # Transcrição local pelo serviço whisper abaixo. Para usar o Groq, defina
+      # WHISPER_SERVER_URL vazio e GROQ_API_KEY no .env.
+      WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
     volumes:
       - uploads:/app/backend/static/uploads
       - permanent:/app/backend/static/permanent_uploads
@@ -101,16 +105,17 @@ services:
     ports:
       - "${WEB_PORT:-8080}:80"
 
-  # --- perfil "ml": self-host dos modelos, opcional ---
-
+  # Transcrição local (faster-whisper). WHISPER_MODEL no .env troca o modelo; o
+  # padrão large-v3-turbo usa ~1 GB de RAM depois da primeira transcrição.
   whisper:
-    profiles: ["ml"]
     image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     command: uvicorn backend.whisper_server:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 75
     volumes:
       - models:/root/.cache/huggingface
+
+  # --- perfil "ml": busca híbrida da biblioteca, opcional ---
 
   embedder:
     profiles: ["ml"]

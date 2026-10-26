@@ -1163,6 +1163,10 @@ def remove_references_section(text: str) -> str:
             line_start = 0
         else:
             line_start += 1  # Pular o \n
+        # Marcador no meio da linha (resposta inteira numa linha só, comum em modelos
+        # pequenos): cortar do início da linha apagava a resposta toda.
+        if text[line_start:marker_pos].strip():
+            line_start = marker_pos
 
         cut_position = line_start
         matched_marker = refs_marker

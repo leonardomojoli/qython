@@ -38,8 +38,6 @@ else:
 # Free tier: 28.800 s de áudio/dia e arquivos até 25 MB — o limite de tamanho é
 # coberto pelo chunking em FLAC 16kHz mono feito por split_direct_to_flac_chunks.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    logger.warning("GROQ_API_KEY não encontrada nas variáveis de ambiente. As transcrições de áudio/vídeo falharão.")
 
 GROQ_TRANSCRIPTION_MODEL = os.getenv("GROQ_TRANSCRIPTION_MODEL", "whisper-large-v3-turbo")
 GROQ_API_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
@@ -52,6 +50,8 @@ TRANSCRIPTION_LANGUAGE = os.getenv("TRANSCRIPTION_LANGUAGE", "").strip()
 # (whisper.service, large-v3-turbo) em vez da Groq — sem cota/API externa.
 WHISPER_SERVER_URL = os.getenv("WHISPER_SERVER_URL", "").strip()
 WHISPER_REQUEST_TIMEOUT = int(os.getenv("WHISPER_REQUEST_TIMEOUT", "5400"))  # 1.5h p/ áudios longos
+if not WHISPER_SERVER_URL and not GROQ_API_KEY:
+    logger.warning("Transcrição sem destino: defina WHISPER_SERVER_URL (whisper local) ou GROQ_API_KEY.")
 
 # --- Constantes ---
 MAX_RETRIES = 3
