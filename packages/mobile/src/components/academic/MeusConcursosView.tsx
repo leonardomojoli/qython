@@ -17,7 +17,7 @@ import {
   Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { pick } from 'react-native-document-picker';
+import { errorCodes, isErrorWithCode, pick } from '@react-native-documents/picker';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -195,7 +195,7 @@ export default function MeusConcursosView() {
       }));
       setForm((f) => ({ ...f, [target]: [...f[target], ...picked] }));
     } catch (e: any) {
-      if (e && e.code === 'DOCUMENT_PICKER_CANCELED') return;
+      if (isErrorWithCode(e) && e.code === errorCodes.OPERATION_CANCELED) return;
       Alert.alert('', t('errorUploadingDocument', 'Erro ao selecionar arquivos.'));
     }
   };
@@ -593,7 +593,7 @@ export default function MeusConcursosView() {
       )}
 
       {/* ── Form criar/editar ── */}
-      <Modal visible={showForm} animationType="slide" onRequestClose={() => !saving && setShowForm(false)}>
+      <Modal visible={showForm} animationType="slide" onRequestClose={() => { if (!saving) setShowForm(false); }}>
         <View style={[styles.modalRoot, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.surfaceBorder }]}>
             <Text style={[typography.h3, { color: theme.text }]}>{editingId ? t('mcEditTitle', 'Editar concurso') : t('mcCreateTitle', 'Criar concurso')}</Text>
@@ -899,7 +899,7 @@ export default function MeusConcursosView() {
       </Modal>
 
       {/* ── Dossiê ── */}
-      <Modal visible={!!dossierModal} animationType="slide" onRequestClose={() => !dossierModal?.researching && setDossierModal(null)}>
+      <Modal visible={!!dossierModal} animationType="slide" onRequestClose={() => { if (!dossierModal?.researching) setDossierModal(null); }}>
         <View style={[styles.modalRoot, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.surfaceBorder }]}>
             <Text style={[typography.h3, { color: theme.text, flexShrink: 1 }]}>📋 {t('mcDossierTitle', 'Dossiê da prova')}</Text>
