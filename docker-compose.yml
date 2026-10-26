@@ -113,16 +113,20 @@ services:
 
   # IA local: llama.cpp com o Gemma 4. Na primeira subida baixa o modelo (~5 GB) do
   # Hugging Face para o volume llmmodels; depois sobe em segundos. LLM_HF_REPO troca o
-  # modelo (ex.: ggml-org/gemma-4-E2B-it-GGUF para máquinas com 8 GB de RAM).
+  # modelo (ex.: ggml-org/gemma-4-E2B-it-GGUF:Q4_0 para máquinas com 8 GB de RAM).
+  # A quantização vai explícita: sem ela o llama.cpp procura Q4_K_M, que o Gemma 4 não
+  # tem, e cai no primeiro arquivo do repositório — o BF16, de 15 GB.
   llm:
     image: ghcr.io/ggml-org/llama.cpp:server-b11870
     restart: unless-stopped
     command: >
-      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-E4B-it-GGUF}
+      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-E4B-it-GGUF:Q4_0}
       -c ${LLM_CONTEXT_TOKENS:-16384} -t ${LLM_THREADS:-4} --jinja
       --host 0.0.0.0 --port 8080
+    environment:
+      LLAMA_CACHE: /models
     volumes:
-      - llmmodels:/root/.cache/llama.cpp
+      - llmmodels:/models
 
   # Transcrição local (faster-whisper). WHISPER_MODEL no .env troca o modelo; o
   # padrão large-v3-turbo usa ~1 GB de RAM depois da primeira transcrição.

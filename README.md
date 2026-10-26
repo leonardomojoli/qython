@@ -71,7 +71,7 @@ uns 5 GB, baixado na primeira subida do serviço `llm`. Depois disso o start é
 rápido.
 
 **Modelo de IA.** O padrão é o Gemma 4 E4B, que pede uns 6 GB de RAM. Em máquinas
-com 8 GB, use o E2B (`LLM_HF_REPO=ggml-org/gemma-4-E2B-it-GGUF` no `.env`); é mais
+com 8 GB, use o E2B (`LLM_HF_REPO=ggml-org/gemma-4-E2B-it-GGUF:Q4_0` no `.env`); é mais
 rápido e erra mais. Em CPU, uma resposta leva de 30 segundos a alguns minutos.
 Opcionalmente, uma chave do Gemini (`GEMINI_API_KEY` e `LLM_PROVIDER=gemini`) dá
 respostas melhores e busca na web, mas aí o texto de cada pedido vai para o Google.
