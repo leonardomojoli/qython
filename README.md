@@ -41,9 +41,10 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 
 ## Começando
 
-Você precisa de [Docker](https://docs.docker.com/get-docker/) e uma chave da
-[API do Google Gemini](https://aistudio.google.com/apikey) (o tier gratuito serve
-para experimentar — veja a ressalva em [Privacidade](#privacidade-e-escolha-de-modelo)).
+Você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com
+16 GB de RAM (8 GB com o modelo menor, veja abaixo). A IA roda na própria máquina,
+sem chave de API: o compose sobe o [llama.cpp](https://github.com/ggml-org/llama.cpp)
+com o Gemma 4.
 
 ```bash
 git clone https://github.com/leonardomojoli/qython.git
@@ -51,10 +52,9 @@ cd qython
 cp .env.example .env
 ```
 
-Edite o `.env` e preencha no mínimo:
+Edite o `.env` e preencha a chave que assina as sessões:
 
 ```bash
-GEMINI_API_KEY=sua-chave-aqui
 JWT_SECRET_KEY=$(openssl rand -hex 32)   # gere uma sua, não reutilize
 ```
 
@@ -66,9 +66,17 @@ docker compose up -d
 
 A aplicação sobe em **http://localhost:8080**.
 
-O primeiro `up` demora: a imagem do backend carrega modelos de ML e tem cerca
-de 3,5 GB. Depois disso o start é rápido. O banco se prepara sozinho — num banco
-vazio o schema é criado a partir dos modelos, e num banco já existente só as
+O primeiro `up` demora: a imagem do backend tem cerca de 3,5 GB e o modelo de IA,
+uns 5 GB, baixado na primeira subida do serviço `llm`. Depois disso o start é
+rápido.
+
+**Modelo de IA.** O padrão é o Gemma 4 E4B, que pede uns 6 GB de RAM. Em máquinas
+com 8 GB, use o E2B (`LLM_HF_REPO=ggml-org/gemma-4-E2B-it-GGUF` no `.env`); é mais
+rápido e erra mais. Em CPU, uma resposta leva de 30 segundos a alguns minutos.
+Opcionalmente, uma chave do Gemini (`GEMINI_API_KEY` e `LLM_PROVIDER=gemini`) dá
+respostas melhores e busca na web, mas aí o texto de cada pedido vai para o Google.
+
+O banco se prepara sozinho — num banco vazio o schema é criado a partir dos modelos, e num banco já existente só as
 migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
 próprio arquivo explica por quê).
 

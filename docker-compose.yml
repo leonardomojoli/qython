@@ -75,6 +75,12 @@ services:
       # Transcrição local pelo serviço whisper abaixo. Para usar o Groq, defina
       # WHISPER_SERVER_URL vazio e GROQ_API_KEY no .env.
       WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
+      # IA local pelo serviço llm abaixo. Com GEMINI_API_KEY no .env e
+      # LLM_PROVIDER=gemini, o texto vai para o Gemini.
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:8080/v1}
+      LLM_MODEL: ${LLM_MODEL:-gemma-4}
+      LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-16384}
     volumes:
       - uploads:/app/backend/static/uploads
       - permanent:/app/backend/static/permanent_uploads
@@ -105,6 +111,19 @@ services:
     ports:
       - "${WEB_PORT:-8080}:80"
 
+  # IA local: llama.cpp com o Gemma 4. Na primeira subida baixa o modelo (~5 GB) do
+  # Hugging Face para o volume llmmodels; depois sobe em segundos. LLM_HF_REPO troca o
+  # modelo (ex.: ggml-org/gemma-4-E2B-it-GGUF para máquinas com 8 GB de RAM).
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11870
+    restart: unless-stopped
+    command: >
+      -hf ${LLM_HF_REPO:-ggml-org/gemma-4-E4B-it-GGUF}
+      -c ${LLM_CONTEXT_TOKENS:-16384} -t ${LLM_THREADS:-4} --jinja
+      --host 0.0.0.0 --port 8080
+    volumes:
+      - llmmodels:/root/.cache/llama.cpp
+
   # Transcrição local (faster-whisper). WHISPER_MODEL no .env troca o modelo; o
   # padrão large-v3-turbo usa ~1 GB de RAM depois da primeira transcrição.
   whisper:
@@ -132,3 +151,4 @@ volumes:
   uploads:
   permanent:
   models:
+  llmmodels:

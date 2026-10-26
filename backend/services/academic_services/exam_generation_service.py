@@ -27,6 +27,13 @@ def _load_exam_context(context_filename: str) -> str:
         logger.error(f"Erro ao ler o arquivo de contexto {context_path}: {e}")
         return ""
 
+def exam_display_name(exam: ArenaExam, guide: str = "") -> str:
+    """Nome legível da prova. O modelo só guarda a chave de tradução (title_key); o nome
+    vem da linha "GUIA DE ESTILO — <nome>" do guia, ou do código da prova."""
+    match = re.search(r"GUIA DE ESTILO\s+—\s+(.+)", guide or "")
+    return match.group(1).strip() if match else exam.exam_code
+
+
 def _alternatives_for(guide: str) -> int:
     """Número de alternativas da prova, na primeira linha do guia ("ALTERNATIVAS: 4")."""
     match = re.match(r"\s*ALTERNATIVAS:\s*(\d+)", guide or "")
@@ -36,15 +43,16 @@ def _alternatives_for(guide: str) -> int:
 def _exam_plan() -> tuple:
     """(total de questões, questões por chamada). No Gemini, as 100 numa chamada só, como
     sempre foi. Num modelo local em CPU (~7 tokens/s) 100 questões levariam perto de uma
-    hora e não caberiam na janela: o simulado fica menor (LOCAL_SIMULADO_QUESTIONS) e sai
+    hora e não caberiam na janela: o simulado fica menor (LOCAL_SIMULADO_QUESTIONS, 10) e sai
     em lotes de 5, cada um com resposta em poucos minutos."""
     if llm_provider.provider_name() == "gemini":
         return 100, 100
-    return max(5, int(os.getenv("LOCAL_SIMULADO_QUESTIONS", "20"))), 5
+    return max(5, int(os.getenv("LOCAL_SIMULADO_QUESTIONS", "10"))), 5
 
 
 def _exam_prompt(exam: ArenaExam, guide: str, n: int, alternatives: int, avoid: list) -> str:
     letters = "ABCDEFGH"[:alternatives]
+    name = exam_display_name(exam, guide)
     avoid_block = ""
     if avoid:
         avoid_block = (
@@ -52,7 +60,7 @@ def _exam_prompt(exam: ArenaExam, guide: str, n: int, alternatives: int, avoid: 
             + "\n".join(f"- {a}" for a in avoid) + "\n"
         )
     return f"""
-    **PERSONA:** Você é um especialista sênior na elaboração de provas de residência médica, especificamente para o exame **{exam.title} ({exam.country})**.
+    **PERSONA:** Você é um especialista sênior na elaboração de provas de residência médica, especificamente para o exame **{name} ({exam.country})**.
 
     **TAREFA:** Gerar **{n} questões** de múltipla escolha fiéis ao estilo, ao formato, ao nível de dificuldade e aos temas do exame real, descritos no guia abaixo.
 
@@ -65,7 +73,7 @@ def _exam_prompt(exam: ArenaExam, guide: str, n: int, alternatives: int, avoid: 
     **INSTRUÇÃO FINAL:** Sua resposta inteira deve ser um único bloco de código JSON. Não inclua "```json" no início ou "```" no final. Sua resposta deve começar com `{{` e terminar com `}}`.
 
     ---
-    **GUIA DE ESTILO DA PROVA ({exam.title}):**
+    **GUIA DE ESTILO DA PROVA ({name}):**
     {guide}
     ---
     """
@@ -122,7 +130,7 @@ def generate_exam(exam: ArenaExam, user_id: int) -> tuple:
             logger.warning(f"Lote do simulado '{exam.exam_code}' falhou ({failures}/3): {e}")
 
     if not questions:
-        raise RuntimeError(f"Erro na comunicação com o serviço de IA durante a geração das questões de {exam.title}.")
+        raise RuntimeError(f"Erro na comunicação com o serviço de IA durante a geração das questões de {exam_display_name(exam, guide)}.")
 
     logger.info(f"Exame '{exam.exam_code}' gerado com sucesso com {len(questions)} questões.")
     return {"questionario_objetivo": questions[:total]}, usage, model_name
