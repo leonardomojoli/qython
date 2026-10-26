@@ -100,7 +100,7 @@ def julgar(texto: str, q: dict) -> str:
     return "incompleto" if parcial else "errado"
 
 
-async def rodar(com_fontes: bool, repeticoes: int) -> list:
+async def rodar(com_fontes: bool, repeticoes: int, nomes=None) -> list:
     from backend.config import Config
     from backend.services import llm_provider, llm_services
 
@@ -117,6 +117,8 @@ async def rodar(com_fontes: bool, repeticoes: int) -> list:
     resultados = []
     for rep in range(1, repeticoes + 1):
         for q in PERGUNTAS:
+            if nomes and q["nome"] not in nomes:
+                continue
             inicio = time.monotonic()
             if AsyncSessionLocal is None:
                 saida = await llm_services.chat_with_google_ai(message=q["pergunta"], history=[], db=None)
@@ -154,6 +156,7 @@ def main():
     parser.add_argument("--sem-fontes", action="store_true", help="desliga a busca de fontes antes da resposta")
     parser.add_argument("--repeticoes", type=int, default=1)
     parser.add_argument("--json", help="grava as respostas e os vereditos neste arquivo")
+    parser.add_argument("--perguntas", help="só estas, separadas por vírgula (ex.: amoxicilina,sífilis)")
     parser.add_argument("--rejulgar", help="refaz a correção das respostas gravadas neste arquivo, sem chamar a IA")
     parser.add_argument("-v", "--verbose", action="store_true", help="mostra o log do backend")
     args = parser.parse_args()
@@ -167,7 +170,8 @@ def main():
             r["veredito"] = julgar(r["resposta"] or "", por_nome[r["nome"]])
             print(f"[{r['nome']}] {r['veredito']}: " + " ".join((r["resposta"] or "").split())[:200])
     else:
-        resultados = asyncio.run(rodar(not args.sem_fontes, max(1, args.repeticoes)))
+        nomes = {n.strip() for n in args.perguntas.split(",")} if args.perguntas else None
+        resultados = asyncio.run(rodar(not args.sem_fontes, max(1, args.repeticoes), nomes))
     print("Resumo:", resumo(resultados))
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
