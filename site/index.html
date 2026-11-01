@@ -188,7 +188,7 @@
 <pre id="cmd"><span class="c"># clone, configure a chave da IA e suba a stack</span>
 <span class="p">git</span> clone https://github.com/leonardomojoli/qython.git
 <span class="p">cd</span> qython
-<span class="p">cp</span> .env.example .env   <span class="c"># preencha GEMINI_API_KEY e JWT_SECRET_KEY</span>
+<span class="p">cp</span> .env.example .env   <span class="c"># preencha JWT_SECRET_KEY</span>
 <span class="p">docker</span> compose up -d</pre>
   </div>
   <p class="note">
@@ -207,19 +207,17 @@
       </ul>
     </div>
     <div class="card leaves">
-      <h3>Sai só para o que você configurar</h3>
+      <h3>Sai só se você configurar</h3>
       <ul>
-        <li>O texto de cada pedido à IA vai ao provedor da sua chave (hoje, o Google
-        Gemini). Nos fluxos clínicos, nomes e documentos são trocados por marcadores
-        antes do envio.</li>
-        <li>Buscas no PubMed enviam só os termos da busca.</li>
-        <li>Transcrição pelo Groq e cópia no Google Drive, se você ligar.</li>
+        <li>A IA roda na sua máquina (Gemma 4 no llama.cpp): por padrão, nem o texto
+        dos pedidos sai do computador.</li>
+        <li>Com uma chave do Gemini, o texto de cada pedido vai ao Google. Nos fluxos
+        clínicos, nomes e documentos são trocados por marcadores antes do envio.</li>
+        <li>Buscas no PubMed enviam só os termos da busca. Transcrição pelo Groq e
+        cópia no Google Drive, só se você ligar.</li>
       </ul>
     </div>
   </div>
-  <p class="note" style="margin-top:14px">
-    Em desenvolvimento: IA local com o Gemma 4, em que nem o texto sai do computador.
-  </p>
 
   <h2>O que vem junto</h2>
   <div class="grid">
@@ -258,9 +256,9 @@
 
   <h2>O que você precisa</h2>
   <ul class="req">
-    <li><b>Docker</b><span>É o único pré-requisito obrigatório. A stack sobe em um comando.</span></li>
-    <li><b>Chave Gemini</b><span>Gratuita no Google AI Studio para testar. Com dado de paciente real, use uma chave paga: no plano gratuito o Google pode usar o conteúdo enviado para melhorar os produtos dele.</span></li>
-    <li><b>4 GB de RAM</b><span>Suficiente na configuração padrão. 8 GB se quiser rodar os modelos de transcrição e embedding localmente.</span></li>
+    <li><b>Docker</b><span>A stack sobe em um comando, com a IA e a transcrição locais.</span></li>
+    <li><b>32 GB de RAM</b><span>A IA padrão é a versão robusta do Gemma 4 (26B), que ocupa uns 17 GB. Os modelos pequenos cabem em máquinas mais modestas, mas erram fato clínico com frequência, então não são o padrão. Com GPU de 24 GB, o Gemma 4 31B é ainda melhor.</span></li>
+    <li><b>Chave Gemini</b><span>Opcional: respostas melhores e busca na web, com o texto indo ao Google. Com dado de paciente real, use uma chave paga: no plano gratuito o Google pode usar o conteúdo enviado.</span></li>
   </ul>
 
   <div class="warn">

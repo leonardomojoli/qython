@@ -139,6 +139,7 @@ async def lifespan(app: FastAPI):
     from .services.arena_service import seed_seasons
     from .services.server_monitor import start_server_monitor, stop_server_monitor
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
+    from .seeds.seed_icd10 import seed_icd10
     from .seeds.copilot_prompts import seed_copilot_prompts
     from .seeds.terms_of_use import seed_terms_of_use
     from .seeds.arena_exams import seed_arena_exams
@@ -170,6 +171,12 @@ async def lifespan(app: FastAPI):
                     logger.info(f"Seeded {meds_added} medications, {interactions_added} drug interactions")
             except Exception as e:
                 logger.error(f"Error seeding pharmacy data: {e}")
+
+            try:
+                await seed_icd10(db)
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error seeding ICD-10 table: {e}")
 
             try:
                 exams_added = await seed_arena_exams(db)

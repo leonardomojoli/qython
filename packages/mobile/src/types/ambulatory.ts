@@ -173,6 +173,12 @@ export interface OrientationTemplate {
   specialty: string;
 }
 
+/** Código da tabela oficial da CID-10 (/api/icd10/search). */
+export interface Icd10Code {
+  code: string;
+  description: string;
+}
+
 export interface CreateDocumentPayload {
   patient_id: number;
   document_type: DocumentType;

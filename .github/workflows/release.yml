@@ -80,8 +80,8 @@ jobs:
         env:
           QYTHON_VERSION: ${{ steps.v.outputs.version }}
         run: |
-          printf 'GEMINI_API_KEY=teste-sem-chave\nJWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
-          docker compose up -d --no-build
+          printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env   # padrão: IA local, sem chave
+          docker compose up -d --no-build --scale llm=0   # as checagens não chamam a IA; poupa 5 GB de download
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then ok=1; break; fi
             sleep 5
@@ -220,9 +220,9 @@ jobs:
         env:
           QYTHON_VERSION: ${{ needs.build-test-publish.outputs.version }}
         run: |
-          printf 'GEMINI_API_KEY=teste-sem-chave\nJWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+          printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env   # padrão: IA local, sem chave
           docker compose pull backend web
-          docker compose up -d --no-build
+          docker compose up -d --no-build --scale llm=0   # as checagens não chamam a IA; poupa 5 GB de download
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then ok=1; break; fi
             sleep 5

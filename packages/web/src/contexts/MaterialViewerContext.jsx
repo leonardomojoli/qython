@@ -30,7 +30,7 @@ export const useMaterialViewer = () => {
 export const MaterialViewerProvider = ({ children }) => {
   // Lista de materiais abertos (mais RECENTE primeiro). Cada item guarda o payload que o
   // MaterialResultModal espera + um id estável:
-  //   { id, result, materialType, sourceName, sourceType, trainingNote, onRedo, job?, onClearJob? }
+  //   { id, result, materialType, sourceName, sourceType, trainingNote, onRedo }
   const [materials, setMaterials] = useState([]);
   // id do material EXPANDIDO (overlay em tela cheia). null = todos como pílula.
   const [expandedId, setExpandedId] = useState(null);

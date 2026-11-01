@@ -62,3 +62,29 @@ PyMuPDF (AGPL-3.0), and model weights downloaded at runtime
 (faster-whisper large-v3-turbo, intfloat/multilingual-e5-base,
 cross-encoder/mmarco-mMiniLMv2-L12-H384-v1, and local language models such as
 Gemma or MedGemma), each under its upstream license.
+
+---
+
+ICD-10 table (CID-10)
+
+backend/seeds/data/CID10CSV.zip is the Portuguese ICD-10 (CID-10), electronic
+version 2008, as published by DATASUS at
+http://www2.datasus.gov.br/cid10/V2008/download.htm, stored unmodified
+(SHA-256 84f23809275575f751255048064bbb244b0de33fd5987ab98df0f98e5f5d2c95).
+The ICD-10 consultation coding suggests only codes from this table, with its
+official descriptions.
+
+  - ICD-10 copyright: World Health Organization (WHO), Geneva.
+  - Portuguese translation rights: Centro Colaborador da OMS para a
+    Classificação de Doenças em Português (Centro Brasileiro de Classificação
+    de Doenças, CBCD), Faculdade de Saúde Pública da Universidade de São Paulo.
+  - Publication and distribution rights of the Portuguese edition: Edusp,
+    Editora da Universidade de São Paulo.
+
+This table is a separate data component aggregated with Qython. It is NOT
+licensed under the AGPL, and the AGPL grants no rights to it. Its own terms
+(http://www2.datasus.gov.br/cid10/V2008/copyright.htm) allow free use in user
+installations, and use by system developers "desde que sejam dados os devidos
+créditos e não seja cobrado pelo seu uso"; the files may not be sold. Qython is
+distributed at no charge and gives this credit here. Whoever sells a copy of
+Qython, or charges for its use, must first remove or replace this file.

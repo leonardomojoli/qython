@@ -1,5 +1,6 @@
 # qython/backend/routes/user_routes.py
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
@@ -139,7 +140,8 @@ async def generate_avatar_temp(
             logger.info(f"Avatar onboarding {avatar_count + 1}/{ONBOARDING_FREE_AVATARS} gratuito para {current_user.email}")
 
         # Gerar avatar com categoria
-        filename = generate_avatar_from_prompt(
+        filename = await asyncio.to_thread(
+            generate_avatar_from_prompt,
             payload.prompt,
             current_user,
             category=payload.category or "default"

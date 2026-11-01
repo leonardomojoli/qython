@@ -1,0 +1,8 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — AMC CAT MCQ (Australian Medical Council)
+Texto original do Qython, sem questões reais. Formato aproximado: confira as orientações oficiais vigentes.
+
+- Questões de resposta única com 5 alternativas (A–E), em inglês, aplicadas por computador para médicos formados fora da Austrália.
+- Vinhetas clínicas da prática geral: saúde do adulto, saúde da mulher e da criança, saúde mental e saúde da população.
+- Cobra o que um médico recém-chegado faria no contexto australiano: próxima conduta mais adequada, investigação inicial, diagnóstico mais provável, segurança do paciente e comunicação.
+- Condutas e rastreamentos seguem diretrizes australianas.

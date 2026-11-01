@@ -101,7 +101,7 @@ def generate_avatar_from_prompt(prompt: str, user, category: str = "default") ->
         
         # Import Config and Google GenAI SDK
         from ..config import Config
-        from google import genai
+        from .llm_provider import gemini_client
         from google.genai import types
         
         # Validate API key
@@ -109,7 +109,7 @@ def generate_avatar_from_prompt(prompt: str, user, category: str = "default") ->
             raise Exception("GEMINI_API_KEY não configurada")
         
         # Initialize client (uses same pattern as llm_services.py)
-        client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        client = gemini_client()  # imagem: só Gemini, mesmo com texto local
         
         # Use IMAGE_GEN_MODEL from config (required in .env)
         if not Config.IMAGE_GEN_MODEL:

@@ -9,7 +9,8 @@ from PIL import Image
 import time
 
 from ..config import Config
-from .llm_services import client # Reuse the existing Gemini client from llm_services
+# Gerar imagem só existe no Gemini: vale mesmo quando o texto roda num modelo local.
+from .llm_provider import CapabilityUnavailable, gemini_client
 from google.genai import errors as genai_errors
 
 logger = logging.getLogger("qython_logger")
@@ -54,7 +55,7 @@ def generate_image_from_prompt(prompt: str) -> Optional[str]:
         logger.debug(f"Image generation attempt {attempt} of {len(prompt_strategies)}.")
         
         try:
-            response = client.models.generate_content(
+            response = gemini_client().models.generate_content(
                 model=Config.IMAGE_GEN_MODEL,
                 contents=[enhanced_prompt],
             )
@@ -87,6 +88,10 @@ def generate_image_from_prompt(prompt: str) -> Optional[str]:
 
             logger.warning(f"Attempt {attempt} failed for prompt: '{prompt}'. Finish Reason: {finish_reason}")
 
+        except CapabilityUnavailable:
+            # Sem chave do Gemini não há como gerar imagem: o slide segue sem ela.
+            logger.info("Imagem de slide pulada: gerar imagem exige a chave do Gemini.")
+            return None
         except genai_errors.APIError as e:
             logger.error(f"Google GenAI APIError on attempt {attempt} for prompt '{prompt}'. Message: {e.message}")
         except Exception as e:

@@ -18,6 +18,7 @@ import type {
   GenerateOrientationPayload,
   GenerateOrientationResponse,
   FeedbackPayload,
+  Icd10Code,
 } from '../types/ambulatory';
 
 // ─── Consultations ──────────────────────────────────────────
@@ -254,6 +255,13 @@ export async function getDocuments(
 
 export async function deleteDocument(id: number): Promise<void> {
   await api.delete(`/documents/${id}`);
+}
+
+// ─── CID-10 (tabela oficial) ───────────────────────────────
+
+export async function searchIcd10(q: string, limit = 8): Promise<Icd10Code[]> {
+  const response = await api.get<Icd10Code[]>('/icd10/search', { params: { q, limit } });
+  return response.data;
 }
 
 // ─── Exam Orders ───────────────────────────────────────────
