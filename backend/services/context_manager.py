@@ -18,7 +18,6 @@ import tiktoken
 
 from ..models import ChatMessage
 from ..config import Config
-from ..middleware.pii_redaction import redact_for_llm
 from google import genai
 from google.genai import types
 
@@ -174,10 +173,12 @@ CONVERSA ORIGINAL:
 RESUMO CLÍNICO ESTRUTURADO (máximo 2000 palavras):"""
         
         try:
-            # A conversa pode citar o paciente: mesma redação das outras chamadas.
-            response = self.client.models.generate_content(
+            # A conversa pode citar o paciente: _generate_off_loop redige como as outras
+            # chamadas, e fora do event loop.
+            from .llm_services import _generate_off_loop
+            response = await _generate_off_loop(
                 model=f'models/{Config.PRIMARY_LLM_MODEL}',
-                contents=redact_for_llm(prompt, preserve_tokens=False)[0],
+                contents=prompt,
                 config=types.GenerateContentConfig(
                     max_output_tokens=3000,
                     temperature=0.3  # Low temp for factual accuracy

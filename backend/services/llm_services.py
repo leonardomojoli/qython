@@ -18,9 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ..models import AcademicLibrary
 from ..config import Config
+from . import clinical_sources, icd10_search, llm_provider
 
 from .enhancementprompts import PROMPTS, PATIENT_DATA_RULE
 from .academic_services import vector_db_service
+from .latex_text import latex_to_unicode
 
 logger = logging.getLogger(__name__)
 
@@ -458,9 +460,20 @@ class ResilientGeminiClient:
         return getattr(self._paid, name)
 
 
-_paid_client = genai.Client(api_key=Config.GEMINI_API_KEY, http_options=http_options)
-client = ResilientGeminiClient(_paid_client)
-logger.info("Cliente Gemini inicializado (timeout 300s) — chave PAGA única + retry no 503 (até %d).", GEMINI_PAID_RETRIES)
+def _build_text_client():
+    """Cliente de texto do provedor configurado (llm_provider): o Gemini, com retry de
+    sobrecarga, ou um servidor OpenAI-compatível (IA local) com a mesma interface."""
+    if llm_provider.provider_name() == "openai":
+        built = llm_provider.build_openai_client()
+        logger.info("IA de texto: servidor OpenAI-compatível em %s (modelo %s).",
+                    os.getenv("LLM_BASE_URL"), os.getenv("LLM_MODEL") or "padrão do servidor")
+        return built
+    logger.info("IA de texto: Gemini (timeout 300s) — chave PAGA única + retry no 503 (até %d).", GEMINI_PAID_RETRIES)
+    return ResilientGeminiClient(llm_provider.gemini_client())
+
+
+# Construído no primeiro uso: importar este módulo não exige chave nem servidor no ar.
+client = llm_provider.LazyClient(_build_text_client)
 
 
 # ---------------------------------------------------------------------------
@@ -507,6 +520,19 @@ def _redact_llm_contents(value):
                        type(value).__name__, exc)
         return value
 
+async def _generate_off_loop(**kwargs):
+    """client.models.generate_content numa thread, com a redação de PII junto.
+
+    A geração é síncrona e, com IA local em CPU, leva minutos: no event loop ela
+    travaria o servidor inteiro. A redação também vai para a thread porque o Presidio
+    é CPU pura e, na primeira chamada, ainda carrega o modelo do spaCy (segundos)."""
+    def run():
+        if "contents" in kwargs:
+            kwargs["contents"] = _redact_llm_contents(kwargs["contents"])
+        return client.models.generate_content(**kwargs)
+    return await asyncio.to_thread(run)
+
+
 # Dicionário para gerenciar caches em memória
 prompt_cache_manager = {}
 ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
@@ -514,6 +540,9 @@ ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
 def initialize_prompt_cache():
     if not ENABLE_PROMPT_CACHING:
         logger.info("O cache de prompts está desabilitado pela configuração de ambiente (ENABLE_PROMPT_CACHING=0).")
+        return
+    if llm_provider.provider_name() != "gemini":
+        logger.info("Cache de prompts é recurso do Gemini; desligado com o provedor %s.", llm_provider.provider_name())
         return
 
     logger.info("Iniciando cacheamento de prompts de melhoria...")
@@ -899,9 +928,15 @@ def generate_case_summary(improved_text: str, language_code: str = 'pt-BR') -> t
     return "Erro: Não foi possível gerar o resumo. O serviço de IA está temporariamente indisponível. Tente novamente.", None, None
 
 
-def extract_icd10_from_notes(clinical_notes: str, specialty: str = "", language_code: str = 'pt-BR') -> list:
+async def extract_icd10_from_notes(db: AsyncSession, clinical_notes: str, specialty: str = "",
+                                   language_code: str = 'pt-BR') -> list:
     """
-    Extract relevant ICD-10 codes from clinical notes using LLM.
+    Sugere até 3 códigos CID-10 para as notas clínicas.
+
+    O modelo não escreve código: services/icd10_search tira da tabela oficial
+    (DATASUS) os candidatos que as notas justificam, e o modelo escolhe entre eles
+    por um schema com enum dos códigos. Código e descrição devolvidos vêm da tabela,
+    em português, qualquer que seja o idioma do usuário.
     Returns a list of dicts with 'code', 'description', and 'confidence'.
     """
     logger.info(f"Iniciando extract_icd10_from_notes, specialty={specialty}, language_code={language_code}")
@@ -910,65 +945,24 @@ def extract_icd10_from_notes(clinical_notes: str, specialty: str = "", language_
         logger.warning("Notas clínicas muito curtas para extração de CID-10")
         return []
 
-    # Language-specific instructions
-    output_instructions = {
-        'pt-BR': "Responda em português brasileiro.",
-        'pt': "Responda em português.",
-        'en': "Respond in English.",
-        'en-US': "Respond in English (US).",
-        'es': "Responda en español.",
-        'es-ES': "Responda en español."
-    }
-    lang_instruction = output_instructions.get(language_code, output_instructions['pt-BR'])
-
-    # JSON Schema for structured output
-    icd10_schema = {
-        "type": "array",
-        "description": "Array of ICD-10 codes extracted from clinical notes",
-        "items": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "description": "ICD-10 code (e.g., I10, E11.9)"
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Description of the diagnosis"
-                },
-                "confidence": {
-                    "type": "string",
-                    "description": "Confidence level: alta, média, or baixa"
-                }
-            },
-            "required": ["code", "description", "confidence"]
-        }
-    }
-
-    prompt = f"""Analise as notas clínicas abaixo e extraia os códigos CID-10 mais relevantes.
-
-INSTRUÇÕES:
-1. Identifique até 3 diagnósticos mais prováveis
-2. Para cada diagnóstico, forneça o código CID-10 correto e a descrição
-3. Ordene por relevância/probabilidade (mais provável primeiro)
-4. {lang_instruction}
-5. Se não for possível determinar diagnósticos, retorne um array vazio []
-
-NOTAS CLÍNICAS:
-{clinical_notes}
-
-ESPECIALIDADE: {specialty if specialty else "Clínica Geral"}"""
-
     try:
-        model_to_use = Config.SIMPLE_TASK_LLM_MODEL  # Usar modelo mais leve para esta tarefa
-        response = client.models.generate_content(
-            model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(prompt),
+        candidates = await icd10_search.search_candidates(db, clinical_notes)
+        if not candidates:
+            logger.info("CID-10: nenhum candidato na tabela para estas notas")
+            return []
+
+        # A lista de candidatos vai na instrução de sistema, que não passa pela
+        # redação de PII: é texto da tabela, e o Presidio leria epônimos ("doença de
+        # Crohn") como nome de pessoa. As notas vão no conteúdo e são redigidas.
+        response = await _generate_off_loop(
+            model=f'models/{Config.SIMPLE_TASK_LLM_MODEL}',  # Usar modelo mais leve para esta tarefa
+            contents=icd10_search.selection_prompt(clinical_notes, specialty),
             config=types.GenerateContentConfig(
+                system_instruction=icd10_search.selection_instruction(candidates),
                 temperature=0.1,  # Very low temperature for structured output
-                max_output_tokens=500,
+                max_output_tokens=256,
                 response_mime_type="application/json",
-                response_schema=icd10_schema
+                response_schema=icd10_search.selection_schema([c["code"] for c in candidates]),
             )
         )
 
@@ -980,30 +974,14 @@ ESPECIALIDADE: {specialty if specialty else "Clínica Geral"}"""
         response_text = response.text.strip()
         logger.debug(f"Resposta bruta de extract_icd10 (structured): {response_text}")
 
-        # Parse JSON with repair capability (as fallback, but should be valid with response_mime_type)
-        icd_codes, parse_success, parse_error = try_parse_json_with_repair(
-            response_text,
-            context="[CID-10]"
-        )
-
+        data, parse_success, parse_error = try_parse_json_with_repair(response_text, context="[CID-10]")
         if not parse_success:
             logger.warning(f"Falha ao parsear JSON de CID-10: {parse_error}")
             return []
 
-        if isinstance(icd_codes, list):
-            # Validar estrutura
-            validated = []
-            for item in icd_codes:
-                if isinstance(item, dict) and 'code' in item and 'description' in item:
-                    validated.append({
-                        'code': item.get('code', '').upper(),
-                        'description': item.get('description', ''),
-                        'confidence': item.get('confidence', 'média')
-                    })
-            logger.info(f"CID-10 extraídos com sucesso: {len(validated)} códigos")
-            return validated
-
-        return []
+        selected = icd10_search.official_selection(data, candidates)
+        logger.info(f"CID-10 extraídos com sucesso: {len(selected)} códigos de {len(candidates)} candidatos")
+        return selected
     except Exception as e:
         logger.error(f"Erro em extract_icd10_from_notes: {str(e)}", exc_info=True)
         return []
@@ -1358,9 +1336,9 @@ async def _call_llm_with_retry(
         try:
             logger.info(f"[LLM_CALL] Tentativa {attempt + 1}/{max_retries} com modelo {model_name}")
 
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_name}',
-                contents=_redact_llm_contents(full_contents),
+                contents=full_contents,
                 config=generation_config
             )
 
@@ -1435,6 +1413,109 @@ def _strip_thinking_leak(text: str) -> str:
     return text.strip()
 
 
+_NO_WEB_SEARCH_INSTRUCTION = (
+    "\n\n**ESTA INSTALAÇÃO NÃO TEM BUSCA NA WEB.** Ignore as instruções acima de pesquisar "
+    "na web: responda com o seu conhecimento e com o conteúdo da biblioteca do usuário, quando "
+    "houver. Não escreva marcadores como `[n]`, não diga que pesquisou e não invente "
+    "referências, PMIDs, DOIs ou URLs. Se citar uma diretriz ou estudo pelo nome, use o bloco "
+    "`[REFS]` no final. Quando a resposta depender de dado que muda com frequência (dose, "
+    "diretriz recente), diga que vale conferir na fonte oficial."
+)
+
+# Sem busca na web, as fontes vêm antes da resposta (ver clinical_sources) e o modelo
+# responde a partir delas. Substitui a instrução acima quando alguma fonte foi achada.
+_LOCAL_SOURCES_INSTRUCTION = (
+    "\n\n**ESTA INSTALAÇÃO NÃO TEM BUSCA NA WEB; O SISTEMA JÁ BUSCOU AS FONTES.** Ignore as "
+    "instruções acima de pesquisar na web e de escrever o bloco `[REFS]`. A mensagem do usuário "
+    "traz, entre `<FONTES>` e `</FONTES>`, trechos numerados encontrados para esta pergunta "
+    "(catálogo de medicamentos do Qython, biblioteca do usuário, resumos do PubMed).\n"
+    "- Responda a partir dessas fontes. Logo depois de cada afirmação tirada de uma fonte, "
+    "escreva o número dela entre colchetes, ex.: `[2]`. Use só números da lista.\n"
+    "- Confira a população de cada fonte (adulto, criança, gestante) e use só a que corresponde "
+    "à pergunta. Em pergunta de tratamento, diga droga, dose e via quando a fonte trouxer.\n"
+    "- O Qython é usado no Brasil: quando as fontes divergirem, vale a diretriz brasileira mais "
+    "recente (Ministério da Saúde, sociedades médicas brasileiras, bula ANVISA). Se uma fonte "
+    "internacional for mais recente que a brasileira no mesmo ponto, dê as duas recomendações com "
+    "o ano de cada e diga qual é a brasileira.\n"
+    "- Números (dose, volume, concentração, intervalo, ponto de corte de critério) só entram se "
+    "estiverem nas fontes ou saírem de conta direta com elas (volume = dose ÷ concentração). "
+    "Fonte que trata da indicação perguntada vale mais que a posologia geral do catálogo.\n"
+    "- Se as fontes não cobrirem a pergunta, diga isso em uma frase e responda com o conhecimento "
+    "geral, deixando claro o que não veio das fontes; mesmo assim, não dê número que não esteja "
+    "nelas: mande conferir na bula ou na diretriz.\n"
+    "- Traduza o que usar das fontes em inglês. Não escreva lista de referências, PMIDs, DOIs ou "
+    "URLs: o sistema monta a lista pelos números citados."
+)
+
+# Pergunta clínica para a qual a busca não achou nada: o médico precisa saber que a
+# resposta saiu da memória do modelo.
+_NO_SOURCES_FOUND_INSTRUCTION = (
+    "\n\nPara esta pergunta o sistema não encontrou fonte (catálogo de medicamentos, biblioteca "
+    "ou PubMed). Comece avisando, em uma frase, que a resposta não se apoia em fonte consultada e "
+    "vem do conhecimento geral do modelo; para dose e critério, mande conferir na bula ou na diretriz."
+)
+
+# Espaço deixado para a resposta ao medir quanto das fontes cabe na janela do modelo local.
+_ANSWER_RESERVE_TOKENS = 2048
+_LIBRARY_SOURCE_CHUNKS = 4
+
+
+async def _gather_local_sources(message: str, history: List[Dict], db, library) -> tuple:
+    """Fontes para a IA local, que não pesquisa na web, responder a partir delas (ver
+    clinical_sources). Devolve (fontes, pergunta_clínica). Falha numa busca só tira as
+    fontes dela; a resposta segue com as outras."""
+    text = (message or '').strip()
+    if not text:
+        return [], False
+    # Pergunta de seguimento ("e em criança?") não repete o assunto: vale a anterior junto.
+    previous = next((m.get('content') or '' for m in reversed(history or []) if m.get('sender') == 'user'), '')
+    search_text = f"{previous}\n{text}" if previous and len(text) < 80 else text
+    clinical = clinical_sources.is_clinical_question(search_text)
+
+    catalog = []
+    if db is not None:
+        try:
+            catalog = await clinical_sources.catalog_sources(db, search_text)
+        except Exception as e:
+            logger.warning(f"[FONTES] Catálogo de medicamentos indisponível: {e}")
+    if not clinical and not catalog:
+        return [], False
+
+    async def from_library():
+        if not library:
+            return []
+        chunks = await asyncio.to_thread(
+            vector_db_service.query_library, query_text=search_text, library_id=library.id,
+            n_results=_LIBRARY_SOURCE_CHUNKS, with_metadata=True,
+        )
+        ids = {(meta or {}).get('document_id') for _, meta in chunks or []} - {None}
+        names = {}
+        if ids and db is not None:
+            from ..models import AcademicDocument
+            result = await db.execute(
+                select(AcademicDocument.id, AcademicDocument.original_filename).filter(AcademicDocument.id.in_(ids))
+            )
+            names = dict(result.all())
+        return clinical_sources.library_sources(chunks or [], names, library.name)
+
+    async def from_pubmed():
+        if not Config.COPILOT_PUBMED:
+            return []
+        query = await asyncio.to_thread(_generate_pubmed_query, search_text, True)
+        return await clinical_sources.pubmed_sources(query, question=search_text) if query else []
+
+    library_found, pubmed_found = await asyncio.gather(from_library(), from_pubmed(), return_exceptions=True)
+    sources = list(catalog)
+    for label, found in (('biblioteca', library_found), ('PubMed', pubmed_found)):
+        if isinstance(found, Exception):
+            logger.warning(f"[FONTES] Busca na {label} falhou: {found}")
+        else:
+            sources.extend(found)
+    logger.info("[FONTES] %d fonte(s) antes da resposta: %s", len(sources),
+                ", ".join(s.kind for s in sources) or "nenhuma")
+    return sources, True
+
+
 async def chat_with_google_ai(message: str, history: List[Dict] = None, context_truncated: bool = False, include_clinical_reasoning: bool = False, language_code: str = 'pt-BR', file_content_context: str = None, image_data_list: list = None, library_id: int = None, db: AsyncSession = None, skip_topic_check: bool = False, user_id: int = None) -> str:
     logger.info(f"Iniciando chat_with_google_ai. History items: {len(history) if history else 0}. Truncated: {context_truncated}. Reasoning: {include_clinical_reasoning}, Lang: {language_code}, File Context: {bool(file_content_context)}, Images: {len(image_data_list) if image_data_list else 0}, Library ID: {library_id}")
 
@@ -1463,22 +1544,62 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # Antes lia cada arquivo a CADA mensagem (re-OCR/re-transcrição por turno; degradaria
     # silenciosamente em docs Drive-only, cujo original não vive mais no servidor). O texto
     # no Chroma é a fonte canônica e já agrupa por documento.
-    library_context_string = ""
+    library = None
     if library_id and db:
         result = await db.execute(select(AcademicLibrary).filter(AcademicLibrary.id == library_id))
         library = result.scalars().first()
-        if library:
-            logger.info(f"Enriquecendo prompt com a biblioteca: '{library.name}'")
-            library_text = await asyncio.to_thread(vector_db_service.get_all_text_for_library, library_id)
-            if library_text and library_text.strip():
-                library_context_string = (
-                    f"Use o seguinte conteúdo da biblioteca '{library.name}' como base principal para sua resposta. "
-                    f"Analise-o cuidadosamente antes de responder à pergunta do usuário.\n\n"
-                    f"<CONTEXTO_DA_BIBLIOTECA>\n{library_text}\n</CONTEXTO_DA_BIBLIOTECA>\n\n"
-                )
+
+    # Sem busca na web (IA local), as fontes de pergunta clínica vêm ANTES da resposta e
+    # entram numeradas no prompt; com elas, a biblioteca vira trechos numerados também.
+    web_search = llm_provider.capabilities()["web_search"]
+    local_sources, clinical_question = [], False
+    if not web_search and Config.COPILOT_LOCAL_SOURCES and message:
+        local_sources, clinical_question = await _gather_local_sources(message, history, db, library)
+        if local_sources:
+            system_key = "clinical_reasoning" if include_clinical_reasoning else "neuralweb_chat"
+            used = (llm_provider.approx_tokens(current_prompts[system_key] + _LOCAL_SOURCES_INSTRUCTION) + 200
+                    + sum(llm_provider.approx_tokens(m.get('content') or '') for m in history or [])
+                    + llm_provider.approx_tokens((message or '') + (file_content_context or ''))
+                    + _ANSWER_RESERVE_TOKENS)
+            budget = min(llm_provider.token_budget(0.35), llm_provider.context_tokens() - used)
+            fitted = clinical_sources.fit_to_budget(local_sources, budget)
+            if len(fitted) < len(local_sources):
+                logger.info(f"[FONTES] {len(fitted)} de {len(local_sources)} fonte(s) couberam (~{budget} tokens livres)")
+            local_sources = fitted
+
+    library_context_string = ""
+    if library and not any(s.kind == 'library' for s in local_sources):
+        logger.info(f"Enriquecendo prompt com a biblioteca: '{library.name}'")
+        library_text = await asyncio.to_thread(vector_db_service.get_all_text_for_library, library_id)
+        # A biblioteca inteira cabe no contexto do Gemini; num modelo local, não. Quando
+        # passa de metade da janela, entram os trechos mais relevantes para a pergunta,
+        # até o limite.
+        budget = llm_provider.token_budget(0.5)
+        if library_text and llm_provider.approx_tokens(library_text) > budget:
+            chunks = await asyncio.to_thread(
+                vector_db_service.query_library, query_text=message, library_id=library_id, n_results=20,
+            )
+            selected, used = [], 0
+            for chunk in chunks or []:
+                cost = llm_provider.approx_tokens(chunk)
+                if used + cost > budget:
+                    break
+                selected.append(chunk)
+                used += cost
+            logger.info(f"Biblioteca maior que o contexto (~{llm_provider.approx_tokens(library_text)} tokens): "
+                        f"usando {len(selected)} trechos relevantes (~{used} tokens).")
+            library_text = "\n\n---\n\n".join(selected)
+        if library_text and library_text.strip():
+            library_context_string = (
+                f"Use o seguinte conteúdo da biblioteca '{library.name}' como base principal para sua resposta. "
+                f"Analise-o cuidadosamente antes de responder à pergunta do usuário.\n\n"
+                f"<CONTEXTO_DA_BIBLIOTECA>\n{library_text}\n</CONTEXTO_DA_BIBLIOTECA>\n\n"
+            )
 
     # 3. Prepara a mensagem atual do usuário (que pode ser multimodal)
     current_user_message_parts = []
+    if local_sources:
+        current_user_message_parts.append(types.Part(text=clinical_sources.sources_block(local_sources)))
     # Adiciona o contexto da biblioteca no início da mensagem do usuário
     if library_context_string:
         current_user_message_parts.append(types.Part(text=library_context_string))
@@ -1502,6 +1623,15 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # USA current_prompts PARA SUPORTAR EDIÇÃO DINÂMICA VIA ADMIN PANEL
     system_prompt_text = current_prompts["clinical_reasoning"] if include_clinical_reasoning else current_prompts["neuralweb_chat"]
 
+    # Os prompts (editáveis no admin) mandam pesquisar na web e dizem que o sistema monta os
+    # marcadores [n]. Sem busca (IA local), o modelo copiava o "[n]" e fingia fontes.
+    if local_sources:
+        system_prompt_text += _LOCAL_SOURCES_INSTRUCTION
+    elif not web_search:
+        system_prompt_text += _NO_WEB_SEARCH_INSTRUCTION
+        if clinical_question:
+            system_prompt_text += _NO_SOURCES_FOUND_INSTRUCTION
+
     # 5.1 Injetar instrução de idioma no prompt do sistema
     # Isto garante que a resposta seja no idioma da UI do usuário
     language_instructions = {
@@ -1518,7 +1648,7 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # (b) Nudge de EMBASAMENTO: o lite grounseia menos → poucas referências. Encoraja busca +
     # citação p/ afirmações FACTUAIS (dose/ajuste/conduta/critério/escore/diretriz), preservando
     # o reconhecimento de tipo (conversa/planejamento NÃO força busca). Só com grounding ligado.
-    if Config.ENABLE_GROUNDING:
+    if Config.ENABLE_GROUNDING and web_search:
         grounding_nudges = {
             'en': "\n\n**SOURCING:** For factual, verifiable clinical claims — drug doses/adjustments, management, diagnostic criteria, scores, guidelines — use web search to confirm and ground your answer, preferring authoritative sources (drug labels, guidelines, societies, indexed literature). For conversation, planning, or opinion, do NOT force a search. Never fabricate a reference.",
             'es': "\n\n**FUNDAMENTACIÓN:** Para afirmaciones clínicas factuales y verificables — dosis/ajustes, conducta, criterios diagnósticos, escalas, guías — usa la búsqueda web para confirmar y fundamentar, priorizando fuentes autorizadas (prospecto, guías, sociedades, literatura indexada). En conversación, planificación u opinión, NO fuerces la búsqueda. Nunca inventes una referencia.",
@@ -1595,22 +1725,13 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
 
     # Higieniza a resposta para remover quebras de linha excessivas
     cleaned_response_text = re.sub(r'\n{3,}', '\n\n', raw_response_text)
+    if not web_search:
+        # Marcador copiado da instrução, sem fonte por trás (ver _NO_WEB_SEARCH_INSTRUCTION).
+        cleaned_response_text = re.sub(r'\s*\[n\]', '', cleaned_response_text)
 
-    # Substitui notação LaTeX inline por símbolos Unicode (Gemini às vezes usa LaTeX)
-    latex_to_unicode = {
-        r'$\ge$': '≥', r'$\le$': '≤', r'$\geq$': '≥', r'$\leq$': '≤',
-        r'$\gt$': '>', r'$\lt$': '<', r'$\neq$': '≠', r'$\approx$': '≈',
-        r'$\pm$': '±', r'$\times$': '×', r'$\div$': '÷', r'$\infty$': '∞',
-        r'$\alpha$': 'α', r'$\beta$': 'β', r'$\gamma$': 'γ', r'$\delta$': 'δ',
-        r'$\mu$': 'μ', r'$\sigma$': 'σ', r'$\degree$': '°', r'$\circ$': '°',
-    }
-    for latex, unicode_char in latex_to_unicode.items():
-        cleaned_response_text = cleaned_response_text.replace(latex, unicode_char)
-    # Also handle $\ge 7$ style patterns (LaTeX with value inside)
-    cleaned_response_text = re.sub(r'\$\\ge\s*(\d+)\$', r'≥ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\le\s*(\d+)\$', r'≤ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\geq\s*(\d+)\$', r'≥ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\leq\s*(\d+)\$', r'≤ \1', cleaned_response_text)
+    # LaTeX inline ("PAM $\geq 65 \text{ mm Hg}$", comum na IA local) vira texto Unicode:
+    # nem o web nem o mobile renderizam matemática. Código e valor em $ ficam como estão.
+    cleaned_response_text = latex_to_unicode(cleaned_response_text)
 
     # Extract grounding sources and supports (for inline citations) if available
     grounding_sources = None
@@ -1675,7 +1796,9 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
                         # (start_index: int) estoura ValidationError → 500.
                         'start_index': getattr(seg, 'start_index', None) or 0,
                         'end_index': getattr(seg, 'end_index', None) or 0,
-                        'text': getattr(seg, 'text', None),
+                        # Mesma normalização da resposta: o trecho casa por conteúdo
+                        # com ela em _insert_inline_citations.
+                        'text': latex_to_unicode(getattr(seg, 'text', None)),
                         'chunk_indices': list(support.grounding_chunk_indices) if hasattr(support, 'grounding_chunk_indices') else []
                     }
                     if support_data['chunk_indices']:
@@ -1684,50 +1807,59 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
                 logger.info(f"[GROUNDING] {len(grounding_supports)} supports (mapeamentos inline) extraídos")
 
     # 12. Processar e unificar referências (validação anti-alucinação + enriquecimento)
-    grounded = bool(grounding_supports or grounding_sources or grounding_search_queries)
-    ref_search_queries = grounding_search_queries
-    force_pubmed = False
-    # REFORÇO TIER4: se a resposta é clínica-FACTUAL mas o modelo NÃO grounseou (achou "consensual"),
-    # força a busca ativa no PubMed com uma query EM INGLÊS gerada por LLM — a busca por palavra-chave
-    # PT da resposta dá recall ~0. Tira a decisão de "buscar ou não" das mãos do modelo (pedido do user).
-    if not grounded and _warrants_clinical_refs(cleaned_response_text):
-        gen_q = _generate_pubmed_query(cleaned_response_text)
-        if gen_q:
-            ref_search_queries = (ref_search_queries or []) + [gen_q]
-            force_pubmed = True
-            logger.info(f"[TIER4] Reforço clínico (sem grounding) — query gerada: '{gen_q[:70]}'")
-    try:
-        from .reference_service import process_references
-        cleaned_response_text, unified_sources = await process_references(
-            response_text=cleaned_response_text,
-            grounding_sources=grounding_sources,
-            search_queries=ref_search_queries,
-            grounded=grounded,
-            force_pubmed=force_pubmed,
+    if local_sources:
+        # As fontes vieram antes da resposta: a lista é a das fontes que o modelo citou.
+        # Tier 1–4 e curadoria ficam de fora, porque julgariam fontes que ele não leu.
+        from .reference_service import remove_references_section
+        cleaned_response_text, unified_sources = clinical_sources.cite_used_sources(
+            remove_references_section(cleaned_response_text), local_sources
         )
-        logger.info(f"[CHAT] Referências processadas: {len(unified_sources)} válidas")
-    except Exception as e:
-        logger.warning(f"[CHAT] Erro no processamento de referências (usando fallback): {e}")
-        # Fallback: usar grounding_sources original — mas AINDA classificando, senão a
-        # referência chega ao front sem `source_type` (12% das fontes auditadas estavam
-        # assim) e o badge/ranking não têm como funcionar.
-        unified_sources = grounding_sources
+        logger.info(f"[FONTES] {len(unified_sources)} de {len(local_sources)} fonte(s) citada(s) na resposta")
+    else:
+        grounded = bool(grounding_supports or grounding_sources or grounding_search_queries)
+        ref_search_queries = grounding_search_queries
+        force_pubmed = False
+        # REFORÇO TIER4: se a resposta é clínica-FACTUAL mas o modelo NÃO grounseou (achou "consensual"),
+        # força a busca ativa no PubMed com uma query EM INGLÊS gerada por LLM — a busca por palavra-chave
+        # PT da resposta dá recall ~0. Tira a decisão de "buscar ou não" das mãos do modelo (pedido do user).
+        if not grounded and _warrants_clinical_refs(cleaned_response_text):
+            gen_q = await asyncio.to_thread(_generate_pubmed_query, cleaned_response_text)
+            if gen_q:
+                ref_search_queries = (ref_search_queries or []) + [gen_q]
+                force_pubmed = True
+                logger.info(f"[TIER4] Reforço clínico (sem grounding) — query gerada: '{gen_q[:70]}'")
         try:
-            from .reference_service import rank_and_filter_references
-            unified_sources = rank_and_filter_references(list(grounding_sources or []))
-        except Exception:
-            pass
+            from .reference_service import process_references
+            cleaned_response_text, unified_sources = await process_references(
+                response_text=cleaned_response_text,
+                grounding_sources=grounding_sources,
+                search_queries=ref_search_queries,
+                grounded=grounded,
+                force_pubmed=force_pubmed,
+            )
+            logger.info(f"[CHAT] Referências processadas: {len(unified_sources)} válidas")
+        except Exception as e:
+            logger.warning(f"[CHAT] Erro no processamento de referências (usando fallback): {e}")
+            # Fallback: usar grounding_sources original — mas AINDA classificando, senão a
+            # referência chega ao front sem `source_type` (12% das fontes auditadas estavam
+            # assim) e o badge/ranking não têm como funcionar.
+            unified_sources = grounding_sources
+            try:
+                from .reference_service import rank_and_filter_references
+                unified_sources = rank_and_filter_references(list(grounding_sources or []))
+            except Exception:
+                pass
 
-    # Curadoria: o modelo julga cada fonte antes de a lista ser numerada. TEM de vir antes
-    # dos marcadores inline — descartar uma ref depois da numeração deslocaria todos os [n].
-    if unified_sources:
-        unified_sources = await run_in_threadpool(_curate_references, cleaned_response_text, unified_sources)
+        # Curadoria: o modelo julga cada fonte antes de a lista ser numerada. TEM de vir antes
+        # dos marcadores inline — descartar uma ref depois da numeração deslocaria todos os [n].
+        if unified_sources:
+            unified_sources = await run_in_threadpool(_curate_references, cleaned_response_text, unified_sources)
 
-    # Marcadores [n] inline (estilo artigo) — casa por conteúdo do trecho citado, n = número
-    # da ref já reranqueada. Web torna clicável; mobile mostra inline. Falha → texto intacto.
-    cleaned_response_text = _insert_inline_citations(
-        cleaned_response_text, grounding_supports, grounding_sources, unified_sources
-    )
+        # Marcadores [n] inline (estilo artigo) — casa por conteúdo do trecho citado, n = número
+        # da ref já reranqueada. Web torna clicável; mobile mostra inline. Falha → texto intacto.
+        cleaned_response_text = _insert_inline_citations(
+            cleaned_response_text, grounding_supports, grounding_sources, unified_sources
+        )
 
     # Imagem da biblioteca do usuário: resolve DEPOIS dos marcadores inline, porque inserir
     # markdown antes deslocaria os offsets calculados para os [n].
@@ -1739,10 +1871,9 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     return cleaned_response_text, response.usage_metadata, model_used, unified_sources, grounding_supports
 
 
-_DOSE_RE = re.compile(r'\b\d+([.,]\d+)?\s*(mg|mcg|µg|ug|g|ml|l|ui|u|mg/kg|mcg/kg|mg/dl|g/dl|meq|mmol|mmhg|bpm|j|joules?|%)\b', re.IGNORECASE)
-_CLINICAL_TERM_HINTS = ('diagn', 'trata', 'conduta', 'dose', 'sintom', 'síndrome', 'sindrome', 'terap',
-                        'fármac', 'farmac', 'protocol', 'critério', 'criterio', 'manejo', 'diretriz',
-                        'fisiopat', 'etiolog', 'profilax', 'prescri', 'indicaç', 'contraindic', 'patolog')
+# Os mesmos sinais decidem, na IA local, se a PERGUNTA pede fonte (clinical_sources).
+_DOSE_RE = clinical_sources.DOSE_RE
+_CLINICAL_TERM_HINTS = clinical_sources.CLINICAL_TERM_HINTS
 
 
 def _warrants_clinical_refs(text: str) -> bool:
@@ -1944,23 +2075,43 @@ async def _resolve_image_directives(text: str, db, user_id: int, library_id: int
         return _IMAGE_DIRECTIVE_RE.sub('', text)
 
 
-def _generate_pubmed_query(response_text: str) -> str:
+def _generate_pubmed_query(response_text: str, from_question: bool = False) -> str:
     """Gera uma query FOCADA em INGLÊS p/ o PubMed a partir da resposta clínica — a busca por
     palavra-chave PT da resposta dá recall ~0 (PubMed é indexado em inglês). Modelo leve + retry
-    (ResilientGeminiClient); qualquer falha → '' (sem reforço, sem quebrar o chat)."""
+    (ResilientGeminiClient); qualquer falha → '' (sem reforço, sem quebrar o chat).
+
+    from_question=True: o texto é a PERGUNTA do médico, para buscar antes de responder (IA
+    local, ver clinical_sources)."""
     try:
-        prompt = ("From the clinical answer below, output ONLY a focused PubMed search query in "
-                  "ENGLISH — 3 to 6 key terms (condition, drugs, intervention), no boolean operators, "
-                  "no quotes, no explanation.\n\nAnswer:\n" + (response_text or '')[:1500])
+        if from_question:
+            # "Sepsis-3" virava "sepsis 3" e a busca perdia o consenso que a pergunta citava.
+            prompt = ("From the clinical question below, output ONLY a focused PubMed search query in "
+                      "ENGLISH — 3 to 6 key terms (condition, drugs, intervention, population). Keep "
+                      "named criteria, scores and guidelines exactly as written (e.g. Sepsis-3, CURB-65). "
+                      "No boolean operators, no quotes, no explanation.\n\nQuestion:\n"
+                      + (response_text or '')[:1500])
+        else:
+            prompt = ("From the clinical answer below, output ONLY a focused PubMed search query in "
+                      "ENGLISH — 3 to 6 key terms (condition, drugs, intervention), no boolean operators, "
+                      "no quotes, no explanation.\n\nAnswer:\n" + (response_text or '')[:1500])
+        # Sem SIMPLE_TASK_LLM_MODEL no .env, o nome vazio quebrava aqui e a busca não acontecia.
+        # Com a IA local o nome nem é usado (vale o modelo do servidor).
+        modelo = Config.SIMPLE_TASK_LLM_MODEL or Config.CHAT_LLM_MODEL
         resp = client.models.generate_content(
-            model=f'models/{Config.SIMPLE_TASK_LLM_MODEL}',
+            model=f'models/{modelo}',
             contents=_redact_llm_contents(prompt),
             config=types.GenerateContentConfig(
                 max_output_tokens=80,
-                thinking_config=_get_thinking_config_for_model(Config.SIMPLE_TASK_LLM_MODEL, 'minimal'),
+                thinking_config=_get_thinking_config_for_model(modelo, 'minimal'),
             ),
         )
-        q = (resp.text or '').strip().replace('"', '').replace('\n', ' ')
+        q = (resp.text or '').strip()
+        if from_question:
+            # Modelo local às vezes enfeita: "**Query:** `...`" ou explicação na linha de baixo.
+            q = next((ln for ln in q.splitlines() if ln.strip()), '')
+            q = re.sub(r'^\W*(?:pubmed\s+)?(?:search\s+)?query\W*:\s*', '', q, flags=re.IGNORECASE)
+            q = re.sub(r'[*`_#]', '', q).strip()
+        q = q.replace('"', '').replace('\n', ' ')
         return q[:200]
     except Exception as e:
         logger.warning(f"[TIER4] Falha ao gerar query PubMed clínica: {e}")
@@ -2127,9 +2278,9 @@ async def chat_with_library_rag(query: str, library_id: int, db: AsyncSession, h
             system_instruction=system_prompt
         )
         
-        response = client.models.generate_content(
+        response = await _generate_off_loop(
             model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(chat_history_for_llm),
+            contents=chat_history_for_llm,
             config=generation_config
         )
 
@@ -2140,7 +2291,8 @@ async def chat_with_library_rag(query: str, library_id: int, db: AsyncSession, h
 
         logger.info(f"Resposta RAG gerada com sucesso para a biblioteca {library_id}.")
         _log_call_cost('rag', model_to_use, response.usage_metadata)  # instrumentação de custo real
-        return response.text.strip()
+        # Mesma normalização do copiloto: o LaTeX inline da IA local vira texto Unicode.
+        return latex_to_unicode(response.text.strip())
 
     except Exception as e:
         logger.error(f"Erro na chamada do LLM para o chat RAG: {e}", exc_info=True)
@@ -2370,9 +2522,9 @@ async def normalize_clinical_terms(
 
     try:
         model_to_use = Config.SIMPLE_TASK_LLM_MODEL
-        response = client.models.generate_content(
+        response = await _generate_off_loop(
             model=f'models/{model_to_use}',
-            contents=_redact_llm_contents(prompt),
+            contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,  # Baixa temperatura para consistência
                 max_output_tokens=200
@@ -2529,9 +2681,9 @@ HISTÓRICO CLÍNICO BRUTO:
         try:
             logger.info(f"[HISTORY-EXTRACT] Tentativa {attempt}/{max_attempts} com modelo: {model_to_use}")
 
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_to_use}',
-                contents=_redact_llm_contents(prompt),
+                contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=8192,
@@ -2728,9 +2880,9 @@ HISTÓRICO CLÍNICO BRUTO:
             logger.info(f"[HISTORY] Tentativa {attempt}/{max_attempts} com modelo: {model_to_use}")
 
             # Use structured output with response_mime_type for guaranteed valid JSON
-            response = client.models.generate_content(
+            response = await _generate_off_loop(
                 model=f'models/{model_to_use}',
-                contents=_redact_llm_contents(prompt),
+                contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,  # Very low temperature for consistent structured output
                     max_output_tokens=8192,  # Increased for longer histories

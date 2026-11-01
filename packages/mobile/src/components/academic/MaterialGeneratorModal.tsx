@@ -28,8 +28,8 @@ interface Props {
 }
 
 // Materiais de estudo gerados a partir da biblioteca (retornam uma AcademicMaterial, pollável
-// por /material/{id}/status). Podcast/videoaula/transcrição usam fluxos próprios (job/arquivo)
-// e ficam fora deste modal por ora; 'quiz' não é um material_type válido do gerador.
+// por /material/{id}/status). A transcrição usa fluxo próprio (arquivo) e fica fora deste
+// modal; 'quiz' não é um material_type válido do gerador.
 const MATERIAL_TYPES: MaterialType[] = [
   'summary',
   'detailed_text',

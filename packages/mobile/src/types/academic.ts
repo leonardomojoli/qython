@@ -166,9 +166,7 @@ export const MATERIAL_TYPE_CONFIG: Record<string, { icon: string; labelKey: stri
   comparative_table: { icon: '📊', labelKey: 'comparativeTable', descriptionKey: 'comparativeTableDescription' },
   clinical_case: { icon: '🩺', labelKey: 'clinicalCase', descriptionKey: 'clinicalCaseDescription' },
   critical_appraisal: { icon: '🔬', labelKey: 'criticalAppraisal', descriptionKey: 'criticalAppraisalDescription' },
-  podcast: { icon: '🎙️', labelKey: 'podcast', descriptionKey: 'podcastDescription' },
   slideshow_only: { icon: '📊', labelKey: 'slideshow', descriptionKey: 'slideshowDescription' },
-  video_lesson: { icon: '🎬', labelKey: 'videoLesson', descriptionKey: 'videoLessonDescription' },
   quiz: { icon: '❓', labelKey: 'quiz', descriptionKey: 'quizDescription' },
 };
 

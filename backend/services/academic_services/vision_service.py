@@ -7,6 +7,7 @@ Uses Gemini Flash Lite (free tier: 30 RPM / 1500 RPD) to generate clinical
 descriptions of medical images. Auto-throttles and defers on rate limits.
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -44,15 +45,10 @@ For MEDICAL images:
 
 
 async def describe_single_image(image_path: str) -> Optional[str]:
-    """Send a single image to Gemini for clinical description."""
-    from google import genai
+    """Send a single image to the configured AI provider for clinical description.
+    Reading an image works with Gemini and with a local multimodal model (Gemma 4)."""
     from google.genai import types
-
-    if not Config.GEMINI_API_KEY:
-        logger.error("[VISION] GEMINI_API_KEY not configured")
-        return None
-
-    client = genai.Client(api_key=Config.GEMINI_API_KEY)
+    from ..llm_services import client
 
     try:
         with open(image_path, "rb") as f:
@@ -63,7 +59,7 @@ async def describe_single_image(image_path: str) -> Optional[str]:
         mime_map = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
         mime_type = mime_map.get(ext, 'image/png')
 
-        response = client.models.generate_content(
+        response = await asyncio.to_thread(client.models.generate_content,
             model=Config.VISION_DESCRIPTION_MODEL,
             contents=[
                 types.Content(parts=[

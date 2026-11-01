@@ -21,6 +21,7 @@ from typing import Dict, Any, List, Optional
 from google.genai import types
 
 from ..llm_services import client, _get_thinking_config_for_model, _log_call_cost
+from .. import llm_provider
 from ...config import Config
 
 logger = logging.getLogger("qython_logger")
@@ -88,7 +89,19 @@ recomendações práticas: proporção de casos clínicos, distribuição de tem
 Seja específico e conciso. Se a prova for pouco documentada, seja honesto sobre o que NÃO se sabe e oriente-se pela área/nível."""
 
 
-def _run_grounded_call(model: str, prompt: str) -> Dict[str, Any]:
+def _search_client():
+    """Quem faz a busca. A busca do Google só existe no Gemini; com a IA de texto
+    local, a etapa usa o Gemini se houver chave (o que vai é o nome do concurso, dado
+    público, não de paciente). Sem chave, None: não há busca a fazer."""
+    if llm_provider.provider_name() == "gemini":
+        return client
+    try:
+        return llm_provider.gemini_client()
+    except llm_provider.CapabilityUnavailable:
+        return None
+
+
+def _run_grounded_call(model: str, prompt: str, search_client) -> Dict[str, Any]:
     """Uma chamada grounded; devolve {synthesis, sources, queries, grounded}."""
     tools = [types.Tool(google_search=types.GoogleSearch())]
     cfg = types.GenerateContentConfig(
@@ -97,7 +110,7 @@ def _run_grounded_call(model: str, prompt: str) -> Dict[str, Any]:
         tools=tools,
         thinking_config=_get_thinking_config_for_model(model, 'medium'),
     )
-    response = client.models.generate_content(
+    response = search_client.models.generate_content(
         model=f'models/{model}',
         contents=prompt,
         config=cfg,
@@ -167,14 +180,20 @@ def research_exam_dossier(
     model = Config.CHAT_LLM_MODEL or 'gemini-3.1-flash-lite'
 
     # Etapa 1 — BUSCA (prompt mínimo, tarefa única). Retry único se vier sem busca.
-    search = _run_grounded_call(model, _search_prompt(exam_name, description))
-    if not search['grounded']:
+    search_client = _search_client()
+    if search_client is None:
+        logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' sem busca na web (IA local sem chave do Gemini)")
+        search = {'synthesis': '', 'sources': [], 'queries': [], 'grounded': False}
+    else:
+        search = _run_grounded_call(model, _search_prompt(exam_name, description), search_client)
+    if search_client is not None and not search['grounded']:
         logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' busca sem grounding — retry com diretiva dura")
         retry = _run_grounded_call(
             model,
             _search_prompt(exam_name, description)
             + "\n\nATENÇÃO: sua tentativa anterior NÃO executou NENHUMA busca e respondeu de memória. "
               "Execute as buscas (Google Search) AGORA e liste apenas o que encontrar nelas.",
+            search_client,
         )
         if retry['grounded'] or (not search['synthesis'] and retry['synthesis']):
             search = retry

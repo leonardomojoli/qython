@@ -1,0 +1,10 @@
+ALTERNATIVAS: 5
+GUIA DE ESTILO — ENAMED (Exame Nacional de Avaliação da Formação Médica, Brasil)
+Texto original do Qython, sem questões reais. Formato aproximado: confira o edital vigente.
+
+- Avalia o egresso de Medicina ao fim da graduação e serve de base para o acesso a programas de residência.
+- Questões objetivas de resposta única, em português, quase sempre a partir de um caso clínico curto: idade, sexo, queixa, tempo de evolução, exame físico e, quando necessário, exames complementares com valores e unidades do Brasil.
+- Áreas: Clínica Médica, Cirurgia Geral, Pediatria, Ginecologia e Obstetrícia, Medicina de Família e Comunidade e Saúde Coletiva, e Saúde Mental. A Saúde Coletiva cobra SUS, atenção primária, vigilância em saúde, epidemiologia e ética.
+- Condutas seguem protocolos do Ministério da Saúde e das sociedades brasileiras (por exemplo, calendário vacinal do PNI, manejo de dengue, pré-natal na atenção primária).
+- O enunciado termina com uma pergunta direta: diagnóstico mais provável, próxima conduta, exame indicado, mecanismo ou medida de saúde pública.
+- Distratores plausíveis, com o mesmo tamanho e estrutura da correta, cada um representando um erro comum de raciocínio.

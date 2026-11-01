@@ -11,16 +11,9 @@ import {
   getLibraries,
   uploadFile,
   processFile,
-  getActivePodcastJob,
-  getPodcastJobStatus,
-  clearPodcastJob,
   getMaterialJobStatus,
-  getActiveVideoLessonJob,
-  getVideoLessonJobStatus,
-  clearVideoLessonJob
 } from '../../api';
 import { useNavigate } from 'react-router-dom';
-import MaterialResultModal from '../academic/MaterialResultModal';
 import LibraryDropdown from './LibraryDropdown';
 import UpgradeModal from '../shared/UpgradeModal';
 import { Document, Page } from 'react-pdf';
@@ -61,8 +54,6 @@ function MaterialProducer({ isSidebarOpen }) {
   const [selectedLibrary, setSelectedLibrary] = useState(null);
   const [libraries, setLibraries] = useState([]);
 
-  const [result, setResult] = useState(null);
-  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedMaterialType, setGeneratedMaterialType] = useState(null);
 
@@ -72,9 +63,6 @@ function MaterialProducer({ isSidebarOpen }) {
 
   const [numPages, setNumPages] = useState(null);
 
-  // We need separate state for each type of long-running job.
-  const [activePodcastJob, setActivePodcastJob] = useState(null);
-  const [activeVideoJob, setActiveVideoJob] = useState(null);
   const [pollingJob, setPollingJob] = useState(null); // This is for standard materials.
   // Job cuja conclusão já foi tratada — ver a nota no tick do polling abaixo.
   const pollDoneRef = useRef(null);
@@ -124,40 +112,10 @@ function MaterialProducer({ isSidebarOpen }) {
     fetchLibraries();
   }, [addNotification, t]);
 
-  // Check for any active jobs when the component mounts.
-  useEffect(() => {
-    const checkActiveJobs = async () => {
-      const podcastJob = await getActivePodcastJob();
-      if (podcastJob) setActivePodcastJob(podcastJob);
-
-      const videoJob = await getActiveVideoLessonJob();
-      if (videoJob) setActiveVideoJob(videoJob);
-    };
-    checkActiveJobs();
-  }, []);
-
-  // Unified polling logic into a single useEffect hook for clarity.
   useEffect(() => {
     let interval;
 
-    const poll = async (job, statusGetter, stateSetter, type) => {
-      const updatedJob = await statusGetter(job.id);
-      stateSetter(updatedJob);
-      if (updatedJob.status === 'completed' || updatedJob.status === 'error') {
-        clearInterval(interval);
-        if (updatedJob.status === 'completed') {
-          addNotification(t(`${type}GenerationCompleted`), 'success');
-        } else {
-          addNotification(t('materialGenerationFailed'), 'error');
-        }
-      }
-    };
-
-    if (activePodcastJob && (activePodcastJob.status === 'pending' || activePodcastJob.status === 'processing')) {
-      interval = setInterval(() => poll(activePodcastJob, getPodcastJobStatus, setActivePodcastJob, 'podcast'), 10000);
-    } else if (activeVideoJob && (activeVideoJob.status === 'pending' || activeVideoJob.status === 'processing')) {
-      interval = setInterval(() => poll(activeVideoJob, getVideoLessonJobStatus, setActiveVideoJob, 'videoLesson'), 10000);
-    } else if (pollingJob) {
+    if (pollingJob) {
       interval = setInterval(async () => {
         try {
           const updatedJob = await getMaterialJobStatus(pollingJob.id);
@@ -172,10 +130,9 @@ function MaterialProducer({ isSidebarOpen }) {
             setPollingJob(null);
             setLoading(false);
             if (updatedJob.status === 'completed') {
-              setResult(updatedJob);
               // Materiais de estudo (quiz, flashcards, mapa mental, resumo, tabela, caso
               // clínico) abrem no visualizador PERSISTENTE (nível de app), que sobrevive à
-              // navegação entre seções. Podcast/videoaula seguem no modal local desta tela.
+              // navegação entre seções.
               openMaterial({
                 result: updatedJob,
                 materialType: generatedMaterialType,
@@ -202,7 +159,7 @@ function MaterialProducer({ isSidebarOpen }) {
     // generatedMaterialType/file/selectedLibrary são lidos por closure (estáveis durante a
     // geração); openMaterial/handleRedoRef são estáveis. Não re-rodar o polling por eles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePodcastJob, activeVideoJob, pollingJob, addNotification, t]);
+  }, [pollingJob, addNotification, t]);
 
 
   const handleFileChange = (e) => {
@@ -217,7 +174,6 @@ function MaterialProducer({ isSidebarOpen }) {
     }
 
     setFileContent(null);
-    setResult(null);
     setFile(selectedFile);
     setSelectedLibrary(null);
     setNumPages(null);
@@ -256,30 +212,12 @@ function MaterialProducer({ isSidebarOpen }) {
 
     // Teto do visualizador (dock): materiais de estudo entram no MaterialViewer, que segura no
     // máximo MAX_OPEN_MATERIALS. Checa ANTES de gerar/debitar dracmas e NÃO descarta nada
-    // sozinho — pede pro usuário fechar um. Podcast/videoaula usam o modal local (não contam).
-    const isViewerMaterial = materialType !== 'podcast' && materialType !== 'video_lesson';
-    if (isViewerMaterial && isViewerFull) {
+    // sozinho — pede pro usuário fechar um.
+    if (isViewerFull) {
       addNotification(
         t('materialViewerFull', { count: MAX_OPEN_MATERIALS, defaultValue: `Você tem ${MAX_OPEN_MATERIALS} materiais abertos — feche um para abrir outro.` }),
         'warning'
       );
-      return;
-    }
-
-    // Check for active jobs and open the modal to show progress.
-    if (materialType === 'podcast' && activePodcastJob) {
-      setGeneratedMaterialType('podcast');
-      setIsResultModalOpen(true);
-      return;
-    }
-    if (materialType === 'video_lesson' && activeVideoJob) {
-      setGeneratedMaterialType('video_lesson');
-      setIsResultModalOpen(true);
-      return;
-    }
-
-    if (materialType === 'podcast' && !selectedLibrary) {
-      addNotification(t('selectLibraryForPodcast'), 'warning');
       return;
     }
 
@@ -293,7 +231,6 @@ function MaterialProducer({ isSidebarOpen }) {
 
     setGeneratedMaterialType(materialType);
     setLoading(true);
-    setResult(null);
 
     try {
       let payload = { material_type: materialType };
@@ -307,21 +244,7 @@ function MaterialProducer({ isSidebarOpen }) {
       }
 
       const processData = await processFile(payload);
-
-      // Correctly handle the response for each job type.
-      if (materialType === 'podcast') {
-        setActivePodcastJob(processData);
-        addNotification(t('podcastGenerationStarted'), 'success');
-        setIsResultModalOpen(true);
-        setLoading(false);
-      } else if (materialType === 'video_lesson') {
-        setActiveVideoJob(processData);
-        addNotification(t('videoLessonGenerationStarted'), 'success');
-        setIsResultModalOpen(true);
-        setLoading(false);
-      } else {
-        setPollingJob({ id: processData.id, type: materialType });
-      }
+      setPollingJob({ id: processData.id, type: materialType });
     } catch (error) {
       console.error('Erro ao gerar material:', error);
 
@@ -332,8 +255,6 @@ function MaterialProducer({ isSidebarOpen }) {
       if (httpStatus === 403) {
         // Restrição de plano → modal de upgrade
         const featureMap = {
-          'podcast': 'premium_content',
-          'video_lesson': 'premium_content',
           'mind_map': 'premium_content'
         };
         setUpgradeFeature(featureMap[materialType] || 'premium_content');
@@ -351,52 +272,12 @@ function MaterialProducer({ isSidebarOpen }) {
     }
   };
 
-  // Unified job clearing logic.
-  const handleClearJob = async () => {
-    if (activePodcastJob) {
-      await clearPodcastJob(activePodcastJob.id);
-      setActivePodcastJob(null);
-    }
-    if (activeVideoJob) {
-      await clearVideoLessonJob(activeVideoJob.id);
-      setActiveVideoJob(null);
-    }
-    setGeneratedMaterialType(null);
-  };
-
-  const handleRedo = async () => {
+  const handleRedo = () => {
     if (!generatedMaterialType) {
       addNotification(t('errorRedoingMaterial'), 'error');
       return;
     }
-
-    const jobToClear = generatedMaterialType === 'video_lesson' ? activeVideoJob : activePodcastJob;
-
-    // 1. Close the modal to prevent UI glitches from state changes.
-    setIsResultModalOpen(false);
-
-    // 2. Use a timeout to allow the modal to transition out before clearing state and starting a new job.
-    setTimeout(async () => {
-      try {
-        // 3. If it was a long-running job, clear it from the backend and then from the local state.
-        if (jobToClear) {
-          if (generatedMaterialType === 'video_lesson') {
-            await clearVideoLessonJob(jobToClear.id);
-            setActiveVideoJob(null);
-          } else if (generatedMaterialType === 'podcast') {
-            await clearPodcastJob(jobToClear.id);
-            setActivePodcastJob(null);
-          }
-        }
-
-        // 4. Now that the old state is cleared, start the new generation process.
-        handleGenerateMaterial(generatedMaterialType);
-
-      } catch (error) {
-        console.error('Error clearing job before redoing:', error);
-        addNotification(t('errorClearingPreviousJob', { defaultValue: 'Could not clear the previous job before retrying.' }), 'error');
-      }
-    }, 300); // 300ms provides a safe buffer for the modal's closing animation.
+    handleGenerateMaterial(generatedMaterialType);
   };
 
   // Mantém a ref do handleRedo atualizada a cada render (usada pelo visualizador persistente).
@@ -420,13 +301,8 @@ function MaterialProducer({ isSidebarOpen }) {
       return isAudioVideoFile;
     }
 
-    // Podcast requires library (already handled in handleGenerateMaterial, but show as compatible)
-    if (materialId === 'podcast') {
-      return isLibrarySelected;
-    }
-
-    // Slideshow and video_lesson work best with text documents but can work with library
-    if (materialId === 'slideshow_only' || materialId === 'video_lesson') {
+    // Slideshow works best with text documents but can work with library
+    if (materialId === 'slideshow_only') {
       return isTextDocumentFile || isLibrarySelected;
     }
 
@@ -451,9 +327,7 @@ function MaterialProducer({ isSidebarOpen }) {
     { id: 'comparative_table', title: t('comparativeTable'), description: t('comparativeTableDescription') },
     { id: 'clinical_case', title: t('clinicalCase'), description: t('clinicalCaseDescription') },
     { id: 'critical_appraisal', title: t('criticalAppraisal'), description: t('criticalAppraisalDescription') },
-    { id: 'podcast', title: t('podcast'), description: t('podcastDescription') },
     { id: 'slideshow_only', title: t('slideshow'), description: t('slideshowOnlyDescription') },
-    { id: 'video_lesson', title: t('videoLessonWithSlides'), description: t('videoLessonWithSlidesDescription') },
   ];
 
   const onDocumentLoadSuccess = ({ numPages }) => {
@@ -540,7 +414,6 @@ function MaterialProducer({ isSidebarOpen }) {
           <div className={styles.materialGrid}>
             {materialTypes.map(material => {
               const isCompatible = isMaterialCompatible(material.id);
-              const hasActiveJob = (material.id === 'podcast' && activePodcastJob) || (material.id === 'video_lesson' && activeVideoJob);
               const isDisabled = !isVerified || (!isCompatible && hasSource);
 
               return (
@@ -548,7 +421,6 @@ function MaterialProducer({ isSidebarOpen }) {
                   key={material.id}
                   className={`
                     ${styles.materialCard}
-                    ${hasActiveJob ? styles.activeJobCard : ''}
                     ${!isCompatible && hasSource ? styles.incompatibleCard : ''}
                   `}
                   onClick={() => {
@@ -612,18 +484,6 @@ function MaterialProducer({ isSidebarOpen }) {
           </div>
         </div>
       )}
-      <MaterialResultModal
-        isOpen={isResultModalOpen}
-        onClose={() => setIsResultModalOpen(false)}
-        result={result}
-        // Pass the correct job object based on the material type.
-        job={generatedMaterialType === 'podcast' ? activePodcastJob : activeVideoJob}
-        onClearJob={handleClearJob}
-        sourceName={file?.name || selectedLibrary?.name}
-        sourceType={file ? t('file') : (selectedLibrary ? t('library') : '')}
-        materialType={generatedMaterialType}
-        onRedo={handleRedo}
-      />
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
@@ -632,7 +492,7 @@ function MaterialProducer({ isSidebarOpen }) {
           navigate('/pricing');
         }}
         feature={upgradeFeature}
-        message={t('premiumContentUpgradeMessage', 'Podcasts, Videoaulas e Mapas Mentais com IA estão disponíveis a partir do Plano Residente.')}
+        message={t('mindMapUpgradeMessage', 'Mapas Mentais com IA estão disponíveis a partir do Plano Residente.')}
       />
     </div>
   );

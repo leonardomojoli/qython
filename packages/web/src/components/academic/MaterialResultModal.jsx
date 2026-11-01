@@ -7,7 +7,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faThumbsUp, faThumbsDown, faCopy, faFilePdf, faFileLines, faShareNodes, faCheck, faFileCode, faExpand, faCompress, faRedo, faDownload, faImage, faArrowsAltV, faArrowsAltH, faFileExport, faChevronDown, faChevronRight, faListUl, faPlay, faEye, faShuffle, faChartBar, faTimes, faCheckCircle, faTimesCircle, faTag, faGraduationCap, faClock, faWindowMinimize } from '@fortawesome/free-solid-svg-icons';
+import { faThumbsUp, faThumbsDown, faCopy, faFilePdf, faFileLines, faShareNodes, faCheck, faFileCode, faExpand, faCompress, faRedo, faImage, faArrowsAltV, faArrowsAltH, faFileExport, faChevronDown, faChevronRight, faListUl, faPlay, faEye, faShuffle, faChartBar, faTimes, faCheckCircle, faTimesCircle, faTag, faGraduationCap, faWindowMinimize } from '@fortawesome/free-solid-svg-icons';
 import ReactFlow, { Background, MarkerType, useNodesState, useEdgesState, useReactFlow, ReactFlowProvider } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
@@ -25,8 +25,6 @@ import SlideshowPreview from '../academic/SlideshowPreview';
 import ClinicalCasePlayer from '../academic/ClinicalCasePlayer';
 import CriticalAppraisalViewer from '../academic/CriticalAppraisalViewer';
 import AudioWaveformPlayer from '../academic/AudioWaveformPlayer';
-import PodcastPlayer from '../academic/PodcastPlayer';
-import VideoLessonPlayer from '../academic/VideoLessonPlayer';
 
 // Calculate dynamic node dimensions based on text length
 const calculateNodeDimensions = (text) => {
@@ -495,7 +493,7 @@ const formatPoints = (n) => {
 
 // examMode (Meus Concursos): simulação do dia da prova — abre DIRETO no quiz, sem tags de
 // dificuldade/tema, sem embaralhar, sem copiar/compartilhar até ENTREGAR a prova.
-const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceName, sourceType, materialType, onRedo, trainingNote, timeLimitMinutes = null, examMode = false, scoring = null, initialAttempt = null, onSaveAttempt = null, isMinimized = false, onMinimize, onRestore, stackIndex = 0 }) => {
+const MaterialResultModal = ({ isOpen, onClose, result, sourceName, sourceType, materialType, onRedo, trainingNote, timeLimitMinutes = null, examMode = false, scoring = null, initialAttempt = null, onSaveAttempt = null, isMinimized = false, onMinimize, onRestore, stackIndex = 0 }) => {
   const { t, i18n } = useTranslation();
   const { addNotification } = useNotification();
 
@@ -533,7 +531,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
 
   const [isCloseConfirmationModalOpen, setIsCloseConfirmationModalOpen] = useState(false);
 
-  const [audioDuration, setAudioDuration] = useState(0);
   const audioRef = useRef(null);
 
   // Mind map export handler (for ReactFlow fallback)
@@ -558,24 +555,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
   const [tableFullscreen, setTableFullscreen] = useState(false);
   const [hoveredAbbreviation, setHoveredAbbreviation] = useState(null);
   const tableRef = useRef(null);
-
-  // Podcast script state
-  const [podcastScript, setPodcastScript] = useState(null);
-
-  useEffect(() => {
-    if (materialType === 'podcast' && job?.status === 'completed') {
-      setAudioDuration(0);
-
-      // Fetch podcast script if available
-      if (job.script_path) {
-        const scriptUrl = `${API_STATIC_URL}/${job.script_path.replace(/\\/g, '/')}`;
-        fetch(scriptUrl)
-          .then(res => res.text())
-          .then(text => setPodcastScript(text))
-          .catch(err => console.warn('Could not load podcast script:', err));
-      }
-    }
-  }, [job, materialType]);
 
   // Timer for quiz mode.
   // Conta a partir do tempo já ACUMULADO (quizElapsedTime) em vez de (agora - início):
@@ -647,14 +626,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
   }, [isOpen, examMode, quizMode, quizFinishedOnce, result, initialAttempt]);
 
   const handleAttemptClose = () => {
-    if (
-      (materialType === 'podcast' || materialType === 'video_lesson') &&
-      job &&
-      (job.status === 'pending' || job.status === 'processing')
-    ) {
-      onClose();
-      return;
-    }
     // examMode: prova JÁ entregue → fecha direto (o resultado está salvo e volta
     // pelo "Abrir" em Ver provas). Confirmar só faz sentido durante a prova.
     if (examMode && quizSubmitted) {
@@ -665,19 +636,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
   };
 
   const handleConfirmClose = async () => {
-    if ((materialType === 'podcast' || materialType === 'video_lesson') && job && job.id) {
-      try {
-        // Use the onClearJob function passed from the parent to handle deletion.
-        if (onClearJob) {
-          onClearJob();
-        }
-      } catch (error) {
-        const errorType = materialType === 'podcast' ? 'podcast' : 'video_lesson';
-        console.error(`Erro ao deletar o job do ${errorType}:`, error);
-        const errorKey = materialType === 'podcast' ? 'errorDeletingPodcast' : 'errorDeletingVideoLesson';
-        addNotification(t(errorKey, `Error deleting ${errorType} job`), 'error');
-      }
-    }
     // examMode: fechar no meio da prova = ENTREGAR com as respostas marcadas
     if (examMode && quizMode && !quizSubmitted) {
       deliverExam(false);
@@ -766,8 +724,8 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
       const payload = {
         feedback_type: type,
         content_type: materialType || 'material_gerado',
-        training_data_id: (result && result.training_data_id) || (job && job.training_data_id) || null,
-        original_content: JSON.stringify(result || job),
+        training_data_id: (result && result.training_data_id) || null,
+        original_content: JSON.stringify(result),
         feedback_text: comment,
         contact_permission: contactPermission,
       };
@@ -791,10 +749,7 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
 
   const getContentForCopyAndShare = () => {
     if (!result || !result.content) {
-      if (materialType === 'podcast' && job?.status === 'completed') {
-        return t('podcastAudioNotCopyable');
-      }
-      return JSON.stringify(result || job, null, 2);
+      return JSON.stringify(result, null, 2);
     }
   
     const { content } = result;
@@ -885,21 +840,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
     } catch (error) {
       console.error(`Error sharing as ${exportType}:`, error);
       addNotification(t('exportError'), 'error');
-    }
-  };
-
-  // Unified download logic for any media file.
-  const handleDownloadMedia = () => {
-    if (job && job.result_path) {
-      const mediaUrl = `${API_STATIC_URL}/${job.result_path.replace(/\\/g, '/')}`;
-      const link = document.createElement('a');
-      link.href = mediaUrl;
-      const filename = job.result_path.split('/').pop() || 'media_file';
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      addNotification(t('downloadStarted'), 'success');
     }
   };
 
@@ -2101,92 +2041,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
   };
 
   const renderContent = () => {
-    // This is the new logic to handle both podcast and video jobs.
-    if ((materialType === 'podcast' || materialType === 'video_lesson') && job) {
-      const type = materialType === 'podcast' ? 'podcast' : 'videoLesson';
-      switch (job.status) {
-        case 'pending':
-          return <InlineLoading text={t(`${type}Pending`)} />;
-        case 'processing':
-          return (
-            <div className={styles.processingContainer}>
-              <InlineLoading text={job.current_step || t(`${type}Processing`)} />
-              {job.progress_percent > 0 && (
-                <div className={styles.progressContainer}>
-                  <div className={styles.progressBar}>
-                    <div
-                      className={styles.progressFill}
-                      style={{ width: `${job.progress_percent}%` }}
-                    />
-                  </div>
-                  <span className={styles.progressText}>{job.progress_percent}%</span>
-                </div>
-              )}
-            </div>
-          );
-        case 'completed':
-          const mediaUrl = `${API_STATIC_URL}/${job.result_path.replace(/\\/g, '/')}`;
-          const expiresAt = job.expires_at ? new Date(job.expires_at) : null;
-          const hoursRemaining = expiresAt ? Math.max(0, Math.floor((expiresAt - new Date()) / (1000 * 60 * 60))) : null;
-          if (type === 'podcast') {
-            return (
-              <div className={styles.podcastPlayerContainer}>
-                {hoursRemaining !== null && hoursRemaining <= 24 && (
-                  <div className={styles.expirationBanner}>
-                    <FontAwesomeIcon icon={faClock} />
-                    <span>{t('contentExpiresIn', { hours: hoursRemaining })}</span>
-                  </div>
-                )}
-                <PodcastPlayer
-                  audioUrl={mediaUrl}
-                  title={result?.content?.title || t('podcast')}
-                  script={podcastScript}
-                  onListened={(listened) => console.log('Podcast listened:', listened)}
-                />
-              </div>
-            );
-          } else { // Video Lesson
-            const srtUrl = job.srt_path ? `${API_STATIC_URL}/${job.srt_path.replace(/\\/g, '/')}` : null;
-            return (
-              <div className={styles.videoPlayerContainer}>
-                {hoursRemaining !== null && hoursRemaining <= 24 && (
-                  <div className={styles.expirationBanner}>
-                    <FontAwesomeIcon icon={faClock} />
-                    <span>{t('contentExpiresIn', { hours: hoursRemaining })}</span>
-                  </div>
-                )}
-                <VideoLessonPlayer
-                  videoUrl={mediaUrl}
-                  title={result?.content?.title || t('videoLesson')}
-                  srtUrl={srtUrl}
-                  onWatched={(watched) => console.log('Video watched:', watched)}
-                />
-              </div>
-            );
-          }
-        case 'expired':
-          return (
-            <div className={styles.expiredContainer}>
-              <FontAwesomeIcon icon={faClock} className={styles.expiredIcon} />
-              <h4>{t(`${type}Expired`)}</h4>
-              <p>{t('contentExpiredDescription')}</p>
-              <button onClick={onRedo} className={styles.regenerateButton}>
-                <FontAwesomeIcon icon={faRedo} /> {t('regenerateContent')}
-              </button>
-            </div>
-          );
-        case 'error':
-          return (
-            <div className={styles.errorContainer}>
-              <h4>{t(`${type}Failed`)}</h4>
-              <p>{job.error_message || t('unknownError')}</p>
-            </div>
-          );
-        default:
-          return <InlineLoading text={t('loadingStatus')} />;
-      }
-    }
-
     if (materialType === 'slideshow_only' && result?.content?.slideshow_content) {
       return <SlideshowPreview slideshowData={result.content.slideshow_content} />;
     }
@@ -2221,16 +2075,14 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
       );
     }
 
-    return <pre>{JSON.stringify(result || job, null, 2)}</pre>;
+    return <pre>{JSON.stringify(result, null, 2)}</pre>;
   };
 
-  const showFooterActions = !['podcast', 'video_lesson'].includes(materialType) || (job && (job.status === 'completed' || job.status === 'error' || job.status === 'expired'));
   // examMode: compartilhar/exportar só APÓS entregar a prova (simulação do dia da prova).
   // "Copiar" (markdown cru) não serve numa prova — exportar PDF é o caminho útil.
   const examToolsLocked = examMode && !quizFinishedOnce;
-  const showCopyButton = !['podcast', 'slideshow_only', 'video_lesson'].includes(materialType) && !examMode;
-  const showShareButton = !['podcast', 'video_lesson'].includes(materialType) && !examToolsLocked;
-  const showDownloadButton = (materialType === 'podcast' || materialType === 'video_lesson') && job?.status === 'completed';
+  const showCopyButton = materialType !== 'slideshow_only' && !examMode;
+  const showShareButton = !examToolsLocked;
 
   // Dados da pílula (estado minimizado): título + progresso do quiz quando ativo.
   const pillObjectiveQuestions = Array.isArray(result?.content?.questionario_objetivo)
@@ -2323,126 +2175,119 @@ const MaterialResultModal = ({ isOpen, onClose, result, job, onClearJob, sourceN
             {renderContent()}
           </div>
           
-          {showFooterActions && (
-            <div className={styles.modalFooter}>
-              <div className={styles.actionsLeft}>
-                {/* examMode: refazer = RESPONDER DE NOVO a mesma prova (gerar outra é
-                    "Gerar prova" no card). Fora dele, mantém o regenerar material. */}
-                <button
-                  onClick={() => {
-                    if (!examMode) { onRedo?.(); return; }
-                    const raw = result?.content?.questionario_objetivo;
-                    const objQuestions = Array.isArray(raw) ? raw : Object.values(raw || {});
-                    if (objQuestions.length > 0) setConfirmRetakeOpen(true);
-                  }}
-                  title={examMode ? t('mcRetakeExam') : t('redoMaterial')}
-                >
-                  <FontAwesomeIcon icon={faRedo} />
+          <div className={styles.modalFooter}>
+            <div className={styles.actionsLeft}>
+              {/* examMode: refazer = RESPONDER DE NOVO a mesma prova (gerar outra é
+                  "Gerar prova" no card). Fora dele, mantém o regenerar material. */}
+              <button
+                onClick={() => {
+                  if (!examMode) { onRedo?.(); return; }
+                  const raw = result?.content?.questionario_objetivo;
+                  const objQuestions = Array.isArray(raw) ? raw : Object.values(raw || {});
+                  if (objQuestions.length > 0) setConfirmRetakeOpen(true);
+                }}
+                title={examMode ? t('mcRetakeExam') : t('redoMaterial')}
+              >
+                <FontAwesomeIcon icon={faRedo} />
+              </button>
+              {showCopyButton && (
+                <button onClick={handleCopyToClipboard} title={t('copy')}>
+                  {actionSuccess === 'copy' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faCopy} />}
                 </button>
-                {showCopyButton && (
-                  <button onClick={handleCopyToClipboard} title={t('copy')}>
-                    {actionSuccess === 'copy' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faCopy} />}
+              )}
+              {showShareButton && (
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setShareMenuOpen(prev => !prev)} title={t('export')} data-share-button>
+                    {actionSuccess === 'share' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faShareNodes} />}
                   </button>
-                )}
-                {showDownloadButton && (
-                  <button onClick={handleDownloadMedia} title={t('downloadMedia')}>
-                    <FontAwesomeIcon icon={faDownload} />
-                  </button>
-                )}
-                {showShareButton && (
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => setShareMenuOpen(prev => !prev)} title={t('export')} data-share-button>
-                      {actionSuccess === 'share' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faShareNodes} />}
-                    </button>
-                    <div ref={shareMenuRef} className={`${styles.shareMenu} ${shareMenuOpen ? styles.shareMenuOpen : ''}`}>
-                      {materialType === 'slideshow_only' ? (
-                        <>
-                          <button className={styles.shareMenuItem} onClick={handleDownloadPptx}>
-                            <FontAwesomeIcon icon={faFileCode} /> {t('exportAsPptx')}
-                          </button>
-                          <button className={styles.shareMenuItem} onClick={handleExportSlideshowAsPdf}>
+                  <div ref={shareMenuRef} className={`${styles.shareMenu} ${shareMenuOpen ? styles.shareMenuOpen : ''}`}>
+                    {materialType === 'slideshow_only' ? (
+                      <>
+                        <button className={styles.shareMenuItem} onClick={handleDownloadPptx}>
+                          <FontAwesomeIcon icon={faFileCode} /> {t('exportAsPptx')}
+                        </button>
+                        <button className={styles.shareMenuItem} onClick={handleExportSlideshowAsPdf}>
+                          <FontAwesomeIcon icon={faFilePdf} /> {t('exportAsPdf')}
+                        </button>
+                      </>
+                    ) : materialType === 'flashcards' && result?.id ? (
+                      <>
+                        <button className={styles.shareMenuItem} onClick={handleExportToAnki}>
+                          <FontAwesomeIcon icon={faFileExport} /> {t('exportToAnki')}
+                        </button>
+                        <button className={styles.shareMenuItem} onClick={handleExportFlashcardsPdf}>
+                          <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
+                        </button>
+                      </>
+                    ) : materialType === 'mind_map' ? (
+                      <>
+                        <button className={styles.shareMenuItem} onClick={handleMindMapPngExport}>
+                          <FontAwesomeIcon icon={faImage} /> {t('exportAsPng')}
+                        </button>
+                        {result?.content?.mind_map_image && (
+                          <button className={styles.shareMenuItem} onClick={handleMindMapPdfExport}>
                             <FontAwesomeIcon icon={faFilePdf} /> {t('exportAsPdf')}
                           </button>
-                        </>
-                      ) : materialType === 'flashcards' && result?.id ? (
-                        <>
-                          <button className={styles.shareMenuItem} onClick={handleExportToAnki}>
-                            <FontAwesomeIcon icon={faFileExport} /> {t('exportToAnki')}
+                        )}
+                        {!result?.content?.mind_map_image && (
+                          <button className={styles.shareMenuItem} onClick={handleMindMapSvgExport}>
+                            <FontAwesomeIcon icon={faFileCode} /> {t('exportAsSvg')}
                           </button>
-                          <button className={styles.shareMenuItem} onClick={handleExportFlashcardsPdf}>
-                            <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
-                          </button>
-                        </>
-                      ) : materialType === 'mind_map' ? (
-                        <>
-                          <button className={styles.shareMenuItem} onClick={handleMindMapPngExport}>
-                            <FontAwesomeIcon icon={faImage} /> {t('exportAsPng')}
-                          </button>
-                          {result?.content?.mind_map_image && (
-                            <button className={styles.shareMenuItem} onClick={handleMindMapPdfExport}>
-                              <FontAwesomeIcon icon={faFilePdf} /> {t('exportAsPdf')}
-                            </button>
-                          )}
-                          {!result?.content?.mind_map_image && (
-                            <button className={styles.shareMenuItem} onClick={handleMindMapSvgExport}>
-                              <FontAwesomeIcon icon={faFileCode} /> {t('exportAsSvg')}
-                            </button>
-                          )}
-                        </>
-                      ) : (materialType === 'questionnaire_objective' || materialType === 'questionnaire_subjective') && result?.id ? (
-                        <>
-                          <button
-                            className={styles.shareMenuItem}
-                            onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsTxt(content, title, t, addNotification), 'txt')}
-                          >
-                            <FontAwesomeIcon icon={faFileLines} /> {t('shareAsTxtLabel')}
-                          </button>
-                          <button className={styles.shareMenuItem} onClick={handleExportQuestionnairePdf}>
-                            <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
-                          </button>
-                          <button
-                            className={styles.shareMenuItem}
-                            onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsMarkdown(content, title, t, addNotification), 'md')}
-                          >
-                            <FontAwesomeIcon icon={faFileCode} /> {t('shareAsMdLabel')}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className={styles.shareMenuItem}
-                            onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsTxt(content, title, t, addNotification), 'txt')}
-                          >
-                            <FontAwesomeIcon icon={faFileLines} /> {t('shareAsTxtLabel')}
-                          </button>
-                          <button
-                            className={styles.shareMenuItem}
-                            onClick={() => handleShareAction((content, title, t, addNotification, i18n) => handleShareAsPdf(content, addNotification, i18n), 'pdf')}
-                          >
-                            <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
-                          </button>
-                          <button
-                            className={styles.shareMenuItem}
-                            onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsMarkdown(content, title, t, addNotification), 'md')}
-                          >
-                            <FontAwesomeIcon icon={faFileCode} /> {t('shareAsMdLabel')}
-                          </button>
-                        </>
-                      )}
-                    </div>
+                        )}
+                      </>
+                    ) : (materialType === 'questionnaire_objective' || materialType === 'questionnaire_subjective') && result?.id ? (
+                      <>
+                        <button
+                          className={styles.shareMenuItem}
+                          onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsTxt(content, title, t, addNotification), 'txt')}
+                        >
+                          <FontAwesomeIcon icon={faFileLines} /> {t('shareAsTxtLabel')}
+                        </button>
+                        <button className={styles.shareMenuItem} onClick={handleExportQuestionnairePdf}>
+                          <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
+                        </button>
+                        <button
+                          className={styles.shareMenuItem}
+                          onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsMarkdown(content, title, t, addNotification), 'md')}
+                        >
+                          <FontAwesomeIcon icon={faFileCode} /> {t('shareAsMdLabel')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className={styles.shareMenuItem}
+                          onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsTxt(content, title, t, addNotification), 'txt')}
+                        >
+                          <FontAwesomeIcon icon={faFileLines} /> {t('shareAsTxtLabel')}
+                        </button>
+                        <button
+                          className={styles.shareMenuItem}
+                          onClick={() => handleShareAction((content, title, t, addNotification, i18n) => handleShareAsPdf(content, addNotification, i18n), 'pdf')}
+                        >
+                          <FontAwesomeIcon icon={faFilePdf} /> {t('shareAsPdfLabel')}
+                        </button>
+                        <button
+                          className={styles.shareMenuItem}
+                          onClick={() => handleShareAction((content, title, t, addNotification) => handleShareAsMarkdown(content, title, t, addNotification), 'md')}
+                        >
+                          <FontAwesomeIcon icon={faFileCode} /> {t('shareAsMdLabel')}
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className={styles.feedbackRight}>
-                <button onClick={() => handleFeedbackClick('like')} title={t('like')}>
-                  <FontAwesomeIcon icon={faThumbsUp} />
-                </button>
-                <button onClick={() => handleFeedbackClick('dislike')} title={t('dislike')}>
-                  <FontAwesomeIcon icon={faThumbsDown} />
-                </button>
-              </div>
+                </div>
+              )}
             </div>
-          )}
+            <div className={styles.feedbackRight}>
+              <button onClick={() => handleFeedbackClick('like')} title={t('like')}>
+                <FontAwesomeIcon icon={faThumbsUp} />
+              </button>
+              <button onClick={() => handleFeedbackClick('dislike')} title={t('dislike')}>
+                <FontAwesomeIcon icon={faThumbsDown} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       )}

@@ -63,8 +63,6 @@ function MaterialViewerHost() {
               expandMaterial(m.id);
             }}
             result={m.result}
-            job={m.job || null}
-            onClearJob={m.onClearJob}
             sourceName={m.sourceName}
             sourceType={m.sourceType}
             materialType={m.materialType}
