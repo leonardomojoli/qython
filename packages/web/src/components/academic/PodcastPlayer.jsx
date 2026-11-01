@@ -108,7 +108,11 @@ const PodcastPlayer = ({
       backend: 'WebAudio',
     });
 
-    wavesurfer.current.load(audioUrl);
+    // wavesurfer 8: trocar de áudio ou desmontar no meio do carregamento rejeita
+    // o load() anterior com AbortError — esperado, não é falha.
+    wavesurfer.current.load(audioUrl).catch((err) => {
+      if (err?.name !== 'AbortError') console.error('Falha ao carregar áudio:', err);
+    });
 
     wavesurfer.current.on('ready', () => {
       setIsReady(true);
@@ -117,7 +121,7 @@ const PodcastPlayer = ({
       wavesurfer.current.setVolume(volume);
     });
 
-    wavesurfer.current.on('audioprocess', () => {
+    wavesurfer.current.on('timeupdate', () => {
       const time = wavesurfer.current.getCurrentTime();
       setCurrentTime(time);
 

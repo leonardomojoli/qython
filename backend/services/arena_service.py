@@ -15,13 +15,17 @@ from ..models import ArenaSeason, SeasonRanking, QuizAttempt, User, UserXpProfil
 logger = logging.getLogger("qython_logger")
 
 # Bimonthly seasons configuration for 2026
+# Datas com fuso (UTC): seed_seasons compara com datetime.now(timezone.utc), e
+# datas ingênuas aqui quebravam com "can't compare offset-naive and offset-aware"
+# em toda instalação nova (em produção as temporadas já existiam e a comparação
+# nunca rodava).
 SEASONS_2026 = [
-    {"name": "Jan-Fev 2026", "start": datetime(2026, 1, 1), "end": datetime(2026, 2, 28, 23, 59, 59)},
-    {"name": "Mar-Abr 2026", "start": datetime(2026, 3, 1), "end": datetime(2026, 4, 30, 23, 59, 59)},
-    {"name": "Mai-Jun 2026", "start": datetime(2026, 5, 1), "end": datetime(2026, 6, 30, 23, 59, 59)},
-    {"name": "Jul-Ago 2026", "start": datetime(2026, 7, 1), "end": datetime(2026, 8, 31, 23, 59, 59)},
-    {"name": "Set-Out 2026", "start": datetime(2026, 9, 1), "end": datetime(2026, 10, 31, 23, 59, 59)},
-    {"name": "Nov-Dez 2026", "start": datetime(2026, 11, 1), "end": datetime(2026, 12, 31, 23, 59, 59)},
+    {"name": "Jan-Fev 2026", "start": datetime(2026, 1, 1, tzinfo=timezone.utc), "end": datetime(2026, 2, 28, 23, 59, 59, tzinfo=timezone.utc)},
+    {"name": "Mar-Abr 2026", "start": datetime(2026, 3, 1, tzinfo=timezone.utc), "end": datetime(2026, 4, 30, 23, 59, 59, tzinfo=timezone.utc)},
+    {"name": "Mai-Jun 2026", "start": datetime(2026, 5, 1, tzinfo=timezone.utc), "end": datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc)},
+    {"name": "Jul-Ago 2026", "start": datetime(2026, 7, 1, tzinfo=timezone.utc), "end": datetime(2026, 8, 31, 23, 59, 59, tzinfo=timezone.utc)},
+    {"name": "Set-Out 2026", "start": datetime(2026, 9, 1, tzinfo=timezone.utc), "end": datetime(2026, 10, 31, 23, 59, 59, tzinfo=timezone.utc)},
+    {"name": "Nov-Dez 2026", "start": datetime(2026, 11, 1, tzinfo=timezone.utc), "end": datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)},
 ]
 
 

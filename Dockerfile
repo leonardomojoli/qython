@@ -34,15 +34,14 @@ RUN if [ "$WITH_LIBREOFFICE" = "true" ]; then \
 
 WORKDIR /app
 
-# Camada de dependências separada: só reinstala quando requirements.txt muda.
-COPY requirements.txt .
-# O torch entra primeiro, do indice CPU do PyTorch. Vindo do PyPI, o pip traz a
-# build CUDA com gigabytes de bibliotecas nvidia-* que nao servem para nada num
-# container sem GPU. Com o torch ja satisfeito, o sentence-transformers nao puxa
-# outro. O workflow de release falha se alguma nvidia-* reaparecer.
-RUN pip install --upgrade pip \
- && pip install torch --index-url https://download.pytorch.org/whl/cpu \
- && pip install -r requirements.txt gunicorn
+# Camada de dependências separada: só reinstala quando o lock muda.
+# Instala do requirements.lock (versões exatas, transitivos incluídos), nunca do
+# requirements.txt: sem o lock, cada build pegava o que estivesse mais novo no
+# PyPI e uma atualização do SQLAlchemy derrubou o boot sem mudança no código.
+# O lock já traz o índice CPU do PyTorch (torch "+cpu", sem nvidia-*).
+# Para regenerar: scripts/lock_requirements.sh
+COPY requirements.lock .
+RUN pip install --upgrade pip && pip install -r requirements.lock
 
 COPY backend/ ./backend/
 COPY __init__.py ./

@@ -13,8 +13,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 
 # Now, import using the package name 'backend'
 from backend.models import Base
-from backend.config import Config
-
+from backend.config import Config, sync_database_url
 # This is the Alembic Config object.
 config = context.config
 
@@ -23,7 +22,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the database URL from our central config.
-config.set_main_option('sqlalchemy.url', Config.SQLALCHEMY_DATABASE_URI)
+config.set_main_option('sqlalchemy.url', sync_database_url(Config.SQLALCHEMY_DATABASE_URI))
 
 # Your model's MetaData object for 'autogenerate' support.
 target_metadata = Base.metadata

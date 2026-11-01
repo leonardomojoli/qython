@@ -44,7 +44,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=Qython backend (FastAPI)
-            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.licenses=AGPL-3.0-only
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
@@ -59,7 +59,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=Qython web (React + nginx)
-            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.licenses=AGPL-3.0-only
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
@@ -96,6 +96,16 @@ jobs:
 
           curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
           echo "SPA: ok"
+          # Servir o HTML não prova que o React renderiza: o app passou semanas em
+          # tela branca (Firebase quebrando no import) com o <title> acima intacto.
+          # O Chrome do runner executa o JS e devolve o DOM já montado.
+          dom=$(google-chrome --headless=new --no-sandbox --disable-gpu \
+                --virtual-time-budget=15000 --dump-dom http://localhost:8080/login 2>/dev/null)
+          if ! printf '%s' "$dom" | grep -q 'type="password"'; then
+            echo "::error::a tela de login não renderizou (o React quebrou no carregamento)"
+            printf '%s' "$dom" | head -c 1500; exit 1
+          fi
+          echo "login renderizado: ok"
           # Rota do React Router: o nginx precisa devolver o index, não 404.
           curl -fsS -o /dev/null http://localhost:8080/login
           echo "fallback de rota do SPA: ok"
@@ -107,6 +117,30 @@ jobs:
           head=$(docker compose exec -T db psql -U qython -d qython -tAc "SELECT version_num FROM alembic_version")
           echo "alembic head: $head"
           [ -n "$head" ]
+
+          # Instalação nova cria o schema pelos modelos, sem migrations. Estas três
+          # coisas só existiam em migration e ficavam de fora sem ninguém notar.
+          psql() { docker compose exec -T db psql -U qython -d qython -tAc "$1"; }
+          psql "INSERT INTO audit_log (occurred_at, action) VALUES (now(), 'ci')"
+          if psql "UPDATE audit_log SET action='adulterado'" 2>/dev/null; then
+            echo "::error::audit_log aceitou UPDATE — trigger append-only ausente (LGPD)"; exit 1
+          fi
+          echo "audit_log append-only: ok"
+          [ "$(psql "SELECT indisunique FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='ix_user_consents_active'")" = "t" ]
+          echo "consentimento ativo único: ok"
+          # Os seeds rodam no boot de UM worker (advisory lock) enquanto o outro já
+          # responde /api/health; o catálogo de medicamentos leva alguns segundos.
+          # Espera os prompts, que são o último seed, antes de conferir.
+          for i in $(seq 1 60); do
+            [ "$(psql "SELECT count(*) FROM copilot_prompts")" -ge 15 ] && break
+            sleep 3
+          done
+          prompts=$(psql "SELECT count(*) FROM copilot_prompts"); echo "prompts do copiloto: $prompts"
+          [ "$prompts" -ge 15 ]
+          meds=$(psql "SELECT count(*) FROM medications"); echo "medicamentos: $meds"
+          [ "$meds" -gt 0 ]
+          seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
+          [ "$seasons" -gt 0 ]
 
           # O /api/health não toca no Chroma; isto prova que cliente e servidor
           # travados na mesma versão conversam.

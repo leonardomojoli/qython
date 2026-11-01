@@ -474,8 +474,11 @@ function MaterialProducer({ isSidebarOpen }) {
       return <audio src={filePreviewUrl} controls className={styles.audioPreview} />;
     }
     if (fileType === 'application/pdf') {
+      // suspense={false}: o react-pdf 11 liga Suspense por padrão, e aí a prop
+      // loading abaixo deixa de valer.
       return (
         <Document
+          suspense={false}
           file={file}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={console.error}
