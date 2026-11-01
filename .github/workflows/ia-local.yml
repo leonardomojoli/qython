@@ -11,7 +11,9 @@ on:
     paths:
       - "backend/services/llm_provider.py"
       - "backend/services/llm_services.py"
+      - "backend/services/clinical_sources.py"
       - "tests/backend/test_llm_provider*.py"
+      - "tests/backend/test_clinical_sources.py"
       - ".github/workflows/ia-local.yml"
 
 permissions:
@@ -60,6 +62,9 @@ jobs:
 
       - name: Testes da tradução (sem servidor)
         run: python3 qython/tests/backend/test_llm_provider.py
+
+      - name: Testes das fontes da IA local (sem servidor)
+        run: python3 qython/tests/backend/test_clinical_sources.py
 
       - name: Testes ao vivo
         env:
