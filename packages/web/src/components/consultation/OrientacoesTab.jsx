@@ -23,6 +23,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { createOrientation, generateOrientation, getOrientationPdf, submitFeedback } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import PatientPickerModal from './PatientPickerModal';
 import FeedbackModal from '../shared/FeedbackModal';
 
@@ -84,6 +85,7 @@ const TEMPLATE_CONTENT = {
 
 function OrientacoesTab({ isEmbedded = false }) {
     const { t, i18n } = useTranslation();
+    const { config } = usePublicConfig();
     const { addNotification } = useNotification();
 
     const [mode, setMode] = useState('templates'); // 'templates' | 'ai'
@@ -354,7 +356,9 @@ function OrientacoesTab({ isEmbedded = false }) {
                     <>
                         <FontAwesomeIcon icon={faWandMagicSparkles} />
                         {t('orientationAiGenerate', 'Gerar com IA')}
-                        <span className={styles.costBadge}>{t('orientationCost', '5 dracmas')}</span>
+                        {config?.billing_enabled && (
+                            <span className={styles.costBadge}>{t('orientationCost', '5 dracmas')}</span>
+                        )}
                     </>
                 )}
             </button>

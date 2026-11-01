@@ -691,7 +691,7 @@ async def handle_document_upload(db: AsyncSession, user: User, library_id: int, 
 
     background_tasks.add_task(_process_document_task, new_document.id, filepath)
 
-    dest = "Drive do usuário" if use_drive else "servidor (legado)"
+    dest = "Drive do usuário" if use_drive else "disco local"
     logger.info(f"Upload de '{original_filename_for_display}' → biblioteca {library_id} agendado ({dest}). Disco: {unique_filename_on_disk}")
     return new_document
 

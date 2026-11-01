@@ -448,6 +448,8 @@ psycopg==3.3.6
     # via -r requirements.txt
 psycopg-binary==3.3.6
     # via psycopg
+pt-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_md-3.8.0/pt_core_news_md-3.8.0-py3-none-any.whl
+    # via -r requirements.txt
 pyasn1==0.6.4
     # via
     #   pyasn1-modules

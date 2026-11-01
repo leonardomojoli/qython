@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useUser } from '../../contexts/UserContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import { API_URL } from '../../config';
 import styles from './Login.module.css';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +60,7 @@ function Login({ setIsLoggedIn }) {
   const [resendLoading, setResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { setUser } = useUser();
+  const { config } = usePublicConfig();
 
 
   // Resend verification email handler
@@ -208,6 +210,11 @@ function Login({ setIsLoggedIn }) {
     }
   };
 
+  // Instalação sem nenhuma conta: não há com o que entrar, o primeiro passo é criar o dono.
+  if (config?.setup_required) {
+    return <Navigate to="/register" replace />;
+  }
+
   return (
     <div className={styles.splitScreen}>
       {/* LADO ESQUERDO: MARKETING */}
@@ -218,8 +225,7 @@ function Login({ setIsLoggedIn }) {
           <p>{t('loginHeroSubtitle')}</p>
         </div>
         <div className={styles.testimonial}>
-          <p>{t('loginTestimonial')}</p>
-          <span className={styles.testimonialAuthor}>{t('loginTestimonialAuthor')}</span>
+          <p>{t('authFootnote', 'Software livre (AGPL-3.0). Não é dispositivo médico.')}</p>
         </div>
       </div>
 
@@ -252,8 +258,8 @@ function Login({ setIsLoggedIn }) {
             </button>
           )}
 
-          {/* GOOGLE SIGN-IN BUTTON — só com Firebase configurado */}
-          {isFirebaseConfigured && (
+          {/* GOOGLE SIGN-IN BUTTON — só com Firebase configurado no front e no backend */}
+          {isFirebaseConfigured && config?.google_login && (
             <>
               <button
                 type="button"
@@ -313,9 +319,12 @@ function Login({ setIsLoggedIn }) {
               </div>
             </div>
 
-            <div className={styles.forgotPasswordLink}>
-              <a href="/forgot-password">{t('forgotPassword', 'Esqueci minha senha')}</a>
-            </div>
+            {/* Recuperar a senha depende de mandar e-mail, o que exige o Resend configurado. */}
+            {config?.password_reset_by_email && (
+              <div className={styles.forgotPasswordLink}>
+                <a href="/forgot-password">{t('forgotPassword', 'Esqueci minha senha')}</a>
+              </div>
+            )}
 
             <button type="submit" className={styles.themeButton} disabled={isLoading || isGoogleLoading}>
               {isLoading ? (

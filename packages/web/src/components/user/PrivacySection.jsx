@@ -22,6 +22,7 @@ import {
   deleteMyAccount,
 } from '../../api';
 import styles from './PrivacySection.module.css';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 const PATIENT_NOTICE_URL = 'https://qython.ai/paciente';
 
@@ -72,6 +73,11 @@ const ML_SCOPES = [
 const PrivacySection = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // Consentimentos de treino, aviso ao paciente e páginas do encarregado descrevem o
+  // SaaS, em que a empresa tratava os dados. Na instalação local nada disso existe:
+  // ficam só exportar e excluir, que são direitos do titular em qualquer edição.
+  const { config } = usePublicConfig();
+  const isHosted = config?.edition === 'hosted';
 
   const [consents, setConsents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -197,13 +203,21 @@ const PrivacySection = () => {
         <FontAwesomeIcon icon={faShieldAlt} className={styles.sectionIcon} />
         Privacidade e dados (LGPD)
       </h4>
-      <p className={styles.sectionDescription}>
-        Você decide o que pode ser usado para melhorar nossos modelos.
-        Todas as opções abaixo são opt-in e podem ser revogadas a qualquer momento.
-        Dados de pacientes são <strong>sempre</strong> anonimizados antes de qualquer uso para treinamento.
-      </p>
+      {isHosted ? (
+        <p className={styles.sectionDescription}>
+          Você decide o que pode ser usado para melhorar nossos modelos.
+          Todas as opções abaixo são opt-in e podem ser revogadas a qualquer momento.
+          Dados de pacientes são <strong>sempre</strong> anonimizados antes de qualquer uso para treinamento.
+        </p>
+      ) : (
+        <p className={styles.sectionDescription}>
+          Seus dados ficam no banco desta instalação. Você pode baixar uma cópia de
+          tudo ou excluir a sua conta a qualquer momento.
+        </p>
+      )}
 
       {/* ML Consent Scopes */}
+      {isHosted && (
       <div className={styles.consentBlock}>
         <h5 className={styles.subheader}>Consentimentos para treinamento de IA</h5>
 
@@ -239,6 +253,7 @@ const PrivacySection = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Data Export */}
       <div className={styles.consentBlock}>
@@ -332,6 +347,7 @@ const PrivacySection = () => {
       </div>
 
       {/* Patient transparency — shareable QR + link */}
+      {isHosted && (
       <div className={styles.consentBlock}>
         <h5 className={styles.subheader}>
           <FontAwesomeIcon icon={faQrcode} /> Transparência ao paciente
@@ -370,11 +386,15 @@ const PrivacySection = () => {
         </div>
       </div>
 
-      <p className={styles.footnote}>
-        Dúvidas? Contate o <a href="/encarregado">Encarregado pelo Tratamento de Dados</a>.
-        <br />
-        Mais informações: <a href="/paciente">Para o paciente</a> · <a href="/subprocessors">Sub-operadores</a>
-      </p>
+      )}
+
+      {isHosted && (
+        <p className={styles.footnote}>
+          Dúvidas? Contate o <a href="/encarregado">Encarregado pelo Tratamento de Dados</a>.
+          <br />
+          Mais informações: <a href="/paciente">Para o paciente</a> · <a href="/subprocessors">Sub-operadores</a>
+        </p>
+      )}
     </div>
   );
 };

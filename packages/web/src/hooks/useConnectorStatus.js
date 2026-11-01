@@ -31,6 +31,9 @@ export function useConnectorStatus() {
   return {
     connection,
     available,
+    // O Drive só aparece quando a instalação tem as credenciais OAuth dele (ou quando o
+    // usuário já tem uma conexão, para poder desconectar).
+    isAvailable: available.includes('gdrive') || Boolean(connection),
     isConnected: connection?.status === 'active',
     isRevoked: connection?.status === 'revoked',
     accountEmail: connection?.account_email || null,

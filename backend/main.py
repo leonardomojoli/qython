@@ -140,6 +140,8 @@ async def lifespan(app: FastAPI):
     from .services.server_monitor import start_server_monitor, stop_server_monitor
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
     from .seeds.copilot_prompts import seed_copilot_prompts
+    from .seeds.terms_of_use import seed_terms_of_use
+    from .seeds.arena_exams import seed_arena_exams
     from .database import AsyncSessionLocal
 
     # Create tables is now async
@@ -170,6 +172,14 @@ async def lifespan(app: FastAPI):
                 logger.error(f"Error seeding pharmacy data: {e}")
 
             try:
+                exams_added = await seed_arena_exams(db)
+                if exams_added:
+                    logger.info(f"Seeded {exams_added} arena exams")
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error seeding arena exams: {e}")
+
+            try:
                 prompts_added = await seed_copilot_prompts(db)
                 if prompts_added:
                     logger.info(f"Seeded {prompts_added} copilot prompts")
@@ -178,21 +188,32 @@ async def lifespan(app: FastAPI):
                 await db.rollback()
                 logger.error(f"Error seeding copilot prompts: {e}")
 
+            try:
+                if await seed_terms_of_use(db):
+                    logger.info("Published the local edition terms of use")
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error seeding terms of use: {e}")
+
             await db.execute(text("SELECT pg_advisory_unlock(100001)"))
 
     # Start internal scheduler for ranking updates
     start_scheduler()
     logger.info("Internal scheduler started")
 
-    # Start server monitor for metrics collection and auto-maintenance
-    start_server_monitor()
-    logger.info("Server monitor started")
+    # Start server monitor for metrics collection and auto-maintenance. Só no SaaS:
+    # numa instalação local, CPU alta é o próprio usuário trabalhando (a IA local
+    # ocupa a CPU de propósito), e o "modo manutenção" travaria o app dele.
+    if Config.EDITION == "hosted":
+        start_server_monitor()
+        logger.info("Server monitor started")
 
     yield
 
     # Cleanup on shutdown
     stop_scheduler()
-    stop_server_monitor()
+    if Config.EDITION == "hosted":
+        stop_server_monitor()
     logger.info("Application shutdown complete")
 
 app = FastAPI(lifespan=lifespan)

@@ -14,7 +14,7 @@ import styles from './ConnectorsSection.module.css';
 export default function ConnectorsSection() {
   const { t } = useTranslation();
   const { addNotification } = useNotification();
-  const { isConnected, isRevoked, accountEmail, loading, refetch } = useConnectorStatus();
+  const { isConnected, isRevoked, isAvailable, accountEmail, loading, refetch } = useConnectorStatus();
 
   const handleDisconnect = async () => {
     const msg = t('cloudDisconnectConfirm',
@@ -24,6 +24,9 @@ export default function ConnectorsSection() {
     addNotification(t('cloudDisconnected', 'Google Drive desconectado.'), 'info');
     refetch();
   };
+
+  // Sem credenciais OAuth na instalação não há conector a oferecer.
+  if (!loading && !isAvailable) return null;
 
   const comingSoon = [
     { name: 'OneDrive', icon: faMicrosoft, color: '#0078D4' },

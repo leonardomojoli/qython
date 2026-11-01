@@ -178,16 +178,20 @@ def _try_init_presidio() -> bool:
         from presidio_analyzer.nlp_engine import NlpEngineProvider
         from presidio_anonymizer import AnonymizerEngine
 
-        # Probe which spaCy models are available; load only those.
+        # Probe which spaCy models are available; load only those. Per language,
+        # the large model wins; the medium one ships with the image (requirements.txt)
+        # so a fresh install never falls back to the regex detector.
         models = []
-        for lang, model_name in (("pt", "pt_core_news_lg"),
-                                 ("en", "en_core_web_lg")):
-            try:
-                import spacy
-                spacy.load(model_name)
-                models.append({"lang_code": lang, "model_name": model_name})
-            except Exception:
-                logger.info("PII redaction: spaCy model %s not installed", model_name)
+        for lang, candidates in (("pt", ("pt_core_news_lg", "pt_core_news_md")),
+                                 ("en", ("en_core_web_lg", "en_core_web_md"))):
+            for model_name in candidates:
+                try:
+                    import spacy
+                    spacy.load(model_name)
+                    models.append({"lang_code": lang, "model_name": model_name})
+                    break
+                except Exception:
+                    logger.info("PII redaction: spaCy model %s not installed", model_name)
 
         if not models:
             _presidio_available = False

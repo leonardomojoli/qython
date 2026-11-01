@@ -50,7 +50,7 @@ class UserInfoResponse(BaseModel):
     is_admin: bool
     occupation: str
     university: Optional[str]
-    phone_number: str
+    phone_number: Optional[str] = None  # opcional quando não há verificação por SMS
     period: Optional[str]
     matricula: Optional[str]
     identifier_type: Optional[str]
@@ -69,6 +69,9 @@ class UserInfoResponse(BaseModel):
     # ACESSO (política Qython) é separado de verification_status (verdade do Latreo).
     access_granted: bool = False
     onboarding_completed: bool = False
+    # Há um termo de uso vigente que este usuário ainda não aceitou (versão nova
+    # ou primeiro acesso). O front bloqueia o app até o aceite.
+    terms_pending: bool = False
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -223,13 +226,13 @@ async def save_avatar(
 
     # Enforce avatar history limit (plan-based)
     from sqlalchemy import func as sql_func
-    from ..services.storage_service import get_plan_base
+    from ..services.storage_service import effective_plan
     count_result = await db.execute(
         select(sql_func.count()).select_from(AvatarHistory).filter_by(user_id=current_user.id)
     )
     total_history = count_result.scalar() or 0
 
-    plan = get_plan_base(current_user.subscription_plan)
+    plan = effective_plan(current_user)
     max_history = Config.MAX_AVATAR_HISTORY.get(plan, Config.MAX_AVATAR_HISTORY['free'])
 
     if total_history > max_history:
@@ -437,9 +440,18 @@ async def get_user_info(
     
     # Verificar e creditar bônus mensal se elegível
     await check_and_credit_monthly_student_bonus(current_user, db)
-    
+
     logger.debug(f"Retornando informações para o usuário: {current_user.email}")
-    return current_user
+    return await _user_info(db, current_user)
+
+
+async def _user_info(db: AsyncSession, user: User) -> UserInfoResponse:
+    """UserInfoResponse com os campos calculados. Todo endpoint que devolve o
+    usuário passa por aqui: o front substitui o objeto inteiro, e um terms_pending
+    ausente liberaria o app antes do aceite."""
+    info = UserInfoResponse.model_validate(user)
+    info.terms_pending = await consent_service.terms_pending(db, user.id)
+    return info
 
 
 @router.post("/onboarding/complete", status_code=status.HTTP_200_OK)
@@ -509,7 +521,7 @@ async def update_user_profile(
     )
 
     logger.info(f"Perfil do usuário {current_user.email} atualizado. Campos: {', '.join(update_data.keys())}")
-    return current_user
+    return await _user_info(db, current_user)
 
 @router.put("/training-data-preference", status_code=status.HTTP_200_OK)
 async def update_training_data_preference(
@@ -587,9 +599,9 @@ async def get_avatar_history_limits(
     current_user: User = Depends(get_current_active_user)
 ):
     """Returns avatar history usage and plan-based limits for the current user."""
-    from ..services.storage_service import get_plan_base
+    from ..services.storage_service import effective_plan
 
-    plan = get_plan_base(current_user.subscription_plan)
+    plan = effective_plan(current_user)
     max_history = Config.MAX_AVATAR_HISTORY.get(plan, Config.MAX_AVATAR_HISTORY['free'])
 
     count_result = await db.execute(
@@ -1018,12 +1030,13 @@ async def get_storage_info(
     current_user: User = Depends(get_current_active_user)
 ):
     """Returns storage usage and quota information for the current user."""
-    from ..services.storage_service import get_storage_quota, get_storage_limits, get_plan_base
+    from ..services.storage_service import get_storage_quota, get_storage_limits, effective_plan, storage_quota_applies
 
-    quota_bytes = get_storage_quota(current_user)
+    unlimited = not storage_quota_applies(current_user)
+    quota_bytes = None if unlimited else get_storage_quota(current_user)
     limits = get_storage_limits(current_user)
     used_bytes = current_user.storage_used_bytes or 0
-    percent = round((used_bytes / quota_bytes) * 100, 1) if quota_bytes > 0 else 0
+    percent = round((used_bytes / quota_bytes) * 100, 1) if quota_bytes else 0
 
     # Count current libraries
     libraries_result = await db.execute(
@@ -1033,9 +1046,10 @@ async def get_storage_info(
 
     return {
         "storage_used_bytes": used_bytes,
-        "storage_quota_bytes": quota_bytes,
+        "storage_quota_bytes": quota_bytes,  # None = sem cota
         "storage_percent": min(percent, 100),
-        "plan": get_plan_base(current_user.subscription_plan),
+        "unlimited": unlimited,
+        "plan": effective_plan(current_user),
         "libraries_used": libraries_used,
         "libraries_max": limits.get('max_libraries'),
         "docs_per_library_max": limits.get('docs_per_library'),

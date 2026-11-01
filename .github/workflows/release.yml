@@ -130,9 +130,9 @@ jobs:
           echo "consentimento ativo único: ok"
           # Os seeds rodam no boot de UM worker (advisory lock) enquanto o outro já
           # responde /api/health; o catálogo de medicamentos leva alguns segundos.
-          # Espera os prompts, que são o último seed, antes de conferir.
+          # Espera o termo de uso, que é o último seed, antes de conferir.
           for i in $(seq 1 60); do
-            [ "$(psql "SELECT count(*) FROM copilot_prompts")" -ge 15 ] && break
+            [ "$(psql "SELECT count(*) FROM consent_documents WHERE type='terms_of_use' AND is_active")" -ge 1 ] && break
             sleep 3
           done
           prompts=$(psql "SELECT count(*) FROM copilot_prompts"); echo "prompts do copiloto: $prompts"
@@ -141,6 +141,30 @@ jobs:
           [ "$meds" -gt 0 ]
           seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
           [ "$seasons" -gt 0 ]
+          exams=$(psql "SELECT count(*) FROM arena_exams"); echo "concursos da Arena: $exams"
+          [ "$exams" -ge 7 ]
+
+          # Instalação local recém-criada: sem captcha, SMS nem e-mail configurados, o
+          # primeiro cadastro passa direto e vira o dono, e o app só abre depois do
+          # aceite do termo de uso.
+          api=http://localhost:8080/api
+          cfg=$(curl -fsS $api/public/config); echo "config pública: $cfg"
+          printf '%s' "$cfg" | grep -q '"setup_required":true'
+          reg=$(curl -sS -X POST $api/auth/register/step1 \
+                -F email=dona@clinica-ci.com.br -F 'password=Senha123!' -F 'full_name=Dona CI' \
+                -F 'occupation=Médico' -F country=br -F identifier_number=CRM-CI)
+          token=$(printf '%s' "$reg" | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d.get("status") == "active" and d["user"]["is_admin"], d
+          print(d["access_token"])')
+          auth="Authorization: Bearer $token"
+          curl -fsS $api/user/info -H "$auth" | grep -q '"terms_pending":true'
+          curl -fsS -X POST $api/user/me/consents -H "$auth" -H 'Content-Type: application/json' \
+               -d '{"type":"terms_of_use"}' >/dev/null
+          curl -fsS $api/user/info -H "$auth" | grep -q '"terms_pending":false'
+          curl -fsS $api/public/config | grep -q '"setup_required":false'
+          echo "cadastro do dono e aceite do termo: ok"
 
           # O /api/health não toca no Chroma; isto prova que cliente e servidor
           # travados na mesma versão conversam.
