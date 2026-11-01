@@ -82,6 +82,18 @@ The core AI engine of Qython, designed to assist medical professionals with evid
     less, case reports / editorials / comments fall, retracted articles plummet. The upward
     adjustment is capped at +3 so it cannot break the class hierarchy (label 96 > guideline 94
     > PubMed 90).
+  * **Sources before the answer with the local AI (out/2026):** the local model has no web
+    search, and clinical facts from its memory were its weak point (a battery of 5 questions
+    on Gemma 4 E2B/E4B: amoxicillin for otitis at half dose, wrong epinephrine volume,
+    incomplete Sepsis-3 septic shock criteria). For a clinical question, the copilot now
+    gathers sources BEFORE generating (`backend/services/clinical_sources.py`): the medication
+    and interaction catalog, chunks of the selected library, and PubMed abstracts (guidelines and
+    reviews first; only the search terms leave the machine). They go into the prompt numbered,
+    within the context budget; the model answers from them, cites `[n]`, and says when they do not
+    cover the question. The reference list becomes the sources actually cited, renumbered; Tier
+    1–4 and curation are skipped on this path. New badges: Catálogo and Biblioteca (no link).
+    Toggles: `COPILOT_LOCAL_SOURCES`, `COPILOT_PUBMED`. The Gemini path is unchanged. Measured with
+    `python -m backend.scripts.bateria_copiloto` (`--sem-fontes` for the old behavior).
 * **Illustrations from the user's own library (ago/2026):**
   * When a visual finding is central (skin lesion morphology, rash pattern, ECG tracing,
     imaging pattern), the model requests an image with `[IMAGEM: <query in ENGLISH>]` on its

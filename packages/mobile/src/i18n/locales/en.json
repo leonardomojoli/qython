@@ -19,6 +19,8 @@
   "refBadgeArticle": "Article",
   "refBadgeBook": "Book",
   "refBadgeWeb": "Web",
+  "refBadgeCatalog": "Catalog",
+  "refBadgeLibrary": "Library",
   "profileTitle": "User Profile",
   "activePlan": "Active",
   "goToDashboard": "Go to Dashboard",
