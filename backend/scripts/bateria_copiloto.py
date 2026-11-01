@@ -16,6 +16,10 @@ um dado errado, um dado incompleto, ou se avisa que não tem base:
 Usa a instalação como ela está: a IA do .env, o catálogo de medicamentos do banco e o
 PubMed (com internet). A correção é por padrão de texto e serve de triagem; leia as
 respostas antes de concluir, principalmente as marcadas "revisar".
+
+O Qython é feito primeiro para o médico brasileiro: quando a diretriz nacional (Ministério
+da Saúde, sociedades brasileiras, bula ANVISA) diverge da internacional, o gabarito segue
+a nacional.
 """
 
 import argparse
@@ -30,12 +34,16 @@ PERGUNTAS = [
     {
         "nome": "amoxicilina",
         "pergunta": "Dose de amoxicilina para otite média aguda em criança de 20 kg? Responda em até 3 linhas.",
-        "gabarito": "80–90 mg/kg/dia em 2 tomadas: ~800–900 mg de 12/12 h",
-        "certo": [r"(?:80|90)\s*(?:a|-|–|e)?\s*(?:90)?\s*mg\s*/\s*kg"
+        # AIDPI/MS 2017 e SBP 2023. A AAP usa 80–90 mg/kg/dia para todos; aqui essa é a dose
+        # da OMA de risco, então também conta como certa.
+        "gabarito": ("50 mg/kg/dia 12/12h, 500 mg de 12/12 h para 20 kg; 80–90 mg/kg/dia 12/12h se grave, "
+                     "recorrente, com antibiótico nos últimos 30 dias ou sem melhora em 48–72 h"),
+        "certo": [r"(?<![\d.,])(?:40\s*(?:a|-|–)\s*)?50\s*mg\s*/\s*kg"
+                  r"|(?:80|90)\s*(?:a|-|–|e)?\s*(?:90)?\s*mg\s*/\s*kg"
                   r"|800\s*(?:mg\s*)?(?:a|-|–)\s*900\s*mg|1\.?[68]00\s*(?:mg\s*)?(?:a|-|–)\s*1\.?800\s*mg"],
-        # a dose "padrão" de 25–50 mg/kg/dia, metade da dose alta da OMA; ou a conta para 20 kg
-        # errada (o E4B escreveu "80 a 90 mg/kg/dia" e depois "160 a 180 mg por dose")
-        "errado": [r"\b(?:20|25|30|40|45|50)\s*(?:a|-|–)\s*(?:40|45|50|60)\s*mg\s*/\s*kg",
+        # faixa que começa abaixo de 40 mg/kg/dia (a posologia pediátrica geral, "25-50"); ou a
+        # conta para 20 kg errada (o E4B escreveu "80 a 90 mg/kg/dia" e "160 a 180 mg por dose")
+        "errado": [r"\b(?:20|25|30)\s*(?:a|-|–)\s*(?:40|45|50|60)\s*mg\s*/\s*kg",
                    r"(?<![\d.,])[1-4]\d{2}\s*mg\b(?!\s*/)"],
     },
     {
