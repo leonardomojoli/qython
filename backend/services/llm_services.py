@@ -2144,7 +2144,8 @@ async def chat_with_library_rag(query: str, library_id: int, db: AsyncSession, h
 
         logger.info(f"Resposta RAG gerada com sucesso para a biblioteca {library_id}.")
         _log_call_cost('rag', model_to_use, response.usage_metadata)  # instrumentação de custo real
-        return response.text.strip()
+        # Mesma normalização do copiloto: o LaTeX inline da IA local vira texto Unicode.
+        return latex_to_unicode(response.text.strip())
 
     except Exception as e:
         logger.error(f"Erro na chamada do LLM para o chat RAG: {e}", exc_info=True)
