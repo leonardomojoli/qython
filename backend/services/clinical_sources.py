@@ -398,6 +398,8 @@ _QUERY_STOP = {'with', 'from', 'that', 'this', 'dose', 'doses', 'dosing', 'dosag
 _CHILD_TERMS = ('crianc', 'pediatr', 'paediatr', 'infantil', 'lactente', 'neonat', 'recem-nasc',
                 'child', 'infant', 'newborn', 'adolescen')
 _PREGNANCY_TERMS = ('gestant', 'gravid', 'gestac', 'puerper', 'obstetr', 'pregnan', 'maternal')
+# O Qython é usado no Brasil: entre candidatos equivalentes, a diretriz brasileira vem primeiro.
+_BRAZIL_TERMS = ('brazil', 'brasil')
 _NUMERIC_RE = re.compile(r'\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|ml|mm\s?hg|mmol|ui|iu|units?|g)\b', re.IGNORECASE)
 
 
@@ -405,7 +407,8 @@ def rank_abstracts(candidates: List[Dict], query: str, question: str = "") -> Li
     """Ordena os resumos candidatos pelo quanto respondem à pergunta. A relevância do PubMed
     sozinha trouxe, na bateria, o consenso PEDIÁTRICO de sepse para uma pergunta de adulto e
     revisões de adrenalina NASAL sem a dose IM. Pontua: termos da busca no título (peso maior)
-    e no resumo; resumo com valor numérico (dose, pressão, lactato); população que não bate com
+    e no resumo; resumo com valor numérico (dose, pressão, lactato); artigo brasileiro no
+    título; população que não bate com
     a da pergunta (criança, gestante × adulto) sai da lista: é armadilha, não fonte fraca. Empate
     mantém a ordem do PubMed."""
     terms = {w[:6] for w in re.findall(r'[a-z0-9-]{4,}', deaccent(query)) if w not in _QUERY_STOP}
@@ -430,6 +433,8 @@ def rank_abstracts(candidates: List[Dict], query: str, question: str = "") -> Li
         if _NUMERIC_RE.search(d.get("abstract") or ""):
             value += 0.3
         if asks_child and any(t in title for t in _CHILD_TERMS):
+            value += 0.3
+        if any(t in title for t in _BRAZIL_TERMS):
             value += 0.3
         return value
 
