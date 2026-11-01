@@ -37,13 +37,13 @@ class ChatSessionResponse(BaseModel):
         from_attributes = True
 
 class SourceItem(BaseModel):
-    uri: str
+    uri: Optional[str] = None  # catálogo de medicamentos e biblioteca (fontes da IA local) não têm link
     title: Optional[str] = None
     author: Optional[str] = None
     year: Optional[str] = None
     pmid: Optional[str] = None
     source: Optional[str] = None  # 'grounding', 'model_text', 'pubmed_lookup'
-    source_type: Optional[str] = None  # classificação canônica p/ badge: label|guideline|pubmed|doi|journal|reference|gov|other
+    source_type: Optional[str] = None  # classificação canônica p/ badge: label|guideline|pubmed|doi|journal|reference|gov|other|catalog|library
 
 class GroundingSupportItem(BaseModel):
     start_index: int = 0

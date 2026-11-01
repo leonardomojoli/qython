@@ -7,6 +7,9 @@
 //   Artigo    → artigo científico (PubMed, NEJM, Lancet, JAMA, DOI…) — PubMed dobra aqui
 //   Livro     → livro / manual de referência (StatPearls, MSD, UpToDate…)
 //   Web       → resto (inclui portal de saúde institucional: nih.gov, Mayo, MedlinePlus…)
+// Com a IA local, a resposta também cita fontes locais, que não têm link:
+//   Catálogo   → catálogo de medicamentos e interações do Qython
+//   Biblioteca → trecho de documento da biblioteca do próprio usuário
 //
 // A classificação canônica é do backend (`_classify_reference` → `source_type`, olhando URI +
 // título, robusto a redirect opaco). Aqui o selo é derivado do `source_type`; o match por
@@ -35,7 +38,8 @@ function _byDomain(hay) {
 }
 
 // Retorna a CHAVE SEMÂNTICA do tipo da fonte (não o rótulo): 'label'|'guideline'|'article'|
-// 'book'|'web'. O rótulo exibido é resolvido por i18n no componente (ver referenceBadgeI18nKey).
+// 'book'|'web'|'catalog'|'library'. O rótulo exibido é resolvido por i18n no componente (ver
+// referenceBadgeI18nKey).
 export function referenceBadge(source) {
   if (!source) return 'web';
   const st = source.source_type;
@@ -51,6 +55,8 @@ export function referenceBadge(source) {
     case 'doi':
     case 'journal': return 'article';
     case 'book': return 'book';
+    case 'catalog': return 'catalog';
+    case 'library': return 'library';
     case 'reference':
     case 'gov':
     case 'other': return 'web';
@@ -65,13 +71,15 @@ export function referenceBadge(source) {
 }
 
 // Chave de i18n do selo (ex.: 'refBadgeArticle'). O componente faz t(referenceBadgeI18nKey(src)).
-// Traduções em pt/en/es: refBadgeLabel/Guideline/Article/Book/Web (web + mobile).
+// Traduções em pt/en/es: refBadgeLabel/Guideline/Article/Book/Web/Catalog/Library (web + mobile).
 const _BADGE_I18N_KEY = {
   label: 'refBadgeLabel',
   guideline: 'refBadgeGuideline',
   article: 'refBadgeArticle',
   book: 'refBadgeBook',
   web: 'refBadgeWeb',
+  catalog: 'refBadgeCatalog',
+  library: 'refBadgeLibrary',
 };
 export function referenceBadgeI18nKey(source) {
   return _BADGE_I18N_KEY[referenceBadge(source)] || 'refBadgeWeb';
