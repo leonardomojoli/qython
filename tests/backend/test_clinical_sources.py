@@ -127,6 +127,12 @@ def test_rank_prefers_matching_population_and_numbers():
                 "abstract": "Sepsis definitions vary."}
     assert [d["pmid"] for d in cs.rank_abstracts([maternal, adult], "Sepsis-3 septic shock", "Sepsis-3?")] == ["3"]
     assert cs.rank_abstracts([maternal], "sepsis pregnancy", "Sepse na gestante?")[0]["pmid"] == "4"
+    us = {"pmid": "5", "title": "Guideline for the management of acute otitis media",
+          "abstract": "Amoxicillin 80-90 mg/kg/day."}
+    br = {"pmid": "6", "title": "Brazilian guideline for the management of acute otitis media",
+          "abstract": "Amoxicillin 50 mg/kg/day."}
+    ranked = cs.rank_abstracts([us, br], "acute otitis media amoxicillin", "Dose de amoxicilina na OMA?")
+    assert [d["pmid"] for d in ranked] == ["6", "5"]  # diretriz brasileira primeiro
 
 
 def test_library_sources_keep_document_and_page():
