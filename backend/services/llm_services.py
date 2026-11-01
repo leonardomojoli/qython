@@ -22,6 +22,7 @@ from . import icd10_search, llm_provider
 
 from .enhancementprompts import PROMPTS, PATIENT_DATA_RULE
 from .academic_services import vector_db_service
+from .latex_text import latex_to_unicode
 
 logger = logging.getLogger(__name__)
 
@@ -1609,21 +1610,9 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
         # Marcador copiado da instrução, sem fonte por trás (ver _NO_WEB_SEARCH_INSTRUCTION).
         cleaned_response_text = re.sub(r'\s*\[n\]', '', cleaned_response_text)
 
-    # Substitui notação LaTeX inline por símbolos Unicode (Gemini às vezes usa LaTeX)
-    latex_to_unicode = {
-        r'$\ge$': '≥', r'$\le$': '≤', r'$\geq$': '≥', r'$\leq$': '≤',
-        r'$\gt$': '>', r'$\lt$': '<', r'$\neq$': '≠', r'$\approx$': '≈',
-        r'$\pm$': '±', r'$\times$': '×', r'$\div$': '÷', r'$\infty$': '∞',
-        r'$\alpha$': 'α', r'$\beta$': 'β', r'$\gamma$': 'γ', r'$\delta$': 'δ',
-        r'$\mu$': 'μ', r'$\sigma$': 'σ', r'$\degree$': '°', r'$\circ$': '°',
-    }
-    for latex, unicode_char in latex_to_unicode.items():
-        cleaned_response_text = cleaned_response_text.replace(latex, unicode_char)
-    # Also handle $\ge 7$ style patterns (LaTeX with value inside)
-    cleaned_response_text = re.sub(r'\$\\ge\s*(\d+)\$', r'≥ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\le\s*(\d+)\$', r'≤ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\geq\s*(\d+)\$', r'≥ \1', cleaned_response_text)
-    cleaned_response_text = re.sub(r'\$\\leq\s*(\d+)\$', r'≤ \1', cleaned_response_text)
+    # LaTeX inline ("PAM $\geq 65 \text{ mm Hg}$", comum na IA local) vira texto Unicode:
+    # nem o web nem o mobile renderizam matemática. Código e valor em $ ficam como estão.
+    cleaned_response_text = latex_to_unicode(cleaned_response_text)
 
     # Extract grounding sources and supports (for inline citations) if available
     grounding_sources = None
@@ -1688,7 +1677,9 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
                         # (start_index: int) estoura ValidationError → 500.
                         'start_index': getattr(seg, 'start_index', None) or 0,
                         'end_index': getattr(seg, 'end_index', None) or 0,
-                        'text': getattr(seg, 'text', None),
+                        # Mesma normalização da resposta: o trecho casa por conteúdo
+                        # com ela em _insert_inline_citations.
+                        'text': latex_to_unicode(getattr(seg, 'text', None)),
                         'chunk_indices': list(support.grounding_chunk_indices) if hasattr(support, 'grounding_chunk_indices') else []
                     }
                     if support_data['chunk_indices']:
