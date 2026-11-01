@@ -5,9 +5,13 @@ No external cron needed - runs within the FastAPI application.
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+
+from ..config import Config
 
 logger = logging.getLogger("qython_logger")
 
@@ -370,98 +374,101 @@ async def scheduled_generated_content_cleanup():
     # --- 1. Expired generated content (DB-driven TTL) ---
     # Legacy completed rows predate the TTL feature and have expires_at = NULL,
     # so they would never match `expires_at < now`; they expire by created_at age.
-    async with AsyncSessionLocal() as db:
-        try:
-            now = datetime.now(timezone.utc)
-            legacy_cutoff = now - timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+    # Sem TTL (edição local) nada gerado expira; as varreduras de temporários e de
+    # órfãos abaixo continuam valendo.
+    if Config.GENERATED_CONTENT_TTL_HOURS:
+        async with AsyncSessionLocal() as db:
+            try:
+                now = datetime.now(timezone.utc)
+                legacy_cutoff = now - timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
 
-            # Podcasts
-            result = await db.execute(
-                select(PodcastGenerationJob).filter(
-                    PodcastGenerationJob.status == 'completed',
-                    or_(
-                        PodcastGenerationJob.expires_at < now,
-                        and_(
-                            PodcastGenerationJob.expires_at.is_(None),
-                            PodcastGenerationJob.created_at < legacy_cutoff,
-                        ),
+                # Podcasts
+                result = await db.execute(
+                    select(PodcastGenerationJob).filter(
+                        PodcastGenerationJob.status == 'completed',
+                        or_(
+                            PodcastGenerationJob.expires_at < now,
+                            and_(
+                                PodcastGenerationJob.expires_at.is_(None),
+                                PodcastGenerationJob.created_at < legacy_cutoff,
+                            ),
+                        )
                     )
                 )
-            )
-            expired_podcasts = result.scalars().all()
+                expired_podcasts = result.scalars().all()
 
-            for job in expired_podcasts:
-                for path_attr in ('result_path', 'script_path'):
-                    freed, deleted = _delete_generated_file(getattr(job, path_attr, None), label='podcast')
-                    total_size_freed += freed
-                    total_files_deleted += deleted
-                job.status = 'expired'
-                job.result_path = None
-                job.script_path = None
+                for job in expired_podcasts:
+                    for path_attr in ('result_path', 'script_path'):
+                        freed, deleted = _delete_generated_file(getattr(job, path_attr, None), label='podcast')
+                        total_size_freed += freed
+                        total_files_deleted += deleted
+                    job.status = 'expired'
+                    job.result_path = None
+                    job.script_path = None
 
-            # Video lessons
-            result = await db.execute(
-                select(VideoLessonJob).filter(
-                    VideoLessonJob.status == 'completed',
-                    or_(
-                        VideoLessonJob.expires_at < now,
-                        and_(
-                            VideoLessonJob.expires_at.is_(None),
-                            VideoLessonJob.created_at < legacy_cutoff,
-                        ),
+                # Video lessons
+                result = await db.execute(
+                    select(VideoLessonJob).filter(
+                        VideoLessonJob.status == 'completed',
+                        or_(
+                            VideoLessonJob.expires_at < now,
+                            and_(
+                                VideoLessonJob.expires_at.is_(None),
+                                VideoLessonJob.created_at < legacy_cutoff,
+                            ),
+                        )
                     )
                 )
-            )
-            expired_videos = result.scalars().all()
+                expired_videos = result.scalars().all()
 
-            for job in expired_videos:
-                for path_attr in ('result_path', 'srt_path'):
-                    freed, deleted = _delete_generated_file(getattr(job, path_attr, None), label='video_lesson')
-                    total_size_freed += freed
-                    total_files_deleted += deleted
-                job.status = 'expired'
-                job.result_path = None
-                job.srt_path = None
+                for job in expired_videos:
+                    for path_attr in ('result_path', 'srt_path'):
+                        freed, deleted = _delete_generated_file(getattr(job, path_attr, None), label='video_lesson')
+                        total_size_freed += freed
+                        total_files_deleted += deleted
+                    job.status = 'expired'
+                    job.result_path = None
+                    job.srt_path = None
 
-            # Slideshow materials. Only slideshow_only materials carry files on
-            # disk; JSON-only materials (flashcards, resumos, ...) never expire.
-            result = await db.execute(
-                select(AcademicMaterial).filter(
-                    AcademicMaterial.status == 'completed',
-                    or_(
-                        AcademicMaterial.expires_at < now,
-                        and_(
-                            AcademicMaterial.expires_at.is_(None),
-                            AcademicMaterial.material_type == 'slideshow_only',
-                            AcademicMaterial.created_at < legacy_cutoff,
-                        ),
+                # Slideshow materials. Only slideshow_only materials carry files on
+                # disk; JSON-only materials (flashcards, resumos, ...) never expire.
+                result = await db.execute(
+                    select(AcademicMaterial).filter(
+                        AcademicMaterial.status == 'completed',
+                        or_(
+                            AcademicMaterial.expires_at < now,
+                            and_(
+                                AcademicMaterial.expires_at.is_(None),
+                                AcademicMaterial.material_type == 'slideshow_only',
+                                AcademicMaterial.created_at < legacy_cutoff,
+                            ),
+                        )
                     )
                 )
-            )
-            expired_materials = result.scalars().all()
+                expired_materials = result.scalars().all()
 
-            for material in expired_materials:
-                # Copy before mutating: reassigning the same dict object is not
-                # detected as a change by SQLAlchemy's JSON column.
-                content = dict(material.content or {})
-                slideshow_path = content.get('slideshow_file_path')
-                if slideshow_path:
-                    freed, deleted = _delete_generated_file(slideshow_path, label='slideshow')
-                    total_size_freed += freed
-                    total_files_deleted += deleted
-                    # Remove path from content but keep the rest
-                    content.pop('slideshow_file_path', None)
-                    material.content = content
-                material.status = 'expired'
+                for material in expired_materials:
+                    # Copy before mutating: reassigning the same dict object is not
+                    # detected as a change by SQLAlchemy's JSON column.
+                    content = dict(material.content or {})
+                    slideshow_path = content.get('slideshow_file_path')
+                    if slideshow_path:
+                        freed, deleted = _delete_generated_file(slideshow_path, label='slideshow')
+                        total_size_freed += freed
+                        total_files_deleted += deleted
+                        # Remove path from content but keep the rest
+                        content.pop('slideshow_file_path', None)
+                        material.content = content
+                    material.status = 'expired'
 
-            await db.commit()
-            logger.info(
-                f"[CLEANUP] Expired content: {len(expired_podcasts)} podcasts, "
-                f"{len(expired_videos)} videos, {len(expired_materials)} materials"
-            )
+                await db.commit()
+                logger.info(
+                    f"[CLEANUP] Expired content: {len(expired_podcasts)} podcasts, "
+                    f"{len(expired_videos)} videos, {len(expired_materials)} materials"
+                )
 
-        except Exception as e:
-            logger.error(f"[CLEANUP] Error processing expired content: {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"[CLEANUP] Error processing expired content: {e}", exc_info=True)
 
     # --- 2. Temp upload cleanup (files older than 24h) ---
     try:
@@ -560,7 +567,7 @@ async def scheduled_generated_content_cleanup():
                 except (TypeError, ValueError):
                     continue
 
-            grace_hours = Config.GENERATED_CONTENT_TTL_HOURS + 24
+            grace_hours = (Config.GENERATED_CONTENT_TTL_HOURS or 72) + 24
             for folder, refs, label in (
                 (os.path.join(Config.PERMANENT_UPLOAD_FOLDER, 'podcasts'), podcast_refs, 'podcasts'),
                 (os.path.join(Config.PERMANENT_UPLOAD_FOLDER, 'video_lessons'), video_refs, 'video_lessons'),
@@ -1314,17 +1321,34 @@ async def scheduled_tls_expiry_check():
             logger.error(f"[TLS] Falha ao enviar alerta: {e}", exc_info=True)
 
 
-def start_scheduler():
-    """Start the background scheduler with all jobs"""
+def _daily(hour: int, minute: int = 0):
+    """Gatilho diário. No SaaS, num horário fixo de madrugada, com o servidor sempre
+    ligado. Na instalação local o computador costuma estar desligado de madrugada e um
+    horário fixo nunca dispararia: roda a cada 24 h, começando pouco depois de abrir."""
+    if Config.EDITION == "hosted":
+        return CronTrigger(hour=hour, minute=minute)
+    return IntervalTrigger(hours=24, start_date=datetime.now(timezone.utc) + timedelta(minutes=10))
 
-    # Daily ranking update at 3:00 AM UTC
-    scheduler.add_job(
-        scheduled_ranking_update,
-        CronTrigger(hour=3, minute=0),
-        id="daily_ranking_update",
-        name="Daily Arena Ranking Update",
-        replace_existing=True
-    )
+
+def start_scheduler():
+    """Start the background scheduler with all jobs.
+
+    Na edição local ficam só os jobs de manutenção. Saem os que dependem do SaaS
+    (ranking nacional, desafios, dracmas, e-mails de campanha, TLS do qython.ai), a
+    retenção de 30 dias das imagens do chat (o disco é do usuário) e o treino
+    RLAIF/self-play, que chamaria o modelo pago com a chave do usuário.
+    """
+    hosted = Config.EDITION == "hosted"
+
+    if hosted:
+        # Daily ranking update at 3:00 AM UTC
+        scheduler.add_job(
+            scheduled_ranking_update,
+            CronTrigger(hour=3, minute=0),
+            id="daily_ranking_update",
+            name="Daily Arena Ranking Update",
+            replace_existing=True
+        )
 
     # Season check every 6 hours
     scheduler.add_job(
@@ -1335,46 +1359,48 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Expire old arena challenges every 6 hours
-    scheduler.add_job(
-        scheduled_expire_challenges,
-        CronTrigger(hour="*/6", minute=30),
-        id="expire_old_challenges",
-        name="Expire Old Arena Challenges (24h)",
-        replace_existing=True
-    )
+    if hosted:
+        # Expire old arena challenges every 6 hours
+        scheduler.add_job(
+            scheduled_expire_challenges,
+            CronTrigger(hour="*/6", minute=30),
+            id="expire_old_challenges",
+            name="Expire Old Arena Challenges (24h)",
+            replace_existing=True
+        )
 
-    # Chat images cleanup daily at 4:00 AM UTC
-    scheduler.add_job(
-        scheduled_chat_images_cleanup,
-        CronTrigger(hour=4, minute=0),
-        id="chat_images_cleanup",
-        name="Chat Images Cleanup (30 days retention)",
-        replace_existing=True
-    )
+        # Chat images cleanup daily at 4:00 AM UTC
+        scheduler.add_job(
+            scheduled_chat_images_cleanup,
+            CronTrigger(hour=4, minute=0),
+            id="chat_images_cleanup",
+            name="Chat Images Cleanup (30 days retention)",
+            replace_existing=True
+        )
 
-    # Dracma expiration processing daily at 2:00 AM UTC
-    scheduler.add_job(
-        scheduled_dracma_expiration,
-        CronTrigger(hour=2, minute=0),
-        id="dracma_expiration",
-        name="Dracma Expiration Processing",
-        replace_existing=True
-    )
+    if Config.BILLING_ENABLED:
+        # Dracma expiration processing daily at 2:00 AM UTC
+        scheduler.add_job(
+            scheduled_dracma_expiration,
+            CronTrigger(hour=2, minute=0),
+            id="dracma_expiration",
+            name="Dracma Expiration Processing",
+            replace_existing=True
+        )
 
-    # Dracma expiration notifications daily at 10:00 AM UTC (7:00 AM BRT)
-    scheduler.add_job(
-        scheduled_dracma_expiration_notifications,
-        CronTrigger(hour=10, minute=0),
-        id="dracma_expiration_notifications",
-        name="Dracma Expiration Notifications (30d, 7d, 1d)",
-        replace_existing=True
-    )
+        # Dracma expiration notifications daily at 10:00 AM UTC (7:00 AM BRT)
+        scheduler.add_job(
+            scheduled_dracma_expiration_notifications,
+            CronTrigger(hour=10, minute=0),
+            id="dracma_expiration_notifications",
+            name="Dracma Expiration Notifications (30d, 7d, 1d)",
+            replace_existing=True
+        )
 
     # Generated content cleanup (TTL expiration + temp files) daily at 5:00 AM UTC
     scheduler.add_job(
         scheduled_generated_content_cleanup,
-        CronTrigger(hour=5, minute=0),
+        _daily(5, 0),
         id="generated_content_cleanup",
         name="Generated Content Cleanup (TTL expiration, temp files, orphan thumbnails)",
         replace_existing=True
@@ -1383,76 +1409,78 @@ def start_scheduler():
     # Avatar orphan cleanup daily at 3:30 AM UTC
     scheduler.add_job(
         scheduled_avatar_cleanup,
-        CronTrigger(hour=3, minute=30),
+        _daily(3, 30),
         id="avatar_cleanup",
         name="Avatar Orphan Cleanup (unreferenced files > 1h)",
         replace_existing=True
     )
 
-    # RLAIF AI-as-Judge batch — weekly on Sunday at 2:00 AM UTC
-    scheduler.add_job(
-        scheduled_rlaif_batch,
-        CronTrigger(day_of_week='sun', hour=2, minute=0),
-        id="rlaif_batch",
-        name="RLAIF AI Judge Batch (weekly)",
-        replace_existing=True
-    )
+    if hosted:
+        # RLAIF AI-as-Judge batch — weekly on Sunday at 2:00 AM UTC
+        scheduler.add_job(
+            scheduled_rlaif_batch,
+            CronTrigger(day_of_week='sun', hour=2, minute=0),
+            id="rlaif_batch",
+            name="RLAIF AI Judge Batch (weekly)",
+            replace_existing=True
+        )
 
-    # Self-play preference generation — weekly on Sunday at 3:00 AM UTC
-    scheduler.add_job(
-        scheduled_self_play,
-        CronTrigger(day_of_week='sun', hour=3, minute=0),
-        id="self_play",
-        name="Self-Play Preference Generation (weekly)",
-        replace_existing=True
-    )
+        # Self-play preference generation — weekly on Sunday at 3:00 AM UTC
+        scheduler.add_job(
+            scheduled_self_play,
+            CronTrigger(day_of_week='sun', hour=3, minute=0),
+            id="self_play",
+            name="Self-Play Preference Generation (weekly)",
+            replace_existing=True
+        )
 
-    # Quality decay snapshot — weekly on Monday at 1:00 AM UTC
-    scheduler.add_job(
-        scheduled_quality_snapshot,
-        CronTrigger(day_of_week='mon', hour=1, minute=0),
-        id="quality_snapshot",
-        name="Quality Decay Snapshot (weekly)",
-        replace_existing=True
-    )
+        # Quality decay snapshot — weekly on Monday at 1:00 AM UTC
+        scheduler.add_job(
+            scheduled_quality_snapshot,
+            CronTrigger(day_of_week='mon', hour=1, minute=0),
+            id="quality_snapshot",
+            name="Quality Decay Snapshot (weekly)",
+            replace_existing=True
+        )
 
     # Notification cleanup — daily at 6:00 AM UTC
     from .notification_service import cleanup_old_notifications
 
     scheduler.add_job(
         cleanup_old_notifications,
-        CronTrigger(hour=6, minute=0),
+        _daily(6, 0),
         id="notification_cleanup",
         name="Cleanup old read notifications (90+ days)",
         replace_existing=True
     )
 
-    # Weekly digest email — Monday at 8:00 AM UTC (5:00 AM BRT)
-    scheduler.add_job(
-        scheduled_weekly_digest,
-        CronTrigger(day_of_week='mon', hour=8, minute=0),
-        id="weekly_digest",
-        name="Weekly Digest Email (Monday)",
-        replace_existing=True
-    )
+    if hosted:
+        # Weekly digest email — Monday at 8:00 AM UTC (5:00 AM BRT)
+        scheduler.add_job(
+            scheduled_weekly_digest,
+            CronTrigger(day_of_week='mon', hour=8, minute=0),
+            id="weekly_digest",
+            name="Weekly Digest Email (Monday)",
+            replace_existing=True
+        )
 
-    # Inactivity reminder — daily at 9:00 AM UTC (6:00 AM BRT)
-    scheduler.add_job(
-        scheduled_inactivity_check,
-        CronTrigger(hour=9, minute=0),
-        id="inactivity_check",
-        name="Inactivity Reminder Email (14d)",
-        replace_existing=True
-    )
+        # Inactivity reminder — daily at 9:00 AM UTC (6:00 AM BRT)
+        scheduler.add_job(
+            scheduled_inactivity_check,
+            CronTrigger(hour=9, minute=0),
+            id="inactivity_check",
+            name="Inactivity Reminder Email (14d)",
+            replace_existing=True
+        )
 
-    # Welcome day 3 email — daily at 10:30 AM UTC (7:30 AM BRT)
-    scheduler.add_job(
-        scheduled_welcome_day3,
-        CronTrigger(hour=10, minute=30),
-        id="welcome_day3",
-        name="Welcome Day 3 Email (new users)",
-        replace_existing=True
-    )
+        # Welcome day 3 email — daily at 10:30 AM UTC (7:30 AM BRT)
+        scheduler.add_job(
+            scheduled_welcome_day3,
+            CronTrigger(hour=10, minute=30),
+            id="welcome_day3",
+            name="Welcome Day 3 Email (new users)",
+            replace_existing=True
+        )
 
     # Stuck document recovery — every 30 minutes
     scheduler.add_job(
@@ -1472,22 +1500,23 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Latreo verification self-heal — every 10 minutes. The sync confirm at signup
-    # is best-effort; this flips users whose Latreo finished afterwards (or whose
-    # confirm hit a flaky/timed-out Latreo) from 'pending' → 'verified'. Net behind
-    # the webhook so a stuck-pending user never silently keeps premium gated.
-    scheduler.add_job(
-        scheduled_latreo_pending_recheck,
-        IntervalTrigger(minutes=10),
-        id="latreo_pending_recheck",
-        name="Latreo Verification Self-Heal (pending → verified)",
-        replace_existing=True
-    )
+    if Config.LATREO_API_KEY:
+        # Latreo verification self-heal — every 10 minutes. The sync confirm at signup
+        # is best-effort; this flips users whose Latreo finished afterwards (or whose
+        # confirm hit a flaky/timed-out Latreo) from 'pending' → 'verified'. Net behind
+        # the webhook so a stuck-pending user never silently keeps premium gated.
+        scheduler.add_job(
+            scheduled_latreo_pending_recheck,
+            IntervalTrigger(minutes=10),
+            id="latreo_pending_recheck",
+            name="Latreo Verification Self-Heal (pending → verified)",
+            replace_existing=True
+        )
 
     # Vision pipeline — daily large batch at 1:00 AM UTC (fresh quota)
     scheduler.add_job(
         scheduled_vision_processing_large,
-        CronTrigger(hour=1, minute=0),
+        _daily(1, 0),
         id="vision_processing_daily",
         name="Vision Pipeline Daily (100 images, 1:00 AM UTC)",
         replace_existing=True
@@ -1502,24 +1531,21 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Validade dos certificados TLS — diário às 6:17 UTC. Fora da hora cheia de
-    # propósito, para não disputar CPU com os outros jobs diários.
-    scheduler.add_job(
-        scheduled_tls_expiry_check,
-        CronTrigger(hour=6, minute=17),
-        id="tls_expiry_check",
-        name="TLS Expiry Check (alerta admin abaixo de 21 dias)",
-        replace_existing=True
-    )
+    if hosted:
+        # Validade dos certificados TLS — diário às 6:17 UTC. Fora da hora cheia de
+        # propósito, para não disputar CPU com os outros jobs diários.
+        scheduler.add_job(
+            scheduled_tls_expiry_check,
+            CronTrigger(hour=6, minute=17),
+            id="tls_expiry_check",
+            name="TLS Expiry Check (alerta admin abaixo de 21 dias)",
+            replace_existing=True
+        )
 
     scheduler.start()
     logger.info(
-        "Internal scheduler started with jobs: daily_ranking_update, season_check, "
-        "expire_old_challenges, chat_images_cleanup, dracma_expiration, dracma_expiration_notifications, "
-        "generated_content_cleanup, avatar_cleanup, rlaif_batch, self_play, "
-        "quality_snapshot, notification_cleanup, weekly_digest, inactivity_check, welcome_day3, "
-        "stuck_document_recovery, document_retry, latreo_pending_recheck, "
-        "vision_processing_daily, vision_processing_catchup, tls_expiry_check"
+        f"Internal scheduler started ({Config.EDITION}) with jobs: "
+        + ", ".join(job.id for job in scheduler.get_jobs())
     )
 
 

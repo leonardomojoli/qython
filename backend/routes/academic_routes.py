@@ -39,10 +39,17 @@ from ..services.data_collector_service import collect_data
 from ..services.activity_service import track_activity
 from fastapi.responses import FileResponse
 from ..config import Config
+from ..services.storage_service import effective_plan  # plano que vale p/ limites (o maior, sem cobrança)
 
 logger = logging.getLogger("qython_logger")
 
 router = APIRouter()
+
+
+def _generated_content_expiry():
+    """Quando um podcast, videoaula ou slide gerado expira. None = nunca (edição local)."""
+    ttl = Config.GENERATED_CONTENT_TTL_HOURS
+    return datetime.now(timezone.utc) + timedelta(hours=ttl) if ttl else None
 
 # Constantes para a nova lógica de podcast
 PODCAST_CONTENT_TARGET_LENGTH = 45000
@@ -326,7 +333,7 @@ async def _run_podcast_generation_task(job_id: int, input_data: str, user_id: in
             job.status = 'completed'
             job.progress_percent = 100
             job.current_step = 'Concluído'
-            job.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+            job.expires_at = _generated_content_expiry()
             await db.commit()
             logger.info(f"Podcast para a tarefa {job_id} gerado com sucesso. Expires at: {job.expires_at}")
 
@@ -716,7 +723,7 @@ async def _run_material_generation_task(material_id: int, input_data: str, mater
 
             # Set TTL for slideshow materials that have files on disk
             if material_type == 'slideshow_only' and material_content.get('slideshow_file_path'):
-                material.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+                material.expires_at = _generated_content_expiry()
 
             # --- DATA FLYWHEEL: Salvar material gerado ---
             import json
@@ -942,7 +949,7 @@ async def _run_video_lesson_generation_task(job_id: int, input_data: str, user_i
             job.current_step = 'Concluído'
             job.progress_percent = 100
             job.completed_steps = 4
-            job.expires_at = datetime.now(timezone.utc) + timedelta(hours=Config.GENERATED_CONTENT_TTL_HOURS)
+            job.expires_at = _generated_content_expiry()
 
             # --- DATA FLYWHEEL: Salvar roteiro de video-aula ---
             job.training_data_id = await collect_data(
@@ -1090,7 +1097,7 @@ async def process_file(
         PREMIUM_ALLOWED_PLANS = ['resident', 'staff', 'specialist']
 
         if payload.material_type in PREMIUM_MATERIAL_TYPES:
-            if not current_user.is_admin and current_user.subscription_plan not in PREMIUM_ALLOWED_PLANS:
+            if not current_user.is_admin and effective_plan(current_user) not in PREMIUM_ALLOWED_PLANS:
                 feature_names = {
                     'podcast': 'Podcasts',
                     'video_lesson': 'Videoaulas',
@@ -1338,7 +1345,7 @@ async def start_quiz(
 ):
     # Arena access requires Residente+ plan
     ARENA_ALLOWED_PLANS = ['resident', 'staff', 'specialist']
-    if current_user.subscription_plan not in ARENA_ALLOWED_PLANS:
+    if effective_plan(current_user) not in ARENA_ALLOWED_PLANS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="A Arena Qython está disponível a partir do Plano Residente. Faça upgrade para competir!"
@@ -2371,7 +2378,7 @@ def _require_custom_exam_access(user: User):
     """Provas customizadas seguem o gate da Arena (Residente+)."""
     if getattr(user, 'is_admin', False):
         return
-    if user.subscription_plan not in CUSTOM_EXAM_ALLOWED_PLANS:
+    if effective_plan(user) not in CUSTOM_EXAM_ALLOWED_PLANS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="As Provas Customizadas (Concursos) estão disponíveis a partir do Plano Residente. Faça upgrade para acessar!",

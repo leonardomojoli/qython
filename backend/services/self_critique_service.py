@@ -26,6 +26,7 @@ from typing import Tuple, Optional, Dict, Any
 from google import genai
 from google.genai import types
 from ..config import Config
+from ..middleware.pii_redaction import redact_for_llm
 
 logger = logging.getLogger("qython_logger")
 
@@ -161,9 +162,11 @@ async def critique_response(
             context_type=context_type
         )
 
+        # A resposta avaliada é o texto da consulta, com dados do paciente: passa pela
+        # mesma redação das demais chamadas ao LLM externo (llm_services).
         result = critique_client.models.generate_content(
             model=CRITIQUE_MODEL,
-            contents=prompt,
+            contents=redact_for_llm(prompt, preserve_tokens=False)[0],
             config=types.GenerateContentConfig(
                 temperature=0.1,  # Baixa temperatura para consistência
                 max_output_tokens=2048
@@ -245,9 +248,11 @@ async def refine_response(
             instructions=critique_result.get("refinement_instructions", "Melhorar qualidade geral")
         )
 
+        # A resposta avaliada é o texto da consulta, com dados do paciente: passa pela
+        # mesma redação das demais chamadas ao LLM externo (llm_services).
         result = critique_client.models.generate_content(
             model=CRITIQUE_MODEL,
-            contents=prompt,
+            contents=redact_for_llm(prompt, preserve_tokens=False)[0],
             config=types.GenerateContentConfig(
                 temperature=0.3,
                 max_output_tokens=16384

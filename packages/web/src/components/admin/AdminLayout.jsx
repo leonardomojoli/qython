@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../../contexts/UserContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import './Admin.css';
 import qythonLogo from '../../assets/qython-imagotipo.png';
 import { FaChartPie, FaChartLine, FaCog, FaSignOutAlt, FaArrowLeft, FaUsers, FaUserEdit, FaStore } from 'react-icons/fa';
@@ -11,15 +12,18 @@ const AdminLayout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, setUser } = useUser();
+    const { config } = usePublicConfig();
+    // Analytics de crescimento e a rede de farmácias parceiras são do SaaS.
+    const isHosted = config?.edition === 'hosted';
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <FaChartPie />, path: '/admin' },
-        { id: 'analytics', label: 'Analytics', icon: <FaChartLine />, path: '/admin/analytics' },
+        isHosted && { id: 'analytics', label: 'Analytics', icon: <FaChartLine />, path: '/admin/analytics' },
         { id: 'users', label: 'Usuários', icon: <FaUsers />, path: '/admin/users' },
         { id: 'profile-updates', label: 'Atualizações Perfil', icon: <FaUserEdit />, path: '/admin/profile-updates' },
-        { id: 'pharmacies', label: 'Farmácias', icon: <FaStore />, path: '/admin/pharmacies' },
+        isHosted && { id: 'pharmacies', label: 'Farmácias', icon: <FaStore />, path: '/admin/pharmacies' },
         { id: 'settings', label: 'Configurações', icon: <FaCog />, path: '/admin/settings' },
-    ];
+    ].filter(Boolean);
 
     const handleLogout = () => {
         localStorage.removeItem('authToken');

@@ -139,7 +139,7 @@ const LibraryDetail = ({ library, onBack, onStartChat, onLibraryUpdated, initial
   const addMenuRef = useRef(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [drivePickerLoading, setDrivePickerLoading] = useState(false);
-  const { isConnected: isCloudConnected } = useConnectorStatus();
+  const { isConnected: isCloudConnected, isAvailable: isDriveAvailable } = useConnectorStatus();
 
   // Viewer state
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -654,13 +654,14 @@ const LibraryDetail = ({ library, onBack, onStartChat, onLibraryUpdated, initial
         )}
         <div className={styles.headerActions}>
           <div className={styles.addMenuWrapper} ref={addMenuRef}>
+            {/* Sem Drive na instalação, "Do computador" é a única opção: abre direto. */}
             <button
-              onClick={() => setAddMenuOpen((o) => !o)}
+              onClick={() => (isDriveAvailable ? setAddMenuOpen((o) => !o) : fileInputRef.current?.click())}
               className={`${styles.actionButton} ${styles.uploadButton}`}
               disabled={isUploading}
               title={isUploading ? t('uploading') : t('addDocument')}
-              aria-haspopup="menu"
-              aria-expanded={addMenuOpen}
+              aria-haspopup={isDriveAvailable ? 'menu' : undefined}
+              aria-expanded={isDriveAvailable ? addMenuOpen : undefined}
             >
               <FontAwesomeIcon icon={isUploading ? faSpinner : faPlus} spin={isUploading} />
             </button>

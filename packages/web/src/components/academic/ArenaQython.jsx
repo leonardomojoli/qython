@@ -19,6 +19,7 @@ import {
 } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUser } from '../../contexts/UserContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import QuizPlayer from './QuizPlayer';
 import styles from './ArenaQython.module.css';
 import RankingLeague from './RankingLeague';
@@ -40,18 +41,21 @@ const ARENA_ALLOWED_PLANS = ['resident', 'staff', 'specialist'];
 // Mini-hub de um exame inscrito: posição nacional + ações + ranking (preview/completo).
 // Definido FORA do ArenaQython — componente estável entre renders do pai (estado próprio
 // de ranking/expansão não pode resetar a cada render).
-const ExamHubCard = ({ exam, currentUserDisplay, refreshTick, onPlay, onChallenge, onOvertake, onUnenroll }) => {
+// `competitive` = há disputa entre usuários (SaaS). Numa instalação local não há com quem
+// disputar: o card fica só com o simulado e a saída.
+const ExamHubCard = ({ exam, competitive, currentUserDisplay, refreshTick, onPlay, onChallenge, onOvertake, onUnenroll }) => {
     const { t } = useTranslation();
     const [ranking, setRanking] = useState(null);
     const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
+        if (!competitive) return undefined;
         let alive = true;
         getExamRanking(exam.exam_code)
             .then(res => { if (alive) setRanking(res?.ranking_data || []); })
             .catch(() => { if (alive) setRanking([]); });
         return () => { alive = false; };
-    }, [exam.exam_code, refreshTick]);
+    }, [exam.exam_code, refreshTick, competitive]);
 
     const myEntry = ranking?.find(r => r.isRealUser && r.name === currentUserDisplay) || null;
     const total = ranking ? ranking.length : 0;
@@ -65,7 +69,7 @@ const ExamHubCard = ({ exam, currentUserDisplay, refreshTick, onPlay, onChalleng
                     <h3>{t(exam.title_key)}</h3>
                     <span className={styles.examCountry}>{exam.country}</span>
                 </div>
-                {myEntry ? (
+                {!competitive ? null : myEntry ? (
                     <div className={styles.examPosition}>
                         <span className={styles.examPositionRank}>
                             #{myEntry.rank} <small>{t('rankOfTotal', { total })}</small>
@@ -84,21 +88,25 @@ const ExamHubCard = ({ exam, currentUserDisplay, refreshTick, onPlay, onChalleng
                 <button className={styles.playButtonWide} onClick={onPlay}>
                     <FontAwesomeIcon icon={faPlay} /> {t('startQuiz')}
                 </button>
-                <button className={styles.challengeButtonWide} onClick={onChallenge}>
-                    <FontAwesomeIcon icon={faUserFriends} /> {t('challenge')}
-                </button>
-                <button
-                    className={styles.rankToggle}
-                    onClick={() => setExpanded(v => !v)}
-                    aria-expanded={expanded}
-                >
-                    {t('ranking')} <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} />
-                </button>
+                {competitive && (
+                    <>
+                        <button className={styles.challengeButtonWide} onClick={onChallenge}>
+                            <FontAwesomeIcon icon={faUserFriends} /> {t('challenge')}
+                        </button>
+                        <button
+                            className={styles.rankToggle}
+                            onClick={() => setExpanded(v => !v)}
+                            aria-expanded={expanded}
+                        >
+                            {t('ranking')} <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} />
+                        </button>
+                    </>
+                )}
                 <button className={styles.leaveButton} onClick={onUnenroll} title={t('leave')}>
                     <FontAwesomeIcon icon={faSignOutAlt} />
                 </button>
             </div>
-            {ranking === null ? (
+            {!competitive ? null : ranking === null ? (
                 <InlineLoading size={40} />
             ) : (
                 <RankingLeague
@@ -116,6 +124,11 @@ const ArenaQython = () => {
     const { t } = useTranslation();
     const { addNotification } = useNotification();
     const { user } = useUser();
+    const { config } = usePublicConfig();
+    // Ranking, desafios e temporada precisam de um servidor central com todos os
+    // usuários: só existem no SaaS. Sem cobrança, a Arena inteira é liberada.
+    const competitive = config?.edition === 'hosted';
+    const billingEnabled = Boolean(config?.billing_enabled);
     const [activeSimuladoJob, setActiveSimuladoJob] = useState(null);
     const [availableExams, setAvailableExams] = useState([]);
     const [enrolledExamCodes, setEnrolledExamCodes] = useState([]);
@@ -129,7 +142,7 @@ const ArenaQython = () => {
     const [refreshTick, setRefreshTick] = useState(0);
 
     // Check if user has Arena access (plan-based or admin)
-    const hasArenaAccess = ARENA_ALLOWED_PLANS.includes(user?.subscription_plan) || user?.is_admin;
+    const hasArenaAccess = !billingEnabled || ARENA_ALLOWED_PLANS.includes(user?.subscription_plan) || user?.is_admin;
     const currentUserDisplay = user?.username ? `@${user.username}` : user?.full_name;
 
     const fetchData = useCallback(async () => {
@@ -247,7 +260,7 @@ const ArenaQython = () => {
         <div className={`${styles.catalogSection} ${isHero ? styles.catalogHero : ''}`}>
             <div className={styles.catalogHeader}>
                 <FontAwesomeIcon icon={faGlobe} className={styles.catalogIcon} />
-                <h3>{t('catalogHeroTitle')}</h3>
+                <h3>{competitive ? t('catalogHeroTitle') : t('catalogHeroTitleLocal', 'Escolha o concurso que você vai prestar')}</h3>
                 {!isHero && (
                     <button
                         className={styles.catalogClose}
@@ -297,8 +310,8 @@ const ArenaQython = () => {
                 >
                     <FontAwesomeIcon icon={faTrophy} className={styles.modeIcon} />
                     <span className={styles.modeText}>
-                        <span className={styles.modeTitle}>{t('myRankings')}</span>
-                        <span className={styles.modeSub}>{t('arenaModeLigasSub')}</span>
+                        <span className={styles.modeTitle}>{competitive ? t('myRankings') : t('arenaSimuladosTitle', 'Simulados')}</span>
+                        <span className={styles.modeSub}>{competitive ? t('arenaModeLigasSub') : t('arenaModeSimuladosSub', 'Questões no estilo de cada prova')}</span>
                     </span>
                 </button>
                 <button
@@ -320,7 +333,7 @@ const ArenaQython = () => {
                     ) : (
                         <div className={styles.rankingsView}>
                             {/* Season Banner — a temporada pertence à disputa */}
-                            {currentSeason && (
+                            {competitive && currentSeason && (
                                 <div className={styles.seasonBanner}>
                                     <div className={styles.seasonInfo}>
                                         <FontAwesomeIcon icon={faCalendarAlt} className={styles.seasonIcon} />
@@ -346,8 +359,8 @@ const ArenaQython = () => {
                                 <div className={`${styles.xpProfileCard} ${styles.xpEmptyCard}`}>
                                     <span className={styles.xpEmptyIcon} aria-hidden="true">🏁</span>
                                     <div className={styles.xpEmptyInfo}>
-                                        <span className={styles.xpEmptyTitle}>{t('arenaXpEmptyTitle')}</span>
-                                        <span className={styles.xpEmptyDesc}>{t('arenaXpEmptyDesc')}</span>
+                                        <span className={styles.xpEmptyTitle}>{competitive ? t('arenaXpEmptyTitle') : t('arenaXpEmptyTitleLocal', 'Comece um simulado')}</span>
+                                        <span className={styles.xpEmptyDesc}>{competitive ? t('arenaXpEmptyDesc') : t('arenaXpEmptyDescLocal', 'Complete um simulado para ganhar seus primeiros XP.')}</span>
                                     </div>
                                 </div>
                             )}
@@ -386,6 +399,7 @@ const ArenaQython = () => {
                                             <ExamHubCard
                                                 key={exam.exam_code}
                                                 exam={exam}
+                                                competitive={competitive}
                                                 currentUserDisplay={currentUserDisplay}
                                                 refreshTick={refreshTick}
                                                 onPlay={() => handleStartQuiz(exam.exam_code, exam.exam_code, exam.language)}

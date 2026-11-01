@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShieldAlt } from '@fortawesome/free-solid-svg-icons';
 import { API_URL as API_BASE_URL } from '../../config';
 import LatreoVerificationModal from './LatreoVerificationModal';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 // Ocupação é texto localizado (sem enum); normaliza p/ decidir o fluxo Latreo:
 // estudante reabre o fluxo acadêmico (kind=student), os demais o de registro (médico).
@@ -23,6 +24,7 @@ export default function LatreoVerifyButton({ className, style, children, onDone 
   const { t, i18n } = useTranslation();
   const { addNotification } = useNotification();
   const [open, setOpen] = useState(false);
+  const { config } = usePublicConfig();
 
   const occ = (user?.occupation || '').trim().toLowerCase();
   const kind = STUDENT_OCCUPATIONS.includes(occ) ? 'student' : 'doctor';
@@ -57,6 +59,9 @@ export default function LatreoVerifyButton({ className, style, children, onDone 
       addNotification(t('verifyProcessing', 'Verificação em processamento. Suas funções serão liberadas em instantes.'), 'info');
     }
   };
+
+  // Sem o Lastreo configurado nesta instalação não há verificação a oferecer.
+  if (!config?.registration?.professional_verification) return null;
 
   return (
     <>

@@ -1,0 +1,189 @@
+/* TermsAcceptance.module.css - tela de aceite do termo de uso (bloqueia o app) */
+
+.container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a14 0%, #121225 100%);
+    color: white;
+    padding: 24px 16px;
+    box-sizing: border-box;
+}
+
+.card {
+    background: linear-gradient(145deg, #1a1d2e 0%, #12151f 100%);
+    padding: 32px;
+    border-radius: 20px;
+    max-width: 720px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    box-sizing: border-box;
+}
+
+.header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.icon {
+    font-size: 2rem;
+    color: #bb86fc;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.header h2 {
+    margin: 0 0 6px 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.header p {
+    margin: 0;
+    color: #a0a0b0;
+    line-height: 1.5;
+}
+
+.body {
+    flex: 1;
+    min-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: #d0d0dc;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.body:focus-visible {
+    outline: 2px solid #bb86fc;
+    outline-offset: 2px;
+}
+
+.checkRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 20px 0 0 0;
+    cursor: pointer;
+    color: #e0e0e8;
+}
+
+.checkRow input {
+    width: 18px;
+    height: 18px;
+    accent-color: #7c4dff;
+    flex-shrink: 0;
+}
+
+.error {
+    color: #ff8a80;
+    margin: 12px 0 0 0;
+    font-size: 0.9rem;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btnPrimary,
+.btnSecondary {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btnPrimary {
+    background: linear-gradient(135deg, #6200ea 0%, #7c4dff 100%);
+    color: white;
+    border: none;
+    min-width: 190px;
+}
+
+.btnPrimary:hover:not(:disabled) {
+    box-shadow: 0 8px 25px rgba(98, 0, 234, 0.4);
+}
+
+.btnSecondary {
+    background: transparent;
+    color: #a0a0b0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btnSecondary:hover:not(:disabled) {
+    color: white;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+    .card {
+        padding: 20px;
+    }
+
+    .actions {
+        flex-direction: column-reverse;
+    }
+
+    .btnPrimary,
+    .btnSecondary {
+        width: 100%;
+    }
+}
+
+html[data-theme='light'] .container {
+    background: linear-gradient(135deg, #f4f4fa 0%, #e9e9f3 100%);
+    color: #1a1a2e;
+}
+
+html[data-theme='light'] .card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 40px -16px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .header p {
+    color: #5a5a6e;
+}
+
+html[data-theme='light'] .body {
+    background: #f7f7fb;
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #2a2a3e;
+}
+
+html[data-theme='light'] .checkRow {
+    color: #2a2a3e;
+}
+
+html[data-theme='light'] .btnSecondary {
+    color: #5a5a6e;
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='light'] .btnSecondary:hover:not(:disabled) {
+    color: #1a1a2e;
+    border-color: rgba(0, 0, 0, 0.35);
+}

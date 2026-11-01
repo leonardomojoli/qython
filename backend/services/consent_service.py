@@ -134,6 +134,16 @@ async def check_active(
     return (await get_active_consent(db, user_id, consent_type)) is not None
 
 
+async def terms_pending(db: AsyncSession, user_id: int) -> bool:
+    """True quando há um termo de uso vigente que o usuário ainda não aceitou
+    (primeiro acesso ou versão nova). Sem termo publicado, nada a aceitar."""
+    document = await get_active_document(db, models.ConsentDocumentType.terms_of_use)
+    if document is None:
+        return False
+    consent = await get_active_consent(db, user_id, models.ConsentDocumentType.terms_of_use)
+    return consent is None or consent.version != document.version
+
+
 async def list_user_consents(
     db: AsyncSession,
     user_id: int,

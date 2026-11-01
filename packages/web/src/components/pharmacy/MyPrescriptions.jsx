@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faQrcode, faCopy, faPaperPlane, faEye, faCheck,
-  faFilePrescription, faExternalLinkAlt, faSpinner
+  faFilePrescription, faExternalLinkAlt, faSpinner, faShareFromSquare
 } from '@fortawesome/free-solid-svg-icons';
 import { useNotification } from '../../contexts/NotificationContext';
+import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import {
   getPrescriptions, createPrescriptionShareLink,
-  getPrescriptionPharmacySends
+  getPrescriptionPharmacySends, getPrescriptionPdf
 } from '../../api';
 
 const STATUS_LABELS = {
@@ -28,6 +29,10 @@ function MyPrescriptions() {
   const [expandedRx, setExpandedRx] = useState(null);
   const [pharmacySends, setPharmacySends] = useState({});
   const [sharingId, setSharingId] = useState(null);
+  // Link público e envio para farmácias parceiras dependem do servidor central do SaaS.
+  // Na instalação local a receita vai ao paciente como o próprio PDF.
+  const { config } = usePublicConfig();
+  const isHosted = config?.edition === 'hosted';
 
   const fetchPrescriptions = useCallback(async () => {
     try {
@@ -60,7 +65,40 @@ function MyPrescriptions() {
     }
   };
 
+  // Folha de compartilhar do sistema (WhatsApp, e-mail...) quando o navegador aceita
+  // arquivo; senão, baixa o PDF para o médico anexar onde quiser.
+  const handleSharePdf = async (rxId) => {
+    setSharingId(rxId);
+    try {
+      const blob = await getPrescriptionPdf(rxId);
+      const file = new File([blob], `receita_${rxId}.pdf`, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: `${t('prescription')} #${rxId}` });
+        } catch (err) {
+          if (err?.name !== 'AbortError') throw err;
+        }
+      } else {
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        addNotification(t('prescriptionPdfDownloaded', 'PDF da receita baixado.'), 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      addNotification(t('error'), 'error');
+    } finally {
+      setSharingId(null);
+    }
+  };
+
   const handleToggleExpand = async (rxId) => {
+    if (!isHosted) return;
     if (expandedRx === rxId) {
       setExpandedRx(null);
       return;
@@ -129,15 +167,26 @@ function MyPrescriptions() {
 
           {/* Actions */}
           <div className={styles.rxActions}>
-            <button
-              className={styles.actionBtn}
-              onClick={() => handleGenerateShareLink(rx.id)}
-              disabled={sharingId === rx.id}
-              title={t('generateShareLink')}
-            >
-              <FontAwesomeIcon icon={sharingId === rx.id ? faSpinner : faQrcode} spin={sharingId === rx.id} />
-              <span>{t('shareLink')}</span>
-            </button>
+            {isHosted ? (
+              <button
+                className={styles.actionBtn}
+                onClick={() => handleGenerateShareLink(rx.id)}
+                disabled={sharingId === rx.id}
+                title={t('generateShareLink')}
+              >
+                <FontAwesomeIcon icon={sharingId === rx.id ? faSpinner : faQrcode} spin={sharingId === rx.id} />
+                <span>{t('shareLink')}</span>
+              </button>
+            ) : (
+              <button
+                className={styles.actionBtn}
+                onClick={() => handleSharePdf(rx.id)}
+                disabled={sharingId === rx.id}
+              >
+                <FontAwesomeIcon icon={sharingId === rx.id ? faSpinner : faShareFromSquare} spin={sharingId === rx.id} />
+                <span>{t('sharePrescriptionPdf', 'Compartilhar PDF')}</span>
+              </button>
+            )}
           </div>
 
           {/* Expanded: pharmacy sends */}

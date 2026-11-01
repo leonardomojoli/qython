@@ -20,10 +20,13 @@ logger = logging.getLogger("qython_logger")
 
 # Initialize Firebase Admin SDK
 _firebase_initialized = False
+# Sem credenciais o Firebase é só opcional (instalação local); avisa uma vez, não a
+# cada tela de cadastro que pergunta se ele existe.
+_missing_credentials_logged = False
 
 def _initialize_firebase():
     """Initialize Firebase Admin SDK with service account credentials."""
-    global _firebase_initialized
+    global _firebase_initialized, _missing_credentials_logged
     
     if _firebase_initialized or firebase_admin._apps:
         return True
@@ -38,10 +41,12 @@ def _initialize_firebase():
             _firebase_initialized = True
             return True
         else:
-            logger.warning(
-                f"Arquivo de credenciais Firebase não encontrado em: {cred_path}. "
-                "A validação de telefone não funcionará até que você configure as credenciais."
-            )
+            if not _missing_credentials_logged:
+                logger.info(
+                    f"Firebase não configurado ({cred_path} ausente): login com Google "
+                    "e verificação de telefone por SMS ficam desligados."
+                )
+                _missing_credentials_logged = True
             return False
     except Exception as e:
         logger.error(f"Erro ao inicializar Firebase Admin: {e}")

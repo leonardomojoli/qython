@@ -36,10 +36,6 @@ PII_PATTERNS = {
     "email": re.compile(
         r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     ),
-    # International phone: +XX or (XX) followed by 7-11 digits with optional separators
-    "phone": re.compile(
-        r'(?:\+\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{3,5}[\s.-]?\d{3,4}\b'
-    ),
 
     # --- BRAZIL ---
     # CPF: 000.000.000-00  (with or without punctuation)
@@ -162,6 +158,14 @@ PII_PATTERNS = {
         r'Mat(?:rícula)?\.?\s*(?:Méd(?:ica)?|Prof(?:issional)?)'
         r')[\s.:]*\d{4,8}\b',
         re.IGNORECASE
+    ),
+
+    # --- GENÉRICO, POR ÚLTIMO ---
+    # O padrão de telefone casa qualquer sequência de 9 a 13 dígitos; rodando antes,
+    # comia o CPF ("123.456.789-09" virava "[PHONE]-09") e outros documentos.
+    # International phone: +XX or (XX) followed by 7-11 digits with optional separators
+    "phone": re.compile(
+        r'(?:\+\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{3,5}[\s.-]?\d{3,4}\b'
     ),
 }
 

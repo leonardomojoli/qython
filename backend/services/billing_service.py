@@ -284,7 +284,12 @@ async def debit_dracmas_for_feature(user: User, feature_name: str, db: AsyncSess
     Usa FIFO (First In, First Out) - dracmas mais antigos são consumidos primeiro.
     Raises HTTPException 402 se saldo insuficiente.
     Admins são isentos de cobrança.
+    Sem cobrança (edição local), não debita nada: este é o único ponto por onde as
+    features cobram, então desligá-lo aqui libera todas.
     """
+    if not Config.BILLING_ENABLED:
+        return
+
     cost = FEATURE_COSTS.get(feature_name)
     if cost is None:
         logger.warning(f"Feature desconhecida para cobrança: {feature_name}")

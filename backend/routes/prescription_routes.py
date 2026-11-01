@@ -261,30 +261,33 @@ async def get_prescription_pdf(
     if not patient:
          raise HTTPException(status_code=404, detail="Patient data associated with prescription not found")
 
-    # 3. Lazy-create share token for QR code
+    # 3. Lazy-create share token for QR code. Só no SaaS: o QR leva à página pública
+    # da receita, que numa instalação local estaria num servidor que o paciente não
+    # alcança. Lá a receita vai ao paciente como o próprio PDF.
     share_token = None
-    try:
-        share_result = await db.execute(
-            select(PrescriptionShare).where(
-                PrescriptionShare.prescription_id == prescription_id,
-                PrescriptionShare.status == 'active',
+    if Config.EDITION == "hosted":
+        try:
+            share_result = await db.execute(
+                select(PrescriptionShare).where(
+                    PrescriptionShare.prescription_id == prescription_id,
+                    PrescriptionShare.status == 'active',
+                )
             )
-        )
-        existing_share = share_result.scalar_one_or_none()
-        if existing_share:
-            share_token = existing_share.share_token
-        else:
-            token = uuid.uuid4().hex
-            share = PrescriptionShare(
-                prescription_id=prescription_id,
-                share_token=token,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=30),
-            )
-            db.add(share)
-            await db.commit()
-            share_token = token
-    except Exception as e:
-        logger.warning(f"Failed to create share token for QR code: {e}")
+            existing_share = share_result.scalar_one_or_none()
+            if existing_share:
+                share_token = existing_share.share_token
+            else:
+                token = uuid.uuid4().hex
+                share = PrescriptionShare(
+                    prescription_id=prescription_id,
+                    share_token=token,
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                )
+                db.add(share)
+                await db.commit()
+                share_token = token
+        except Exception as e:
+            logger.warning(f"Failed to create share token for QR code: {e}")
 
     # 4. Gerar PDF usando o serviço
     try:
@@ -318,6 +321,12 @@ async def create_share_link(
     current_user: User = Depends(get_current_active_user)
 ):
     """Generate a shareable link (UUID token, 30-day expiration) for a prescription."""
+    if Config.EDITION != "hosted":
+        # O link aponta para este servidor; fora do SaaS o paciente não o alcança.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nesta instalação a receita é compartilhada como PDF.",
+        )
     # Verify prescription belongs to doctor
     result = await db.execute(
         select(Prescription).where(
