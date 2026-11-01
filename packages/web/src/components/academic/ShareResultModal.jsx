@@ -7,7 +7,7 @@ import { generateShareCard } from '../../api';
 import styles from './ShareResultModal.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faTimes, faDownload, faLinkedin, faTwitter,
+    faTimes, faDownload,
     faSpinner, faShareAlt, faCopy, faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { faLinkedin as faLinkedinBrand, faTwitter as faTwitterBrand } from '@fortawesome/free-brands-svg-icons';

@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight, faSpinner, faEnvelope, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from '../../firebaseConfig';
+import { auth, isFirebaseConfigured } from '../../firebaseConfig';
 
 function Login({ setIsLoggedIn }) {
   const { t } = useTranslation();
@@ -252,24 +252,28 @@ function Login({ setIsLoggedIn }) {
             </button>
           )}
 
-          {/* GOOGLE SIGN-IN BUTTON */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className={styles.googleButton}
-            disabled={isGoogleLoading || isLoading}
-          >
-            {isGoogleLoading ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faGoogle} />
-            )}
-            <span>{t('continueWithGoogle', 'Continuar com Google')}</span>
-          </button>
+          {/* GOOGLE SIGN-IN BUTTON — só com Firebase configurado */}
+          {isFirebaseConfigured && (
+            <>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className={styles.googleButton}
+                disabled={isGoogleLoading || isLoading}
+              >
+                {isGoogleLoading ? (
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                ) : (
+                  <FontAwesomeIcon icon={faGoogle} />
+                )}
+                <span>{t('continueWithGoogle', 'Continuar com Google')}</span>
+              </button>
 
-          <div className={styles.divider}>
-            <span>{t('or', 'ou')}</span>
-          </div>
+              <div className={styles.divider}>
+                <span>{t('or', 'ou')}</span>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className={styles.inputGroup}>

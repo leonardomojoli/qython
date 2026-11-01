@@ -18,13 +18,19 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Firebase é opcional: só existe login com Google e verificação por SMS quando
+// o projeto tem as chaves VITE_FIREBASE_*. Inicializar sem elas lança
+// auth/invalid-api-key no import, e como Login e Register são importados no
+// carregamento do app, a página inteira ficava em branco.
+export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-// Initialize Firebase Auth
-export const auth = getAuth(app);
+const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+
+// null quando o Firebase não está configurado; quem usa deve checar
+// isFirebaseConfigured antes.
+export const auth = app ? getAuth(app) : null;
 
 // Configure language to user's device language for SMS messages
-auth.useDeviceLanguage();
+if (auth) auth.useDeviceLanguage();
 
 export default app;

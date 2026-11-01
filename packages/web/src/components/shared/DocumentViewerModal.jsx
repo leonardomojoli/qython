@@ -106,7 +106,10 @@ const DocumentViewerModal = ({ isOpen, onClose, doc }) => {
           </div>
         </div>
         <div className={styles.modalBody} ref={bodyRef}>
+          {/* suspense={false}: o react-pdf 11 liga Suspense por padrão, e aí as
+              props loading/error abaixo deixam de valer. */}
           <Document
+            suspense={false}
             file={fileWithAuth}
             onLoadSuccess={onDocumentLoadSuccess}
             loading={<p>{t('loadingDocument')}</p>}

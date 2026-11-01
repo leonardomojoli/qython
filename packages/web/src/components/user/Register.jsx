@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUser } from '../../contexts/UserContext';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from '../../firebaseConfig';
+import { auth, isFirebaseConfigured } from '../../firebaseConfig';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight, faCheck, faTicketAlt, faClock, faShieldAlt, faEye, faEyeSlash, faEnvelopeOpenText, faSpinner, faCircle } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
@@ -332,11 +332,15 @@ function Register({ setIsLoggedIn }) {
               <h2 className={styles.formTitle}>{t('createAccount')}</h2>
               <p className={styles.formSubtitle}>{t('fillDataToStart')}</p>
 
-              <button type="button" onClick={handleGoogleSignup} className={styles.googleButton} disabled={isGoogleLoading}>
-                {isGoogleLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <><FontAwesomeIcon icon={faGoogle} /> {t('continueWithGoogle')}</>}
-              </button>
+              {isFirebaseConfigured && (
+                <>
+                  <button type="button" onClick={handleGoogleSignup} className={styles.googleButton} disabled={isGoogleLoading}>
+                    {isGoogleLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <><FontAwesomeIcon icon={faGoogle} /> {t('continueWithGoogle')}</>}
+                  </button>
 
-              <div className={styles.divider}>{t('or')}</div>
+                  <div className={styles.divider}>{t('or')}</div>
+                </>
+              )}
 
               <form onSubmit={handleFormSubmit}>
                 <div className={styles.inputGroup}>

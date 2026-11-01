@@ -71,7 +71,7 @@ def get_embedder():
         _embedder = SentenceTransformer(EMBED_MODEL, device="cpu")
         logger.info(
             "Embedder carregado (dim=%s).",
-            _embedder.get_sentence_embedding_dimension(),
+            _embedder.get_embedding_dimension(),
         )
     return _embedder
 

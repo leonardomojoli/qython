@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -19,10 +19,18 @@ from .models import User
 logger = logging.getLogger("qython_logger")
 
 # --- Configuração de Hashing de Senha ---
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
+# bcrypt direto, sem passlib: o passlib está abandonado e quebra com bcrypt >= 4.1.
+# O formato do hash ($2b$12$...) é o mesmo, então os hashes existentes continuam
+# valendo sem migração.
+#
+# O bcrypt só considera os primeiros 72 bytes da senha. Até a versão 4 a biblioteca
+# truncava em silêncio, e todo hash existente foi calculado assim; a 5.0 passou a
+# lançar ValueError. Truncar aqui reproduz o comportamento antigo exatamente.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _bcrypt_input(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 # --- Configuração de JWT ---
 SECRET_KEY = Config.JWT_SECRET_KEY
@@ -37,11 +45,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica se a senha em texto plano corresponde ao hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(_bcrypt_input(plain_password), hashed_password.encode("utf-8"))
+    except ValueError:
+        # Hash malformado ou de outro esquema. O passlib lançava aqui e o login
+        # respondia 500; recusar a senha é o comportamento correto.
+        return False
 
 def get_password_hash(password: str) -> str:
-    """Gera o hash de uma senha usando o esquema padrão (bcrypt)."""
-    return pwd_context.hash(password)
+    """Gera o hash de uma senha (bcrypt, custo 12, como antes)."""
+    return bcrypt.hashpw(_bcrypt_input(password), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 # --- Funções de Token ---
 

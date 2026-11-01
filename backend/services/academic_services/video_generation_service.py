@@ -1,11 +1,10 @@
 import os
+import shutil
+import subprocess
+import tempfile
 import uuid
 import logging
 from typing import List, Tuple, Optional, Dict
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
-from moviepy.video.fx.all import resize
-from PIL import Image
-import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ...models import VideoLessonJob
@@ -15,6 +14,46 @@ from . import slide_renderer_service
 from . import subtitle_service
 
 logger = logging.getLogger("qython_logger")
+
+# O vídeo é montado chamando o ffmpeg direto. Antes passava pelo moviepy, que só
+# fazia isto — juntar slides gerados pelo próprio Qython com a narração — e cuja
+# série 2.x exige Pillow < 12. O Pillow decodifica toda imagem que o usuário envia,
+# então mantê-lo atualizado vale mais que a conveniência do moviepy.
+FFMPEG_TIMEOUT_SECONDS = 30 * 60
+
+
+def _ffmpeg_bin(name: str) -> str:
+    """Caminho do ffmpeg/ffprobe: FFMPEG_BINARY/FFPROBE_BINARY ou o do PATH."""
+    path = os.environ.get(f"{name.upper()}_BINARY") or shutil.which(name)
+    if not path:
+        raise RuntimeError(f"{name} não encontrado: instale o ffmpeg ou defina {name.upper()}_BINARY.")
+    return path
+
+
+def _run(cmd: List[str]) -> str:
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_SECONDS)
+    if result.returncode != 0:
+        # O ffmpeg escreve o diagnóstico no fim do stderr.
+        raise RuntimeError(f"{os.path.basename(cmd[0])} falhou: {result.stderr.strip()[-800:]}")
+    return result.stdout
+
+
+def _audio_duration_seconds(path: str) -> float:
+    out = _run([_ffmpeg_bin("ffprobe"), "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", path])
+    return float(out.strip())
+
+
+def _write_concat_list(image_paths: List[str], durations: List[float], list_path: str) -> None:
+    """Lista do concat demuxer: cada imagem com sua duração. O ffmpeg ignora a
+    duração do último item, então ele é repetido no fim — sem isso o último slide
+    duraria um único quadro."""
+    def quote(p: str) -> str:
+        return "'" + os.path.abspath(p).replace("'", "'\\''") + "'"
+    with open(list_path, "w", encoding="utf-8") as f:
+        for path, duration in zip(image_paths, durations):
+            f.write(f"file {quote(path)}\nduration {duration:.3f}\n")
+        f.write(f"file {quote(image_paths[-1])}\n")
 
 # Quality presets for video output
 QUALITY_PRESETS = {
@@ -128,9 +167,6 @@ def create_video_from_slideshow(
 
     rendered_slide_paths = []
     temp_files_to_clean = []
-    audio_clip = None
-    final_video = None
-    video_clips = []
     srt_path = None
 
     try:
@@ -157,8 +193,7 @@ def create_video_from_slideshow(
         if not os.path.exists(full_audio_path):
             raise FileNotFoundError(f"Audio file not found at {full_audio_path}")
 
-        audio_clip = AudioFileClip(full_audio_path)
-        audio_duration = audio_clip.duration
+        audio_duration = _audio_duration_seconds(full_audio_path)
 
         if audio_duration == 0:
             raise ValueError("Audio clip has zero duration.")
@@ -167,44 +202,37 @@ def create_video_from_slideshow(
         # 3. Calculate variable slide durations based on content weight
         slide_durations = calculate_slide_durations(slides, audio_duration)
 
-        # 4. Create video clips from rendered slides with variable durations
-        logger.info("Creating video clips with variable durations...")
-        for i, image_path in enumerate(rendered_slide_paths):
-            duration = slide_durations[i] if i < len(slide_durations) else audio_duration / len(rendered_slide_paths)
-            clip = ImageClip(image_path).set_duration(duration)
-
-            # Resize to target quality
-            if clip.size != [target_width, target_height]:
-                clip = resize(clip, newsize=(target_width, target_height))
-            video_clips.append(clip)
-
-        logger.info(f"Created {len(video_clips)} video clips with variable durations.")
-
-        # 5. Concatenate clips and add audio
-        logger.info("Concatenating video clips and adding audio...")
-        final_video = concatenate_videoclips(video_clips, method="compose")
-        final_video = final_video.set_audio(audio_clip)
-
-        # 6. Prepare output directory
+        # 4. Prepare output directory
         output_dir = os.path.join(Config.PERMANENT_UPLOAD_FOLDER, 'video_lessons')
         os.makedirs(output_dir, exist_ok=True)
 
         unique_id = f"{user_id}_{uuid.uuid4()}"
-
-        # 7. Write the final video file
         filename = f"video_lesson_{unique_id}.mp4"
         filepath = os.path.join(output_dir, filename)
 
+        # 5. Slides com durações variáveis + narração, numa única passada do ffmpeg
+        durations = [
+            slide_durations[i] if i < len(slide_durations) else audio_duration / len(rendered_slide_paths)
+            for i in range(len(rendered_slide_paths))
+        ]
+        fd, concat_list = tempfile.mkstemp(suffix=".txt", prefix="slides_")
+        os.close(fd)
+        temp_files_to_clean.append(concat_list)
+        _write_concat_list(rendered_slide_paths, durations, concat_list)
+
         logger.info(f"Writing final video to {filepath}...")
-        final_video.write_videofile(
+        _run([
+            _ffmpeg_bin("ffmpeg"), "-y", "-loglevel", "error",
+            "-f", "concat", "-safe", "0", "-i", concat_list,
+            "-i", full_audio_path,
+            # yuv420p: o padrão que todo player (inclusive navegador e celular) toca
+            "-vf", f"scale={target_width}:{target_height},fps=24,format=yuv420p",
+            "-c:v", "libx264", "-preset", "medium", "-b:v", target_bitrate,
+            "-c:a", "aac",
+            "-threads", "4",
+            "-shortest",
             filepath,
-            codec="libx264",
-            audio_codec="aac",
-            fps=24,
-            threads=4,
-            preset="medium",
-            bitrate=target_bitrate
-        )
+        ])
 
         logger.info(f"Video lesson saved successfully at: {filepath}")
 
@@ -242,15 +270,7 @@ def create_video_from_slideshow(
         raise
     finally:
         # 9. Clean up resources
-        logger.info("Cleaning up video generation resources.")
-        if audio_clip:
-            audio_clip.close()
-        if final_video:
-            final_video.close()
-        for clip in video_clips:
-            clip.close()
-
-        logger.info(f"Cleaning up {len(temp_files_to_clean)} temporary slide images.")
+        logger.info(f"Cleaning up {len(temp_files_to_clean)} temporary files.")
         for f in temp_files_to_clean:
             try:
                 if os.path.exists(f):

@@ -139,6 +139,7 @@ async def lifespan(app: FastAPI):
     from .services.arena_service import seed_seasons
     from .services.server_monitor import start_server_monitor, stop_server_monitor
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
+    from .seeds.copilot_prompts import seed_copilot_prompts
     from .database import AsyncSessionLocal
 
     # Create tables is now async
@@ -167,6 +168,15 @@ async def lifespan(app: FastAPI):
                     logger.info(f"Seeded {meds_added} medications, {interactions_added} drug interactions")
             except Exception as e:
                 logger.error(f"Error seeding pharmacy data: {e}")
+
+            try:
+                prompts_added = await seed_copilot_prompts(db)
+                if prompts_added:
+                    logger.info(f"Seeded {prompts_added} copilot prompts")
+            except Exception as e:
+                # rollback para não deixar a sessão em erro para o unlock abaixo
+                await db.rollback()
+                logger.error(f"Error seeding copilot prompts: {e}")
 
             await db.execute(text("SELECT pg_advisory_unlock(100001)"))
 

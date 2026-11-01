@@ -21,6 +21,20 @@ load_dotenv(dotenv_path=env_path)
 if not os.getenv('DATABASE_URL'):
     load_dotenv() 
 
+def sync_database_url(url: str) -> str:
+    """URL do Postgres para engine SÍNCRONA (migrations, bootstrap_db), com o driver
+    declarado. A aplicação usa asyncpg (ver database.py); as migrations não podem.
+
+    O driver vai explícito porque o padrão de `postgresql://` muda entre versões do
+    SQLAlchemy: na 2.0 era psycopg2, na 2.1 virou psycopg 3, e confiar no padrão
+    derrubou o boot numa atualização sem nenhuma mudança de código.
+    """
+    for prefix in ("postgresql+asyncpg://", "postgresql+psycopg2://", "postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 class Config:
     # Chave secreta para assinar os JWTs
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')

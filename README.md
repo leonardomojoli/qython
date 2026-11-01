@@ -6,16 +6,16 @@ de estudo, simulados e documentação de consulta — tudo autohospedável.
 
 > *English: Qython is a self-hostable clinical AI platform for physicians and medical
 > students — evidence-grounded copilot with RAG, semantic medical library, study
-> material generation, exam simulation and consultation documentation. Apache-2.0.
+> material generation, exam simulation and consultation documentation. AGPL-3.0.
 > Documentation is primarily in Brazilian Portuguese.*
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
 
 ## Sobre este projeto
 
-O Qython nasceu como um SaaS. Em setembro de 2026 o código foi aberto sob Apache-2.0:
+O Qython nasceu como um SaaS. Em setembro de 2026 o código foi aberto:
 o serviço hospedado foi desligado e o projeto passou a ser distribuído para quem quiser
 rodar por conta própria.
 
@@ -195,6 +195,19 @@ quem opera o sistema.
 
 ## Licença
 
-[Apache License 2.0](LICENSE) — uso comercial permitido, modificação permitida,
-com concessão expressa de patente. Veja [NOTICE](NOTICE) para as dependências de
-terceiros, que têm licenças próprias.
+[GNU AGPL-3.0](LICENSE). Na prática:
+
+- **Usar é livre**, inclusive no consultório, na clínica ou no hospital, e
+  inclusive com fins comerciais.
+- **Modificar é livre.** Se você oferecer uma versão modificada a outras pessoas
+  pela rede — como serviço web, por exemplo —, precisa disponibilizar o
+  código-fonte dessa versão a esses usuários (seção 13 da licença). Melhorias em
+  software clínico continuam abertas, em vez de virarem cópias fechadas.
+- **Sem garantia.** O software é fornecido "como está" (seções 15 e 16).
+- **A licença cobre o código, não o nome.** Versões modificadas não podem se
+  apresentar como "Qython".
+
+Até o commit `e673b26` (24/out/2026) o projeto foi publicado sob Apache-2.0, e
+cópias obtidas naquelas condições continuam sob elas. Veja [NOTICE](NOTICE) para
+o histórico e para as dependências de terceiros, que têm licenças próprias —
+entre elas o PyMuPDF, também AGPL-3.0.
