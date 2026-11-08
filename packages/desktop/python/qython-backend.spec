@@ -64,7 +64,7 @@ hiddenimports += collect_submodules("sqlalchemy.dialects.postgresql")
 hiddenimports += collect_submodules("alembic")
 hiddenimports += [
     "asyncpg", "psycopg", "psycopg_binary", "websockets", "h11", "httptools",
-    "multipart", "jose", "jwt", "bcrypt", "tiktoken_ext.openai_public", "magic",
+    "multipart", "jose", "jwt", "bcrypt", "tiktoken_ext.openai_public",
 ]
 
 excludes = [
@@ -75,6 +75,9 @@ excludes = [
     # Redação de nomes para o Gemini: instalada à parte.
     "presidio_analyzer", "presidio_anonymizer", "spacy", "thinc", "blis",
     "firebase_admin", "cv2",
+    # python-magic precisa da libmagic do sistema (ausente no Windows e no macOS) e o import dele
+    # trava o PyInstaller no Windows. A biblioteca usa services/mime_sniff.py no lugar.
+    "magic",
 ]
 
 a = Analysis(

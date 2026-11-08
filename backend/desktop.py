@@ -107,6 +107,18 @@ def selftest(_args: argparse.Namespace) -> int:
 
         return f"{len(app.routes)} rotas"
 
+    def mime_detection():
+        # Sem libmagic (nunca vai no pacote), a biblioteca valida o upload pelo mime_sniff.
+        from backend.services.academic_services import library_service
+
+        kinds = {
+            library_service.magic.from_buffer(b"%PDF-1.7\n" + b"0" * 64, mime=True),
+            library_service.magic.from_buffer("texto simples".encode(), mime=True),
+        }
+        if kinds != {"application/pdf", "text/plain"}:
+            raise AssertionError(f"detecção de tipo inesperada: {kinds}")
+        return library_service.magic.__name__
+
     def import_chroma():
         import chromadb
 
@@ -145,6 +157,7 @@ def selftest(_args: argparse.Namespace) -> int:
         return "ok"
 
     check("app", import_app)
+    check("mime", mime_detection)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)
