@@ -41,17 +41,24 @@ def _watch_parent(server) -> None:
     server.should_exit = True
 
 
-def _use_bundled_tiktoken() -> None:
-    """Aponta o tiktoken para o vocabulário embutido: sem isso ele o baixaria da internet."""
-    bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "tiktoken_cache")
-    if getattr(sys, "frozen", False) and os.path.isdir(bundled):
-        os.environ.setdefault("TIKTOKEN_CACHE_DIR", bundled)
+def _use_bundled_models() -> None:
+    """Aponta o tiktoken e o embedder para os arquivos embutidos: sem isso cada um baixaria o
+    seu da internet no primeiro uso (e o copiloto e a biblioteca quebrariam sem rede)."""
+    if not getattr(sys, "frozen", False):
+        return
+    base = getattr(sys, "_MEIPASS", "")
+    tiktoken_dir = os.path.join(base, "tiktoken_cache")
+    if os.path.isdir(tiktoken_dir):
+        os.environ.setdefault("TIKTOKEN_CACHE_DIR", tiktoken_dir)
+    onnx_dir = os.path.join(base, "onnx_model", "all-MiniLM-L6-v2")
+    if os.path.isdir(onnx_dir):
+        os.environ.setdefault("QYTHON_ONNX_MODEL_DIR", onnx_dir)
 
 
 def serve(args: argparse.Namespace) -> int:
     import uvicorn
 
-    _use_bundled_tiktoken()
+    _use_bundled_models()
 
     # Antes de importar o app: o schema precisa existir quando o lifespan rodar os
     # seeds, e o alembic reconfigura o logging, que o main.py refaz ao ser importado.
@@ -130,10 +137,18 @@ def selftest(_args: argparse.Namespace) -> int:
 
     def tiktoken_offline():
         # Com o vocabulário embutido, nenhuma requisição é feita (o app pode estar sem rede).
-        _use_bundled_tiktoken()
+        _use_bundled_models()
         import tiktoken
 
         return f"{len(tiktoken.get_encoding('cl100k_base').encode('olá, mundo'))} tokens"
+
+    def onnx_embedder():
+        # O embedder da biblioteca sem torch e sem rede: o modelo vem embutido.
+        _use_bundled_models()
+        from backend.services.academic_services.vector_db_service import get_embeddings_model
+
+        vec = get_embeddings_model().encode(["dor torácica"])
+        return f"{len(vec[0])} dimensões"
 
     def import_chroma():
         import chromadb
@@ -176,6 +191,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("mime", mime_detection)
 
     check("tiktoken", tiktoken_offline)
+    check("onnx_embedder", onnx_embedder)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)

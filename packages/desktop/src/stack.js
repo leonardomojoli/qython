@@ -8,6 +8,8 @@ import { PostgresService } from './postgres.js';
 import { waitForHttp } from './health.js';
 import { pickPort } from './ports.js';
 import { SecretsUnavailableError } from './secrets.js';
+import { processCommand } from './stack-command.js';
+import { LocalChroma } from './chroma.js';
 
 export class KeysMissingError extends Error {
   constructor() {
@@ -22,19 +24,7 @@ export class KeysMissingError extends Error {
 
 /** Como executar o backend: o binário empacotado, ou o código-fonte (desenvolvimento). */
 export function backendCommand(resources, port, env = process.env) {
-  if (env.QYTHON_BACKEND_DEV) {
-    return {
-      command: env.QYTHON_PYTHON || 'python3',
-      args: ['-m', 'backend.desktop', 'serve', '--port', String(port)],
-      cwd: env.QYTHON_BACKEND_DEV,
-    };
-  }
-  const exe = process.platform === 'win32' ? 'qython-backend.exe' : 'qython-backend';
-  return {
-    command: path.join(resources.backend, exe),
-    args: ['serve', '--port', String(port)],
-    cwd: undefined,
-  };
+  return processCommand(resources, ['serve', '--port', String(port)], env);
 }
 
 export class Stack extends EventEmitter {
@@ -56,6 +46,9 @@ export class Stack extends EventEmitter {
     this.extraEnv = o.env ?? {};
     this.makeLlm = o.makeLlm ?? null;
     this.llm = null;
+    this.chroma = null;
+    this.withChroma = o.chroma !== false;
+    this.chromaIdleSeconds = o.chromaIdleSeconds;
     this.pg = null;
     this.backend = null;
     this.webPort = null;
@@ -101,6 +94,15 @@ export class Stack extends EventEmitter {
       logFile: path.join(this.paths.logs, 'postgres.log'),
     });
     await this.pg.start();
+
+    // O Chroma (busca da biblioteca) também sobe sob demanda atrás de uma porta fixa.
+    if (this.withChroma) {
+      this.chroma = new LocalChroma({
+        resources: this.resources, dataPath: this.paths.chroma, settings: this.settings, logger: this.log,
+        idleSeconds: this.chromaIdleSeconds,
+      });
+      await this.chroma.listen([this.webPort, pgPort]);
+    }
 
     // A porta da IA tem que existir antes do backend, que a recebe por variável de ambiente.
     // O llama-server em si só sobe quando alguém pede uma resposta.
@@ -157,6 +159,10 @@ export class Stack extends EventEmitter {
       PYTHONUNBUFFERED: '1',
       PYTHONUTF8: '1',
       PYTHONIOENCODING: 'utf-8',
+      // Nada sai da máquina: o Chroma mandaria telemetria anônima por padrão.
+      ANONYMIZED_TELEMETRY: 'False',
+      HF_HUB_DISABLE_TELEMETRY: '1',
+      ...(this.chroma ? this.chroma.backendEnv() : {}),
       ...(this.llm ? this.llm.backendEnv() : {}),
       ...this.extraEnv,
     };
@@ -168,6 +174,10 @@ export class Stack extends EventEmitter {
       await this.backend.stop();
       this.backend.dispose();
       this.backend = null;
+    }
+    if (this.chroma) {
+      await this.chroma.stop().catch((err) => this.log.error(`Falha ao desligar o Chroma: ${err.message}`));
+      this.chroma = null;
     }
     if (this.llm) {
       await this.llm.stop().catch((err) => this.log.error(`Falha ao desligar a IA: ${err.message}`));
