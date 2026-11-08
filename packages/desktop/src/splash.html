@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e; color: #e8e8f0; -webkit-user-select: none; user-select: none;
+  }
+  h1 { margin: 0 0 6px; font-size: 30px; font-weight: 600; letter-spacing: .5px; }
+  p { margin: 0; opacity: .75; font-size: 14px; text-align: center; padding: 0 28px; min-height: 40px; }
+  .bar { width: 220px; height: 3px; margin-top: 22px; background: #2e2e4a; border-radius: 2px; overflow: hidden; }
+  .bar::after { content: ""; display: block; width: 40%; height: 100%; background: #bb86fc; border-radius: 2px;
+    animation: slide 1.4s ease-in-out infinite; }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+</style>
+</head>
+<body>
+  <h1>Qython</h1>
+  <p id="s">Iniciando…</p>
+  <div class="bar"></div>
+  <script>function setStatus(t){document.getElementById('s').textContent=t}</script>
+</body>
+</html>
