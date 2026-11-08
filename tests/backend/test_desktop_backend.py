@@ -202,7 +202,9 @@ def test_config_com_data_dir_grava_fora_do_codigo():
 def _boot(env):
     """Roda o `serve` do backend e devolve (código, stderr). Se travar, o teste falha com o que o
     processo escreveu até ali, incluindo o despejo de threads do faulthandler (a cada 15 s)."""
-    env = {**env, 'QYTHON_BOOT_DUMP_SECONDS': '15', 'PYTHONPATH': ROOT}
+    # QYTHON_DB_CONNECT_TIMEOUT: no Windows uma porta fechada (127.0.0.1:1) não recusa na hora; sem um
+    # prazo curto o teste esperaria o do sistema operacional (passou de 60 s no CI).
+    env = {**env, 'QYTHON_BOOT_DUMP_SECONDS': '15', 'QYTHON_DB_CONNECT_TIMEOUT': '5', 'PYTHONPATH': ROOT}
     try:
         out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
                              env=env, capture_output=True, text=True, cwd=ROOT, timeout=60)
