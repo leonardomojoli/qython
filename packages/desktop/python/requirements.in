@@ -15,7 +15,6 @@ tiktoken  # Token counting for context window management
 PyMuPDF
 python-pptx
 pytesseract
-python-magic
 fpdf2
 WeasyPrint
 Markdown
