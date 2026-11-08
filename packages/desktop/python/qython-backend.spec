@@ -42,6 +42,13 @@ for folder, dirs, files in os.walk(assets):
         if name.lower().endswith((".png", ".jpg", ".jpeg", ".svg", ".webp", ".ttf", ".otf")):
             datas.append((os.path.join(folder, name), os.path.relpath(folder, ROOT)))
 
+# Vocabulário do tiktoken, para o copiloto não precisar de internet (prepare_tiktoken.py).
+tiktoken_cache = os.path.join(SPECPATH, "tiktoken-cache")
+if not os.path.isdir(tiktoken_cache) or not os.listdir(tiktoken_cache):
+    raise SystemExit("Falta python/tiktoken-cache: rode python/prepare_tiktoken.py antes do PyInstaller.")
+for name in os.listdir(tiktoken_cache):
+    datas.append((os.path.join(tiktoken_cache, name), "tiktoken_cache"))
+
 # --- dependências com arquivos de dados ou importações dinâmicas ---------------------
 binaries = []
 hiddenimports = []

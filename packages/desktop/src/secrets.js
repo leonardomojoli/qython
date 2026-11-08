@@ -34,34 +34,49 @@ export const GENERATORS = {
   QYTHON_TOKEN_KEK: fernetKey,
   JWT_SECRET_KEY: () => hexSecret(32),
   PG_PASSWORD: () => hexSecret(24),
+  LLM_LOCAL_KEY: () => hexSecret(24),
 };
+
+/**
+ * Cofre do sistema pelo safeStorage do Electron, na API assíncrona (a síncrona está
+ * marcada para remoção). No Linux, o backend "basic_text" é só ofuscação (não há chaveiro
+ * no sistema): não conta como cofre.
+ *
+ * @returns {{available():Promise<boolean>, encrypt(s:string):Promise<Buffer>, decrypt(b:Buffer):Promise<{result:string, shouldReEncrypt:boolean}>}}
+ */
+export function electronVault(safeStorage) {
+  return {
+    async available() {
+      if (!(await safeStorage.isAsyncEncryptionAvailable())) return false;
+      try {
+        if (safeStorage.getSelectedStorageBackend() === 'basic_text') return false;
+      } catch {
+        // não é Linux: o método não existe
+      }
+      return true;
+    },
+    encrypt: (text) => safeStorage.encryptStringAsync(text),
+    decrypt: (buf) => safeStorage.decryptStringAsync(buf),
+  };
+}
 
 export class SecretStore {
   /**
    * @param {string} file caminho do secrets.json
-   * @param {{isEncryptionAvailable():boolean, encryptString(s:string):Buffer, decryptString(b:Buffer):string, getSelectedStorageBackend?():string}|null} safeStorage
+   * @param {ReturnType<typeof electronVault>|null} vault null = sem cofre (só arquivo)
    */
-  constructor(file, safeStorage) {
+  constructor(file, vault) {
     this.file = file;
-    this.safe = safeStorage;
+    this.vault = vault;
+    this.mode = null; // 'os' | 'file', conhecido depois de load()
   }
 
   exists() {
     return fs.existsSync(this.file);
   }
 
-  /** O cofre do sistema é de verdade? No Linux, "basic_text" é só ofuscação. */
-  osVaultAvailable() {
-    const s = this.safe;
-    if (!s || !s.isEncryptionAvailable()) return false;
-    if (typeof s.getSelectedStorageBackend === 'function') {
-      try {
-        if (s.getSelectedStorageBackend() === 'basic_text') return false;
-      } catch {
-        // não é Linux: o método não existe
-      }
-    }
-    return true;
+  async osVaultAvailable() {
+    return !!this.vault && (await this.vault.available());
   }
 
   _read() {
@@ -86,28 +101,28 @@ export class SecretStore {
   }
 
   /** Protege o valor conforme o modo registrado no arquivo. */
-  _seal(value, protection) {
-    if (protection === 'os') return this.safe.encryptString(value).toString('base64');
+  async _seal(value, protection) {
+    if (protection === 'os') return (await this.vault.encrypt(value)).toString('base64');
     return value;
   }
 
-  _open(stored, protection) {
-    if (protection === 'os') {
-      if (!this.osVaultAvailable()) {
-        throw new SecretsUnavailableError(
-          'As chaves de criptografia estão no cofre do sistema, que não está disponível agora. ' +
-            'Desbloqueie o chaveiro do sistema e abra o Qython de novo.',
-        );
-      }
-      try {
-        return this.safe.decryptString(Buffer.from(stored, 'base64'));
-      } catch (err) {
-        throw new SecretsUnavailableError(
-          `Não foi possível abrir as chaves de criptografia no cofre do sistema: ${err.message}`,
-        );
-      }
+  /** @returns {Promise<{value:string, reseal:boolean}>} */
+  async _open(stored, protection) {
+    if (protection !== 'os') return { value: stored, reseal: false };
+    if (!(await this.osVaultAvailable())) {
+      throw new SecretsUnavailableError(
+        'As chaves de criptografia estão no cofre do sistema, que não está disponível agora. ' +
+          'Desbloqueie o chaveiro do sistema e abra o Qython de novo.',
+      );
     }
-    return stored;
+    try {
+      const { result, shouldReEncrypt } = await this.vault.decrypt(Buffer.from(stored, 'base64'));
+      return { value: result, reseal: !!shouldReEncrypt };
+    } catch (err) {
+      throw new SecretsUnavailableError(
+        `Não foi possível abrir as chaves de criptografia no cofre do sistema: ${err.message}`,
+      );
+    }
   }
 
   /**
@@ -115,22 +130,29 @@ export class SecretStore {
    * que já existe — nem quando ela não abre: recriar apagaria, na prática, os dados
    * cifrados com a antiga. Nesse caso lança SecretsUnavailableError.
    */
-  load(names = Object.keys(GENERATORS)) {
+  async load(names = Object.keys(GENERATORS)) {
     let doc = this._read();
     const created = doc === null;
     if (created) {
-      doc = { version: 1, protection: this.osVaultAvailable() ? 'os' : 'file', items: {} };
+      doc = { version: 1, protection: (await this.osVaultAvailable()) ? 'os' : 'file', items: {} };
     }
+    this.mode = doc.protection;
     let changed = created;
     const out = {};
     for (const name of names) {
       if (name in doc.items) {
-        out[name] = this._open(doc.items[name], doc.protection);
+        const { value, reseal } = await this._open(doc.items[name], doc.protection);
+        out[name] = value;
+        if (reseal) {
+          // O sistema trocou a chave dele: regrava o mesmo segredo com a chave nova.
+          doc.items[name] = await this._seal(value, doc.protection);
+          changed = true;
+        }
       } else {
         const gen = GENERATORS[name];
         if (!gen) throw new Error(`Segredo desconhecido: ${name}`);
         out[name] = gen();
-        doc.items[name] = this._seal(out[name], doc.protection);
+        doc.items[name] = await this._seal(out[name], doc.protection);
         changed = true;
       }
     }
@@ -138,7 +160,8 @@ export class SecretStore {
     return out;
   }
 
+  /** 'os' (cofre do sistema) ou 'file' (arquivo de uso restrito); conhecido depois de load(). */
   get protection() {
-    return this._read()?.protection ?? (this.osVaultAvailable() ? 'os' : 'file');
+    return this.mode;
   }
 }

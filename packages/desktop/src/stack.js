@@ -46,13 +46,16 @@ export class Stack extends EventEmitter {
    * @param {import('./settings.js').Settings} o.settings
    * @param {ReturnType<import('./logger.js').createLogger>} o.logger
    * @param {(text:string)=>void} [o.onStatus]
-   * @param {object} [o.env] variáveis extras para o backend (testes e IA)
+   * @param {object} [o.env] variáveis extras para o backend (testes)
+   * @param {(apiKey:string)=>import('./llm.js').LocalLlm} [o.makeLlm] cria a IA local (sob demanda)
    */
   constructor(o) {
     super();
     Object.assign(this, { paths: o.paths, resources: o.resources, secrets: o.secrets, settings: o.settings, log: o.logger });
     this.onStatus = o.onStatus ?? (() => {});
     this.extraEnv = o.env ?? {};
+    this.makeLlm = o.makeLlm ?? null;
+    this.llm = null;
     this.pg = null;
     this.backend = null;
     this.webPort = null;
@@ -73,7 +76,7 @@ export class Stack extends EventEmitter {
     const hadSecrets = this.secrets.exists();
     const dbExists = fs.existsSync(path.join(this.paths.pgData, 'PG_VERSION'));
     if (!hadSecrets && dbExists) throw new KeysMissingError();
-    const keys = this.secrets.load();
+    const keys = await this.secrets.load();
     if (this.secrets.protection === 'file') {
       this.log.warn('Sem cofre do sistema: as chaves ficam num arquivo protegido só pelas permissões do usuário.');
     }
@@ -98,6 +101,13 @@ export class Stack extends EventEmitter {
       logFile: path.join(this.paths.logs, 'postgres.log'),
     });
     await this.pg.start();
+
+    // A porta da IA tem que existir antes do backend, que a recebe por variável de ambiente.
+    // O llama-server em si só sobe quando alguém pede uma resposta.
+    if (this.makeLlm) {
+      this.llm = this.makeLlm(keys.LLM_LOCAL_KEY);
+      await this.llm.listen();
+    }
 
     status(dbExists ? 'Iniciando o Qython' : 'Preparando o Qython (só na primeira vez; pode levar alguns minutos)');
     const cmd = backendCommand(this.resources, this.webPort);
@@ -147,6 +157,7 @@ export class Stack extends EventEmitter {
       PYTHONUNBUFFERED: '1',
       PYTHONUTF8: '1',
       PYTHONIOENCODING: 'utf-8',
+      ...(this.llm ? this.llm.backendEnv() : {}),
       ...this.extraEnv,
     };
   }
@@ -157,6 +168,10 @@ export class Stack extends EventEmitter {
       await this.backend.stop();
       this.backend.dispose();
       this.backend = null;
+    }
+    if (this.llm) {
+      await this.llm.stop().catch((err) => this.log.error(`Falha ao desligar a IA: ${err.message}`));
+      this.llm = null;
     }
     if (this.pg) {
       await this.pg.stop().catch((err) => this.log.error(`Falha ao desligar o banco: ${err.message}`));

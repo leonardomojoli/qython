@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Escolher a IA</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f6f6fa; --card: #fff; --ink: #1a1a2e; --muted: #5d5d78; --line: #dcdce8;
+          --accent: #6b3fd4; --warn-bg: #fff4e0; --warn-ink: #7a4a00; --err: #b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14141f; --card: #1d1d2e; --ink: #ececf6; --muted: #a2a2bb; --line: #33334d;
+            --accent: #b794ff; --warn-bg: #3a2c10; --warn-ink: #ffd89a; --err: #ff8a80; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 28px 20px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .hw { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; }
+  .banner b { display: block; margin-bottom: 2px; }
+  label.card { display: block; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+               padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+  label.card:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+  label.card input { margin-right: 8px; accent-color: var(--accent); }
+  .name { font-weight: 600; }
+  .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--accent); margin-left: 6px; }
+  .meta { color: var(--muted); font-size: 13px; margin-left: 24px; }
+  .warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 4px 8px; margin: 6px 0 0 24px; font-size: 13px; }
+  .block { color: var(--err); margin: 6px 0 0 24px; font-size: 13px; }
+  .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .bar { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; margin: 14px 0 6px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  .stat { color: var(--muted); font-size: 13px; }
+  .err { color: var(--err); margin-top: 8px; }
+  .foot { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <section id="choose">
+    <h1>Escolha a IA do seu Qython</h1>
+    <p class="sub">A IA roda neste computador. O que você digita no Qython não sai daqui.</p>
+    <div class="hw" id="hw"></div>
+    <div id="banner"></div>
+    <div id="models"></div>
+    <div class="row">
+      <button id="skip">Decidir depois</button>
+      <button id="go" class="primary">Baixar e continuar</button>
+    </div>
+    <p class="foot">Você pode trocar de modelo a qualquer momento em Ajuda › Escolher a IA. O download continua em
+      segundo plano se você fechar esta janela e retoma de onde parou se o Qython for fechado.</p>
+  </section>
+
+  <section id="progress" class="hidden">
+    <h1 id="ptitle">Baixando a IA</h1>
+    <p class="sub" id="pname"></p>
+    <div class="bar"><div id="fill"></div></div>
+    <div class="stat" id="pstat"></div>
+    <div class="err" id="perr"></div>
+    <div class="row">
+      <button id="cancel">Cancelar o download</button>
+      <button id="retry" class="hidden">Tentar de novo</button>
+      <button id="cont" class="primary">Continuar usando o Qython</button>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const GB = 1024 ** 3;
+let state = null;
+let picked = null;
+let view = 'choose';
+
+const gb = (bytes) => (bytes / GB).toFixed(bytes >= 10 * GB ? 1 : 2).replace('.', ',');
+const eta = (s) => (s == null ? '' : s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1).replace('.', ',')} h`);
+
+function renderChoose() {
+  const hw = state.hardware;
+  $('hw').textContent = `Este computador: ${hw.ramGb.toString().replace('.', ',')} GB de RAM · ${hw.diskFreeGb.toString().replace('.', ',')} GB livres em disco.`;
+
+  const rec = state.models.find((m) => m.id === state.defaultModel);
+  $('banner').innerHTML = '';
+  if (rec && rec.assessment.ramLevel !== 'ok') {
+    const b = document.createElement('div');
+    b.className = 'banner';
+    b.innerHTML = '<b>Atenção: este computador tem menos memória do que o modelo recomendado pede.</b>';
+    b.append(`${rec.label} precisa de ${rec.minTotalRamGb} GB de RAM e aqui ele ${rec.assessment.ramLevel === 'insufficient' ? 'provavelmente não vai rodar' : 'vai rodar devagar e pode travar outros programas'}. ` +
+      'O Qython não troca de modelo por conta própria. Você pode baixar mesmo assim, escolher um modelo menor ' +
+      '(que erra mais em dose e conduta; use só para testar) ou usar uma chave do Gemini em Configurações da IA ' +
+      '(nesse caso o texto das perguntas vai para o Google).');
+    $('banner').append(b);
+  }
+
+  if (!picked) picked = state.selected ?? state.defaultModel;
+  const list = $('models');
+  list.innerHTML = '';
+  for (const m of state.models) {
+    const card = document.createElement('label');
+    card.className = 'card';
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'model'; radio.value = m.id; radio.checked = m.id === picked;
+    radio.addEventListener('change', () => { picked = m.id; renderChoose(); });
+    const head = document.createElement('div');
+    head.append(radio);
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = m.label;
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = m.tag;
+    head.append(name, tag);
+    const sum = document.createElement('div'); sum.className = 'meta'; sum.textContent = m.summary;
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = m.installed ? `Já baixado · usa cerca de ${m.ramGb} GB de RAM quando está respondendo`
+      : `Baixa ${gb(m.bytes)} GB · usa cerca de ${m.ramGb} GB de RAM quando está respondendo`;
+    card.append(head, sum, meta);
+    for (const w of m.assessment.warnings) { const d = document.createElement('div'); d.className = 'warn'; d.textContent = w; card.append(d); }
+    if (m.assessment.blocking && !m.installed) { const d = document.createElement('div'); d.className = 'block'; d.textContent = m.assessment.blocking; card.append(d); }
+    list.append(card);
+  }
+  const sel = state.models.find((m) => m.id === picked);
+  $('go').disabled = !sel || (!!sel.assessment.blocking && !sel.installed);
+  $('go').textContent = sel?.installed ? 'Usar este modelo' : 'Baixar e continuar';
+}
+
+function renderProgress() {
+  const d = state.download;
+  const m = state.models.find((x) => x.id === (d?.id ?? state.selected));
+  $('pname').textContent = m ? m.label : '';
+  $('perr').textContent = state.error ?? '';
+  $('retry').classList.toggle('hidden', !state.error);
+  $('cancel').classList.toggle('hidden', !d);
+  if (d) {
+    const pct = d.total ? Math.min(100, (d.received / d.total) * 100) : 0;
+    $('fill').style.width = `${pct}%`;
+    $('ptitle').textContent = d.phase === 'verifying' ? 'Conferindo o que já foi baixado' : 'Baixando a IA';
+    $('pstat').textContent = d.phase === 'verifying' ? 'Isso evita recomeçar do zero.'
+      : `${Math.floor(pct)}% · ${gb(d.received)} de ${gb(d.total)} GB` +
+        (d.bytesPerSec > 0 ? ` · ${(d.bytesPerSec / 1048576).toFixed(1).replace('.', ',')} MB/s` : '') +
+        (d.etaSec != null && d.bytesPerSec > 0 ? ` · faltam cerca de ${eta(d.etaSec)}` : '');
+  } else if (m?.installed) {
+    $('fill').style.width = '100%';
+    $('ptitle').textContent = 'A IA está pronta';
+    $('pstat').textContent = 'Ela é carregada na memória na primeira pergunta e descarregada quando você para de usar.';
+  } else if (state.error) {
+    $('ptitle').textContent = 'O download parou';
+    $('pstat').textContent = '';
+  } else {
+    $('ptitle').textContent = 'Download cancelado';
+    $('pstat').textContent = 'O que já foi baixado fica guardado para retomar.';
+  }
+}
+
+function render() {
+  // Um download em andamento (iniciado antes, ou retomado ao abrir o app) leva direto ao progresso.
+  if (state.download || state.error) view = 'progress';
+  $('choose').classList.toggle('hidden', view !== 'choose');
+  $('progress').classList.toggle('hidden', view !== 'progress');
+  if (view === 'progress') renderProgress(); else renderChoose();
+}
+
+$('go').addEventListener('click', async () => {
+  view = 'progress';
+  window.qythonSetup.install(picked); // não espera: o download é longo
+  state = await window.qythonSetup.state();
+  render();
+});
+$('retry').addEventListener('click', () => { window.qythonSetup.install(state.selected); });
+$('cancel').addEventListener('click', () => window.qythonSetup.cancel());
+$('skip').addEventListener('click', async () => { await window.qythonSetup.skip(); });
+$('cont').addEventListener('click', async () => { await window.qythonSetup.done(); });
+
+window.qythonSetup.onUpdate((s) => { state = s; render(); });
+window.qythonSetup.state().then((s) => { state = s; render(); });
+</script>
+</body>
+</html>
