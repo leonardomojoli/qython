@@ -78,7 +78,7 @@ def serve(args: argparse.Namespace) -> int:
     # silêncio) passa a ser um relatório: a cada 3 min parado, o Python imprime o que cada thread
     # está fazendo. Desarmado quando o boot termina; também cobre falha fatal (segfault).
     faulthandler.enable(file=sys.stderr)
-    faulthandler.dump_traceback_later(180, repeat=True, file=sys.stderr)
+    faulthandler.dump_traceback_later(int(os.getenv("QYTHON_BOOT_DUMP_SECONDS", "180")), repeat=True, file=sys.stderr)
     try:
         # Antes de importar o app: o schema precisa existir quando o lifespan rodar os
         # seeds, e o alembic reconfigura o logging, que o main.py refaz ao ser importado.
