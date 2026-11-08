@@ -218,6 +218,25 @@ def test_app_instalado_nao_le_env_solto_pelas_pastas():
     assert run('import backend.desktop;' + probe) == 'None'
 
 
+def test_falha_no_boot_aparece_no_stderr_com_traceback():
+    """O boot do backend empacotado falhava em silêncio (no CI do Windows foram 20 minutos sem uma
+    linha). Agora qualquer causa vira texto no stderr, que o Electron grava em backend.log."""
+    env = {k: v for k, v in os.environ.items() if k != 'JWT_SECRET_KEY'}
+    env.update({'DATABASE_URL': 'postgresql://x:y@127.0.0.1:1/z', 'PYTHONPATH': ROOT})
+    out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
+                         env=env, capture_output=True, text=True, cwd=ROOT, timeout=120)
+    assert out.returncode == 1, (out.returncode, out.stderr[-500:])
+    assert '[desktop] falha no boot:' in out.stderr
+    assert 'ValueError: JWT_SECRET_KEY' in out.stderr, out.stderr[-500:]
+
+    # Com banco inalcançável, o motivo e o código de saída também chegam ao stderr.
+    env['JWT_SECRET_KEY'] = 'x' * 40
+    out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
+                         env=env, capture_output=True, text=True, cwd=ROOT, timeout=120)
+    assert out.returncode == 1
+    assert 'Sem conexão com o banco' in out.stderr and '[desktop] o banco não ficou pronto' in out.stderr
+
+
 if __name__ == '__main__':
     failed = 0
     for name, fn in sorted(globals().items()):

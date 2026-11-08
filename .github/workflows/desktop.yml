@@ -152,6 +152,7 @@ jobs:
 
       - name: Teste de fumaça (Linux, sem tela)
         if: runner.os == 'Linux'
+        timeout-minutes: 12
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
@@ -162,6 +163,7 @@ jobs:
 
       - name: Teste de fumaça
         if: runner.os != 'Linux'
+        timeout-minutes: 12
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf

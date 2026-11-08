@@ -349,9 +349,9 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(boot).catch(fatal);
   if (SMOKE) {
     setTimeout(() => {
-      log.error('Teste de fumaça passou de 20 minutos; abortando.');
+      log.error('Teste de fumaça passou de 10 minutos; abortando.');
       app.exit(2);
-    }, 20 * 60 * 1000).unref();
+    }, 10 * 60 * 1000).unref();
   }
 }
 
