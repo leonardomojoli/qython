@@ -167,10 +167,15 @@ async function smokeLibrary({ stack, api, token, step, log, withAi }) {
   assert(doc.storage_provider === null || doc.storage_provider === 'local',
     `o documento deveria ficar no armazenamento local, veio ${doc.storage_provider}`);
   assert(chroma.service.starts >= 1, 'o Chroma não subiu para indexar');
+  // O embedder multilíngue (e5 em ONNX) é quem gera os vetores: sem ele a busca não entende português.
+  const embedder = stack.embedder;
+  assert(embedder?.service.starts >= 1, 'o serviço de embeddings (e5) não subiu para indexar');
+  const health = await fetch(`http://127.0.0.1:${embedder.publicPort}/health`).then((r) => r.json());
+  assert(health.engine === 'onnx' && health.dim === 768, `embedder inesperado: ${JSON.stringify(health)}`);
 
   if (!withAi) return;
   const ask = () => call(api, 'POST', `/academic/libraries/${lib.data.id}/chat`, {
-    token, json: { message: 'Qual a dose de amoxicilina na otite media aguda?', history: [] },
+    token, json: { message: 'Qual a dose de amoxicilina na otite média aguda em crianças?', history: [] },
   });
   step('biblioteca: a pergunta encontra o trecho indexado');
   const first = await ask();

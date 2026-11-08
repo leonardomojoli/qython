@@ -264,6 +264,7 @@ async function boot() {
   const idleEnv = Number(process.env.QYTHON_LLM_IDLE_SECONDS);
   stack = new Stack({
     chromaIdleSeconds: Number(process.env.QYTHON_CHROMA_IDLE_SECONDS) || undefined,
+    models, notReadyReason: () => ai.notReadyReason(),
     paths, resources: { backend: path.join(resourcesDir(), 'backend'), web: path.join(resourcesDir(), 'web') },
     secrets, settings, logger: log, onStatus: setStatus,
     env: process.env.QYTHON_BACKEND_EXTRA_ENV ? JSON.parse(process.env.QYTHON_BACKEND_EXTRA_ENV) : {},
@@ -296,6 +297,9 @@ async function boot() {
   mainWindow = createMainWindow(stack.webUrl, { visible: !SMOKE });
   if (SMOKE) {
     try {
+      // A biblioteca precisa dos modelos de busca: baixa (e confere o SHA-256) como o app faria.
+      await ai.installSupport();
+      if (ai.state().error) throw new Error(ai.state().error);
       await runSmoke({ stack, log, window: mainWindow });
       process.stdout.write('SMOKE OK\n');
       await shutdown(0);
