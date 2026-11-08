@@ -68,7 +68,7 @@ DEFAULT_MAX_TOKENS_SIMPLE = int(os.getenv("DEFAULT_MAX_TOKENS_SIMPLE", "1024"))
 # === SISTEMA DE PROMPTS DINÂMICOS ===
 import json
 from starlette.concurrency import run_in_threadpool
-PROMPTS_FILE = os.path.join(Config.PROJECT_ROOT, 'config', 'system_prompts.json')
+PROMPTS_FILE = os.path.join(Config.CONFIG_DIR, 'system_prompts.json')
 
 
 def repair_json_string(json_str: str) -> str:

@@ -584,7 +584,7 @@ async def get_ai_usage(
 
 # --- PRIORIDADE 3: GESTÃO DE PROMPTS ---
 
-PROMPTS_FILE = os.path.join(Config.PROJECT_ROOT, 'config', 'system_prompts.json')
+PROMPTS_FILE = os.path.join(Config.CONFIG_DIR, 'system_prompts.json')
 
 
 @router.get("/prompts", status_code=status.HTTP_200_OK)
