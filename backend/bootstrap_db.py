@@ -63,7 +63,10 @@ def main() -> int:
     # MissingGreenlet, e o padrão de postgresql:// muda entre versões do SQLAlchemy.
     url = sync_database_url(AppConfig.SQLALCHEMY_DATABASE_URI)
 
-    engine = create_engine(url)
+    # Prazo para conectar: sem ele o libpq espera o que o sistema operacional decidir, e no
+    # Windows uma porta fechada não recusa na hora (o boot ficava parado minutos, sem erro).
+    timeout = int(os.getenv("QYTHON_DB_CONNECT_TIMEOUT", "30"))
+    engine = create_engine(url, connect_args={"connect_timeout": timeout})
     try:
         with engine.connect() as conn:
             tabelas = set(inspect(conn).get_table_names())
