@@ -51,18 +51,37 @@ export async function resolveBinaries() {
   return { initdb: mod.initdb, postgres: mod.postgres, pg_ctl: mod.pg_ctl };
 }
 
-function run(bin, args, { env, input } = {}) {
+/**
+ * Executa um binário e devolve {code, stdout, stderr} quando ELE termina.
+ *
+ * Não espera o evento 'close': o `pg_ctl start` deixa o `postgres` herdar os canais de saída e,
+ * no Windows, ele os mantém abertos pelo tempo que o banco viver, então o 'close' nunca vinha e
+ * o app ficava esperando um Postgres que já estava pronto (o CI do Windows parou aqui por 20
+ * min). Com `pipes: false` o filho nem recebe canais; a saída fica no arquivo de log (-l).
+ */
+export function runCommand(bin, args, { env, pipes = true } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { env: { ...process.env, ...env }, windowsHide: true });
+    const child = spawn(bin, args, {
+      env: { ...process.env, ...env }, windowsHide: true, stdio: pipes ? ['ignore', 'pipe', 'pipe'] : 'ignore',
+    });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (d) => { stdout += d; });
-    child.stderr.on('data', (d) => { stderr += d; });
+    child.stdout?.on('data', (d) => { stdout += d; });
+    child.stderr?.on('data', (d) => { stderr += d; });
     child.on('error', reject);
-    child.on('close', (code) => resolve({ code, stdout, stderr }));
-    if (input) child.stdin.end(input);
+    child.on('exit', (code) => {
+      // Dá um instante para o que já está no canal chegar, e solta os canais: um neto que os
+      // herdou não segura mais a espera.
+      setTimeout(() => {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        resolve({ code, stdout, stderr });
+      }, 100);
+    });
   });
 }
+
+const run = runCommand;
 
 export class PostgresService {
   constructor({ dataDir, port, password, logger, logFile }) {
@@ -117,7 +136,7 @@ export class PostgresService {
     }
     const started = await run(this.bin.pg_ctl, [
       'start', '-D', this.dataDir, '-o', serverOptions(this.port), '-l', this.logFile, '-w', '-t', '120',
-    ]);
+    ], { pipes: false });
     if (started.code !== 0) {
       let tail = '';
       try {
@@ -125,7 +144,7 @@ export class PostgresService {
       } catch {
         // sem log
       }
-      throw new Error(`O PostgreSQL não iniciou: ${started.stderr || started.stdout}\n${tail}`);
+      throw new Error(`O PostgreSQL não iniciou (pg_ctl saiu com ${started.code}):\n${tail}`);
     }
     await this.ensureDatabase();
   }
