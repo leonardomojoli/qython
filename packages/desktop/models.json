@@ -1,0 +1,61 @@
+{
+  "comment": "Tudo o que o app baixa, com tamanho e SHA-256 conferidos antes de usar. Os arquivos do Hugging Face são fixados num commit (revision) para o conteúdo não mudar por baixo do checksum. Para atualizar: scripts/pin-models.mjs.",
+  "llama": {
+    "build": "b11880",
+    "baseUrl": "https://github.com/ggml-org/llama.cpp/releases/download/b11880",
+    "assets": {
+      "linux-x64": { "name": "llama-b11880-bin-ubuntu-x64.tar.gz", "sha256": "eef7734b774a0d0b54af2ba55fcf9444ecc13601842996259258bb0054698579" },
+      "win32-x64": { "name": "llama-b11880-bin-win-cpu-x64.zip", "sha256": "feea538eaef37629f097fdfd5f2234db68941c648dc2bad48907ed55c1f8d2c0" },
+      "darwin-arm64": { "name": "llama-b11880-bin-macos-arm64.tar.gz", "sha256": "362147c73485e07b922957e9c71487ce0cd0765416068466f870e3e69138504e" },
+      "darwin-x64": { "name": "llama-b11880-bin-macos-x64.tar.gz", "sha256": "d57daa5c4158744493e1b859a3f0beb24aa2b88d2e6567c3e8f8dfbee6336b05" }
+    }
+  },
+  "defaultModel": "gemma-4-26b-a4b",
+  "models": [
+    {
+      "id": "gemma-4-26b-a4b",
+      "label": "Gemma 4 26B-A4B",
+      "tag": "recomendado",
+      "summary": "O modelo robusto. É o único que o Qython considera confiável para dose e conduta.",
+      "ramGb": 17,
+      "minTotalRamGb": 32,
+      "contextTokens": 16384,
+      "repo": "ggml-org/gemma-4-26B-A4B-it-GGUF",
+      "revision": "9cf8c8db0f83fb4582f15381f8fb1a7c1b0b9ca2",
+      "files": [
+        { "role": "model", "name": "gemma-4-26B-A4B-it-Q4_0.gguf", "size": 14618145824, "sha256": "d208665ab1cd3a69f7a9a4bc59430e8448c8093d9b06334f566ac59d6d504a03" },
+        { "role": "mmproj", "name": "mmproj-gemma-4-26B-A4B-it-Q8_0.gguf", "size": 806408320, "sha256": "cc4e855736da450bf1e162d8cccfe0ad685727d0c9e04ef7dd8d884f3121039b" }
+      ]
+    },
+    {
+      "id": "gemma-4-e4b",
+      "label": "Gemma 4 E4B",
+      "tag": "menor",
+      "summary": "Cabe em computadores comuns. Erra fato clínico (dose, volume) com mais frequência: serve para testar, não para decidir conduta.",
+      "ramGb": 6,
+      "minTotalRamGb": 8,
+      "contextTokens": 16384,
+      "repo": "ggml-org/gemma-4-E4B-it-GGUF",
+      "revision": "27cd6836f8e2a6e5e6b57ea0e77fa72490706985",
+      "files": [
+        { "role": "model", "name": "gemma-4-E4B-it-Q4_0.gguf", "size": 4590807392, "sha256": "a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2" },
+        { "role": "mmproj", "name": "mmproj-gemma-4-E4B-it-Q8_0.gguf", "size": 559874848, "sha256": "9257f21a0f5358204b4a612cff83fad2e56412f4f607f0049331ce60c0cf9d34" }
+      ]
+    },
+    {
+      "id": "gemma-4-e2b",
+      "label": "Gemma 4 E2B",
+      "tag": "mínimo",
+      "summary": "Para computadores muito modestos. Mesma ressalva do E4B, com mais erros.",
+      "ramGb": 4,
+      "minTotalRamGb": 6,
+      "contextTokens": 16384,
+      "repo": "ggml-org/gemma-4-E2B-it-GGUF",
+      "revision": "63f6c6f23b3e9e5f9737708daec2f88c9ac2e921",
+      "files": [
+        { "role": "model", "name": "gemma-4-E2B-it-Q4_0.gguf", "size": 2841481184, "sha256": "8e30dff3ac4c8434c49a7036fa15564bdbb6044e42bf04550bf1a096ad7e6a52" },
+        { "role": "mmproj", "name": "mmproj-gemma-4-E2B-it-Q8_0.gguf", "size": 557368096, "sha256": "042cc2561806cd3b5cb5efb25cab76911e3100c43cc09d854904f921924b1429" }
+      ]
+    }
+  ]
+}

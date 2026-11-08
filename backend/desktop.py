@@ -41,8 +41,17 @@ def _watch_parent(server) -> None:
     server.should_exit = True
 
 
+def _use_bundled_tiktoken() -> None:
+    """Aponta o tiktoken para o vocabulário embutido: sem isso ele o baixaria da internet."""
+    bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "tiktoken_cache")
+    if getattr(sys, "frozen", False) and os.path.isdir(bundled):
+        os.environ.setdefault("TIKTOKEN_CACHE_DIR", bundled)
+
+
 def serve(args: argparse.Namespace) -> int:
     import uvicorn
+
+    _use_bundled_tiktoken()
 
     # Antes de importar o app: o schema precisa existir quando o lifespan rodar os
     # seeds, e o alembic reconfigura o logging, que o main.py refaz ao ser importado.
@@ -119,6 +128,13 @@ def selftest(_args: argparse.Namespace) -> int:
             raise AssertionError(f"detecção de tipo inesperada: {kinds}")
         return library_service.magic.__name__
 
+    def tiktoken_offline():
+        # Com o vocabulário embutido, nenhuma requisição é feita (o app pode estar sem rede).
+        _use_bundled_tiktoken()
+        import tiktoken
+
+        return f"{len(tiktoken.get_encoding('cl100k_base').encode('olá, mundo'))} tokens"
+
     def import_chroma():
         import chromadb
 
@@ -158,6 +174,8 @@ def selftest(_args: argparse.Namespace) -> int:
 
     check("app", import_app)
     check("mime", mime_detection)
+
+    check("tiktoken", tiktoken_offline)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)

@@ -57,7 +57,9 @@ export class ManagedProcess extends EventEmitter {
   }
 
   _spawn() {
-    this.log.info(`[${this.name}] iniciando: ${path.basename(this.command)} ${this.args.join(' ')}`);
+    // A chave de API da IA local é argumento do processo: não vai para o log.
+    const shown = this.args.map((a, i) => (/^--(api-key|key)$/.test(this.args[i - 1] ?? '') ? '***' : a));
+    this.log.info(`[${this.name}] iniciando: ${path.basename(this.command)} ${shown.join(' ')}`);
     const child = spawn(this.command, this.args, {
       cwd: this.cwd,
       env: { ...process.env, ...this.env },
@@ -99,12 +101,14 @@ export class ManagedProcess extends EventEmitter {
     this.log.warn(`[${this.name}] caiu (código ${code ?? signal}).`);
     this.emit('crash', { code, signal });
     const now = Date.now();
-    this.crashes = this.crashes.filter((t) => now - t < this.restartPolicy.windowMs);
-    this.crashes.push(now);
+    if (this.restartPolicy) {
+      this.crashes = this.crashes.filter((t) => now - t < this.restartPolicy.windowMs);
+      this.crashes.push(now);
+    }
     if (!this.restartPolicy || this.crashes.length > this.restartPolicy.max) {
       this.state = 'failed';
       this.wantRunning = false;
-      this.log.error(`[${this.name}] caiu vezes demais; desisti de reiniciar.`);
+      this.log.error(`[${this.name}] ${this.restartPolicy ? 'caiu vezes demais; desisti de reiniciar.' : 'caiu.'}`);
       this.emit('failed');
       return;
     }

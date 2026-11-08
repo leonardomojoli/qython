@@ -6,8 +6,9 @@ O Qython como programa para instalar no computador: sem Docker, sem terminal e s
 ```
 Electron (processo principal)
  ├─ PostgreSQL embarcado      127.0.0.1:<porta>   dados em <perfil>/db
- └─ qython-backend serve      127.0.0.1:<porta>   API + front (mesma origem), PyInstaller
-        └─ janela: http://127.0.0.1:<porta>/
+ ├─ qython-backend serve      127.0.0.1:<porta>   API + front (mesma origem), PyInstaller
+ │      └─ janela: http://127.0.0.1:<porta>/
+ └─ IA local (sob demanda)    127.0.0.1:<porta fixa>  →  llama-server (só enquanto há pedido)
 ```
 
 A janela abre `http://127.0.0.1:<porta>/` e não `file://`: o front exige `/api` na mesma
@@ -26,8 +27,26 @@ porque o login mora no `localStorage` da origem; trocar de porta deslogaria o m�
 | Janela, bandeja, notificações | `src/main.js`, `src/preload.cjs` | Links externos abrem no navegador do sistema. |
 | Teste de fumaça | `src/smoke.js` | `electron . --smoke`: ver abaixo. |
 
-A IA local (llama-server, Chroma, whisper), o assistente de primeiro uso, as Configurações
-da IA, os instaladores e a atualização automática são as fatias seguintes.
+## IA local (fatia 2a)
+
+| Peça | Onde | Observação |
+|---|---|---|
+| `llama-server` sob demanda | `src/ondemand.js`, `src/llm.js` | O backend fala sempre com uma porta fixa. No primeiro pedido o app sobe o `llama-server` e espera o `/health`; sem pedido por 15 min, desliga (a RAM só é ocupada enquanto a IA trabalha). Quando o cliente desiste, o pedido ao modelo é cancelado. |
+| Manifesto de modelos | `models.json` | Cada arquivo com tamanho, SHA-256 e a revisão do Hugging Face. O padrão é o Gemma 4 26B-A4B `Q4_0` (a quantização vai explícita: sem ela o llama.cpp baixaria os 50 GB do BF16), mais o `mmproj` para imagens. |
+| Download | `src/downloader.js` | Retomável (Range), progresso, SHA-256 conferido antes de usar; o app fechado no meio retoma de onde parou. |
+| Assistente de primeiro uso | `src/setup/`, `src/ai.js` | Mostra RAM e disco, **avisa com clareza** quando o computador tem menos de 32 GB e deixa o médico escolher: baixar mesmo assim, modelo menor ou Gemini. **Nunca troca de modelo sozinho.** Reabre em Ajuda › Escolher a IA. |
+| `llama-server` no pacote | `scripts/fetch-llama.mjs` | Build de CPU fixada em `models.json`, com SHA-256, por sistema. |
+| tiktoken offline | `python/prepare_tiktoken.py` | O vocabulário vai no pacote; sem isso o copiloto baixaria um arquivo da internet no primeiro uso. |
+
+A conta local e o termo de uso continuam sendo feitos na própria tela do Qython (o primeiro
+usuário vira dono), logo depois do assistente.
+
+O llama-server escuta só em 127.0.0.1, exige uma chave de API (guardada no cofre, junto das
+outras) e roda com um slot: CPU não ganha com paralelismo e a conversa fica com o contexto
+inteiro (16 384 tokens, o mesmo do `docker-compose.yml`).
+
+A transcrição (whisper), o Chroma sob demanda, as Configurações da IA no web, os instaladores
+e a atualização automática são as fatias seguintes.
 
 ### As chaves de criptografia
 
@@ -78,7 +97,7 @@ QYTHON_BACKEND_DEV=$PWD/../.. QYTHON_PYTHON=/caminho/do/venv/bin/python npx elec
 
 Variáveis úteis: `QYTHON_USER_DATA` (perfil isolado, para testes), `QYTHON_RESOURCES_DIR`.
 
-### Teste de fumaça
+### Teste de fumaça (e da IA)
 
 ```bash
 QYTHON_USER_DATA=$(mktemp -d) xvfb-run -a npx electron . --smoke --no-sandbox   # Linux sem tela
@@ -88,7 +107,10 @@ Sobe a pilha em um perfil novo e, pela API, como um médico novo: confere que o 
 na mesma origem e que o React renderiza a tela de login, cria a conta do dono (sem captcha,
 SMS nem e-mail), aceita o termo de uso e cadastra um paciente com documento. Então **reinicia
 tudo** e confere que a porta é a mesma, que o login funciona e que o documento cifrado
-continua legível. Imprime `SMOKE OK` e sai com código 0. O CI (`.github/workflows/desktop.yml`)
+continua legível. Com `QYTHON_AI_MODEL_FILE` (um GGUF qualquer, o CI usa o Qwen3 0.6B), também
+pergunta algo ao copiloto: o `llama-server` sobe sob demanda, responde, é desligado por inatividade
+(`QYTHON_LLM_IDLE_SECONDS`) e sobe de novo no pedido seguinte. Prova a fiação; a qualidade do Gemma 4
+é avaliada à parte. Imprime `SMOKE OK` e sai com código 0. O CI (`.github/workflows/desktop.yml`)
 roda isso em Linux, Windows e macOS.
 
 ### Testes unitários
@@ -107,7 +129,7 @@ python3 tests/backend/test_desktop_backend.py  # spa.py, mime_sniff.py, QYTHON_D
 db/data/        cluster do PostgreSQL
 data/           QYTHON_DATA_DIR do backend: uploads, biblioteca, chroma_db, exports, config
 logs/           app.log, backend.log, postgres.log, backend/qython_app.log (com rotação)
-models/         modelos de IA (próxima fatia)
+models/         modelos de IA baixados (<id>/<arquivo>.gguf, mais .part e .ok)
 secrets.json    chaves cifradas pelo cofre do sistema
 settings.json   preferências do app (porta lembrada)
 ```
