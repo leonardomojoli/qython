@@ -21,11 +21,13 @@ não fica órfão.
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import json
 import logging
 import os
 import sys
 import threading
+import traceback
 
 logger = logging.getLogger("qython_logger")
 
@@ -61,22 +63,45 @@ def _use_bundled_models() -> None:
         os.environ.setdefault("QYTHON_ONNX_MODEL_DIR", onnx_dir)
 
 
+def _stage(text: str) -> None:
+    """Uma linha no stderr (que o Electron grava em backend.log), para uma falha mostrar até onde
+    o boot chegou. O logging do backend só liga quando o main.py é importado, no fim."""
+    print(f"[desktop] {text}", file=sys.stderr, flush=True)
+
+
 def serve(args: argparse.Namespace) -> int:
     import uvicorn
 
     _use_bundled_models()
 
-    # Antes de importar o app: o schema precisa existir quando o lifespan rodar os
-    # seeds, e o alembic reconfigura o logging, que o main.py refaz ao ser importado.
-    from backend import bootstrap_db
+    # Um travamento no boot (como o do pg_ctl no Windows, que só se via como 20 minutos de
+    # silêncio) passa a ser um relatório: a cada 3 min parado, o Python imprime o que cada thread
+    # está fazendo. Desarmado quando o boot termina; também cobre falha fatal (segfault).
+    faulthandler.enable(file=sys.stderr)
+    faulthandler.dump_traceback_later(180, repeat=True, file=sys.stderr)
+    try:
+        # Antes de importar o app: o schema precisa existir quando o lifespan rodar os
+        # seeds, e o alembic reconfigura o logging, que o main.py refaz ao ser importado.
+        _stage("preparando o banco de dados")
+        from backend import bootstrap_db
 
-    code = bootstrap_db.main()
-    if code:
-        return code
+        code = bootstrap_db.main()
+        if code:
+            _stage(f"o banco não ficou pronto (código {code})")
+            return code
 
-    from backend.config import Config
-    from backend.main import app
+        _stage("carregando o backend")
+        from backend.config import Config
+        from backend.main import app
+    except BaseException:  # noqa: BLE001 - qualquer causa precisa aparecer no log
+        _stage("falha no boot:")
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.flush()
+        return 1
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
+    _stage("iniciando o servidor")
     asgi = app
     if Config.WEB_DIR:
         # O mesmo processo serve o front: a janela abre http://127.0.0.1:porta/.

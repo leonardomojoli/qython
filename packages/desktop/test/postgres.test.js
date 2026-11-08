@@ -19,6 +19,15 @@ test('runCommand volta quando o processo termina, mesmo com um neto segurando os
   assert.ok(took < 2000, `esperou ${took} ms: está presa ao 'close' dos canais herdados`);
 });
 
+test('runCommand com prazo mata o comando que não volta e diz isso', async () => {
+  const started = Date.now();
+  await assert.rejects(
+    runCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { timeoutMs: 400 }),
+    /não terminou em 0 s|não terminou em 1 s|não terminou/,
+  );
+  assert.ok(Date.now() - started < 3000);
+});
+
 test('runCommand sem canais devolve só o código', async () => {
   const res = await runCommand(process.execPath, ['-e', 'process.exit(7)'], { pipes: false });
   assert.equal(res.code, 7);
