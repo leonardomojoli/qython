@@ -59,7 +59,7 @@ export async function resolveBinaries() {
  * o app ficava esperando um Postgres que já estava pronto (o CI do Windows parou aqui por 20
  * min). Com `pipes: false` o filho nem recebe canais; a saída fica no arquivo de log (-l).
  */
-export function runCommand(bin, args, { env, pipes = true } = {}) {
+export function runCommand(bin, args, { env, pipes = true, timeoutMs = 0 } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, {
       env: { ...process.env, ...env }, windowsHide: true, stdio: pipes ? ['ignore', 'pipe', 'pipe'] : 'ignore',
@@ -69,7 +69,13 @@ export function runCommand(bin, args, { env, pipes = true } = {}) {
     child.stdout?.on('data', (d) => { stdout += d; });
     child.stderr?.on('data', (d) => { stderr += d; });
     child.on('error', reject);
+    // Um comando que não volta (como o pg_ctl travado) vira um erro com prazo, não um silêncio.
+    const timer = timeoutMs > 0 ? setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`${bin.split(/[\\/]/).pop()} não terminou em ${Math.round(timeoutMs / 1000)} s.`));
+    }, timeoutMs) : null;
     child.on('exit', (code) => {
+      clearTimeout(timer);
       // Dá um instante para o que já está no canal chegar, e solta os canais: um neto que os
       // herdou não segura mais a espera.
       setTimeout(() => {
@@ -136,7 +142,7 @@ export class PostgresService {
     }
     const started = await run(this.bin.pg_ctl, [
       'start', '-D', this.dataDir, '-o', serverOptions(this.port), '-l', this.logFile, '-w', '-t', '120',
-    ], { pipes: false });
+    ], { pipes: false, timeoutMs: 180000 });
     if (started.code !== 0) {
       let tail = '';
       try {

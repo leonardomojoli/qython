@@ -41,10 +41,16 @@ export class ManagedProcess extends EventEmitter {
     this.wantRunning = false;
     this.crashes = [];
     this._exitWaiters = [];
+    this.recent = []; // últimas linhas de saída, para o erro dizer o que o processo escreveu
   }
 
   get pid() {
     return this.child?.pid ?? null;
+  }
+
+  /** As últimas linhas que o processo escreveu (stdout e stderr). */
+  tail(n = 30) {
+    return this.recent.slice(-n).join('\n');
   }
 
   isAlive() {
@@ -66,7 +72,14 @@ export class ManagedProcess extends EventEmitter {
     });
     this.child = child;
     this.state = 'running';
-    const forward = (chunk) => this.sink.write(chunk);
+    const forward = (chunk) => {
+      this.sink.write(chunk);
+      for (const line of String(chunk).split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        this.recent.push(line);
+        if (this.recent.length > 60) this.recent.shift();
+      }
+    };
     child.stdout.on('data', forward);
     child.stderr.on('data', forward);
     // Escrever num stdin já fechado levantaria EPIPE; o processo pode morrer a qualquer hora.
