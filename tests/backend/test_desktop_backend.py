@@ -199,23 +199,38 @@ def test_config_com_data_dir_grava_fora_do_codigo():
     assert c['WEB_DIR'] == '/x/web'
 
 
+def _boot(env):
+    """Roda o `serve` do backend e devolve (código, stderr). Se travar, o teste falha com o que o
+    processo escreveu até ali, incluindo o despejo de threads do faulthandler (a cada 15 s)."""
+    env = {**env, 'QYTHON_BOOT_DUMP_SECONDS': '15', 'PYTHONPATH': ROOT}
+    try:
+        out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
+                             env=env, capture_output=True, text=True, cwd=ROOT, timeout=60)
+    except subprocess.TimeoutExpired as exc:
+        def text(x):
+            return x.decode('utf-8', 'replace') if isinstance(x, bytes) else (x or '')
+        raise AssertionError('o boot travou (60 s). stdout:\n%s\nstderr:\n%s' % (text(exc.stdout)[-1500:], text(exc.stderr)[-3500:]))
+    return out.returncode, out.stderr
+
+
 def test_falha_no_boot_aparece_no_stderr_com_traceback():
     """O boot do backend empacotado falhava em silêncio (no CI do Windows foram 20 minutos sem uma
     linha). Agora qualquer causa vira texto no stderr, que o Electron grava em backend.log."""
     env = {k: v for k, v in os.environ.items() if k != 'JWT_SECRET_KEY'}
-    env.update({'DATABASE_URL': 'postgresql://x:y@127.0.0.1:1/z', 'PYTHONPATH': ROOT})
-    out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
-                         env=env, capture_output=True, text=True, cwd=ROOT, timeout=120)
-    assert out.returncode == 1, (out.returncode, out.stderr[-500:])
-    assert '[desktop] falha no boot:' in out.stderr
-    assert 'ValueError: JWT_SECRET_KEY' in out.stderr, out.stderr[-500:]
+    env['DATABASE_URL'] = 'postgresql://x:y@127.0.0.1:1/z'
+    code, err = _boot(env)
+    assert code == 1, (code, err[-500:])
+    assert '[desktop] falha no boot:' in err
+    assert 'ValueError: JWT_SECRET_KEY' in err, err[-500:]
 
+
+def test_boot_com_banco_inalcancavel_diz_o_motivo():
     # Com banco inalcançável, o motivo e o código de saída também chegam ao stderr.
-    env['JWT_SECRET_KEY'] = 'x' * 40
-    out = subprocess.run([sys.executable, '-m', 'backend.desktop', 'serve', '--port', '18999'],
-                         env=env, capture_output=True, text=True, cwd=ROOT, timeout=120)
-    assert out.returncode == 1
-    assert 'Sem conexão com o banco' in out.stderr and '[desktop] o banco não ficou pronto' in out.stderr
+    env = {k: v for k, v in os.environ.items() if k != 'JWT_SECRET_KEY'}
+    env.update({'DATABASE_URL': 'postgresql://x:y@127.0.0.1:1/z', 'JWT_SECRET_KEY': 'x' * 40})
+    code, err = _boot(env)
+    assert code == 1, (code, err[-500:])
+    assert 'Sem conexão com o banco' in err and '[desktop] o banco não ficou pronto' in err, err[-800:]
 
 
 if __name__ == '__main__':
