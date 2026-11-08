@@ -166,7 +166,7 @@ async function smokeLibrary({ stack, api, token, step, log, withAi }) {
   assert(doc?.status === 'processed', `o documento não foi indexado: ${JSON.stringify(doc)}`);
   assert(doc.storage_provider === null || doc.storage_provider === 'local',
     `o documento deveria ficar no armazenamento local, veio ${doc.storage_provider}`);
-  assert(chroma.state === 'running', `o Chroma deveria estar rodando (estado: ${chroma.state})`);
+  assert(chroma.service.starts >= 1, 'o Chroma não subiu para indexar');
 
   if (!withAi) return;
   const ask = () => call(api, 'POST', `/academic/libraries/${lib.data.id}/chat`, {
@@ -182,7 +182,9 @@ async function smokeLibrary({ stack, api, token, step, log, withAi }) {
   const stopBy = Date.now() + idleMs + 30000;
   while (chroma.state !== 'idle' && Date.now() < stopBy) await new Promise((r) => setTimeout(r, 500));
   assert(chroma.state === 'idle', 'o Chroma não foi desligado depois de parado');
+  const chromaStarts = chroma.service.starts;
   const again = await ask();
+  assert(chroma.service.starts > chromaStarts, 'o Chroma deveria ter subido de novo');
   assert(again.status === 200 && !/^(Não encontrei|Desculpe, não consegui)/.test(again.data.response),
     `depois de religar o Chroma a busca falhou: ${JSON.stringify(again.data).slice(0, 300)}`);
   log.info('[fumaça] biblioteca: ok');
@@ -213,7 +215,9 @@ async function smokeAi({ stack, api, token, step, log }) {
   assert(first.status === 200, `o copiloto devolveu ${first.status}: ${JSON.stringify(first.data).slice(0, 400)}`);
   assert(typeof first.data.response === 'string' && first.data.response.trim().length > 0,
     `resposta vazia: ${JSON.stringify(first.data).slice(0, 400)}`);
-  assert(llm.state === 'running', `o llama-server deveria estar rodando (estado: ${llm.state})`);
+  // Com a ociosidade curta do teste, ele pode ter sido desligado entre duas chamadas internas
+  // do copiloto; o que importa aqui é que subiu sob demanda.
+  assert(llm.service.starts >= 1, 'o llama-server não subiu para responder');
 
   step('IA local: parado, o llama-server é desligado');
   const idleMs = (Number(process.env.QYTHON_LLM_IDLE_SECONDS) || 900) * 1000;
@@ -222,9 +226,10 @@ async function smokeAi({ stack, api, token, step, log }) {
   assert(llm.state === 'idle', 'o llama-server não foi desligado depois de parado');
 
   step('IA local: o pedido seguinte o sobe de novo');
+  const startsBefore = llm.service.starts;
   const second = await ask('Diga apenas: de novo.');
   assert(second.status === 200 && second.data.response?.trim(), `2º pedido falhou: ${JSON.stringify(second.data).slice(0, 400)}`);
-  assert(llm.state === 'running', 'o llama-server deveria ter voltado');
+  assert(llm.service.starts > startsBefore, 'o llama-server deveria ter subido de novo');
   log.info('[fumaça] IA local: ok');
 }
 
