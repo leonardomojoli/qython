@@ -16,7 +16,11 @@ name: Desktop
 #   5. usa a biblioteca: baixa os modelos de busca (multilingual-e5 e reranker, em ONNX, com
 #      SHA-256 conferido), envia um PDF (armazenamento local), o Chroma e o serviço de
 #      embeddings sobem sob demanda, a pergunta encontra o trecho; parados, eles são
-#      desligados e o pedido seguinte os religa com os dados intactos.
+#      desligados e o pedido seguinte os religa com os dados intactos;
+#   6. gera os instaladores (NSIS, AppImage e deb, dmg e zip), INSTALA de verdade (silencioso no
+#      Windows, dpkg no Linux, dmg no macOS) e repete a fumaça no app instalado: é isso que prova
+#      que os arquivos certos foram para dentro do instalador (backend, front, llama-server,
+#      Postgres) e que o app abre fora da pasta do repositório.
 on:
   workflow_dispatch:
   pull_request:
@@ -178,6 +182,94 @@ jobs:
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: npx electron packages/desktop --smoke
+
+      # --- Instaladores ------------------------------------------------------------------------
+      - name: Instalador
+        working-directory: packages/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"   # macOS sem assinatura
+        run: npx electron-builder --publish never
+
+      - name: Tamanho dos instaladores
+        run: |
+          {
+            echo "### Instaladores (${{ matrix.name }})"
+            echo
+            echo "| Arquivo | Tamanho |"
+            echo "|---|---|"
+            for f in packages/desktop/release/*.exe packages/desktop/release/*.AppImage packages/desktop/release/*.deb \
+                     packages/desktop/release/*.dmg packages/desktop/release/*.zip; do
+              [ -f "$f" ] && echo "| $(basename "$f") | $(du -m "$f" | cut -f1) MB |"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepara o perfil da fumaça do app instalado (modelos em cache)
+        run: |
+          mkdir -p "$RUNNER_TEMP/qython-perfil-instalado"
+          [ -d "$RUNNER_TEMP/qython-perfil/models" ] && cp -r "$RUNNER_TEMP/qython-perfil/models" "$RUNNER_TEMP/qython-perfil-instalado/models" || true
+
+      - name: Instala o .deb e abre o app instalado (Linux, sem tela)
+        if: runner.os == 'Linux'
+        timeout-minutes: 12
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          sudo apt-get install -y ./packages/desktop/release/Qython-*-linux-amd64.deb
+          test -x /opt/Qython/qython
+          xvfb-run -a /opt/Qython/qython --smoke --no-sandbox
+
+      - name: Instala o NSIS e abre o app instalado (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          installer=$(ls packages/desktop/release/Qython-*-win-x64.exe | head -1)
+          "$installer" /S
+          app="$LOCALAPPDATA/Programs/Qython/Qython.exe"
+          for i in $(seq 1 60); do [ -f "$app" ] && break; sleep 2; done
+          ls -la "$LOCALAPPDATA/Programs/Qython" | head -20
+          test -f "$app"
+          # Aplicativo gráfico: o Start-Process -Wait espera e devolve o código de saída.
+          powershell -NoProfile -Command "\$p = Start-Process -FilePath '$(cygpath -w "$app")' -ArgumentList '--smoke' -Wait -PassThru; exit \$p.ExitCode"
+
+      - name: Instala o dmg e abre o app instalado (macOS)
+        if: runner.os == 'macOS'
+        timeout-minutes: 15
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          dmg=$(ls packages/desktop/release/Qython-*-mac-*.dmg | head -1)
+          hdiutil attach "$dmg" -mountpoint /Volumes/QythonInstalador -nobrowse -quiet
+          cp -R /Volumes/QythonInstalador/Qython.app /Applications/
+          hdiutil detach /Volumes/QythonInstalador -quiet
+          /Applications/Qython.app/Contents/MacOS/Qython --smoke
+
+      - name: Guarda os instaladores
+        uses: actions/upload-artifact@v4
+        with:
+          name: instaladores-${{ matrix.name }}
+          path: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.AppImage
+            packages/desktop/release/*.deb
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.zip
+            packages/desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Logs do app em caso de falha
         if: failure()
