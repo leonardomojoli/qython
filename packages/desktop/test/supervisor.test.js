@@ -102,3 +102,17 @@ test('a chave de API passada ao processo não aparece no log', async () => {
   assert.ok(lines.some((l) => l.includes('iniciando')));
   assert.ok(!lines.join('\n').includes('SEGREDO123'), 'a chave vazou no log');
 });
+
+test('tail devolve as últimas linhas que o processo escreveu (para o erro dizer a causa)', async () => {
+  const p = new ManagedProcess({
+    name: 't', command: node, logger: quiet, restart: null,
+    args: ['-e', 'for (let i = 1; i <= 100; i++) console.error("linha " + i); console.error("Traceback: ModuleNotFoundError")'],
+  });
+  p.start();
+  await until(() => !p.isAlive());
+  await wait(100);
+  const tail = p.tail(5).split('\n');
+  assert.equal(tail.length, 5);
+  assert.equal(tail.at(-1), 'Traceback: ModuleNotFoundError');
+  assert.ok(p.recent.length <= 60, 'o buffer deveria ser limitado');
+});

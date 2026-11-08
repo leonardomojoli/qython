@@ -128,14 +128,21 @@ export class Stack extends EventEmitter {
     this.backend.on('restart', () => this.emit('restarted'));
     this.backend.start();
 
-    await waitForHttp(`${this.webUrl}/api/health`, {
-      timeoutMs: 600000, // 1ª abertura: cria 70 tabelas e semeia medicamentos, CID-10 e provas
-      isAlive: () => this.backend.state !== 'failed' && this.backend.state !== 'stopped',
-      validate: (res, body) => res.ok && body.includes('"ok"'),
-      onTick: (ms) => {
-        if (ms > 0 && ms % 10000 < 500) status(`Aguardando o Qython iniciar (${Math.round(ms / 1000)} s)`);
-      },
-    });
+    try {
+      await waitForHttp(`${this.webUrl}/api/health`, {
+        timeoutMs: 600000, // 1ª abertura: cria 70 tabelas e semeia medicamentos, CID-10 e provas
+        isAlive: () => this.backend.state !== 'failed' && this.backend.state !== 'stopped',
+        validate: (res, body) => res.ok && body.includes('"ok"'),
+        onTick: (ms) => {
+          if (ms > 0 && ms % 10000 < 500) status(`Aguardando o Qython iniciar (${Math.round(ms / 1000)} s)`);
+        },
+      });
+    } catch (err) {
+      // A causa quase sempre está no que o backend escreveu (traceback do boot); sem isto o erro
+      // só diria "tempo esgotado".
+      const tail = this.backend?.tail(40);
+      throw new Error(`${err.message}${tail ? `\n--- fim da saída do backend ---\n${tail}` : ''}`);
+    }
     this.running = true;
     this.log.info(`Qython pronto em ${this.webUrl}`);
     this.emit('ready');
