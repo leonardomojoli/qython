@@ -59,3 +59,21 @@ test('o ambiente do backend leva as chaves, a edição local e a origem da janel
   assert.equal(env.LLM_MODEL, 'gemma-4');
   assert.ok(!('GEMINI_API_KEY' in env));
 });
+
+test('o backend recebe a porta fixa do Chroma e a telemetria vem desligada', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'qy-env2-'));
+  const paths = layout(root);
+  const stack = new Stack({
+    paths, resources: { backend: 'b', web: 'w' }, logger: quiet,
+    secrets: new SecretStore(paths.secrets, { available: async () => false }), settings: new Settings(paths.settings),
+  });
+  stack.webPort = 41000;
+  stack.pg = { url: 'postgresql://x' };
+  stack.chroma = { backendEnv: () => ({ CHROMA_SERVER_HOST: '127.0.0.1', CHROMA_SERVER_PORT: '45123' }) };
+  stack.llm = { backendEnv: () => ({ LLM_BASE_URL: 'http://127.0.0.1:45124/v1', LLM_PROVIDER: 'openai' }) };
+  const env = stack.backendEnv({ JWT_SECRET_KEY: 'j', QYTHON_FIELD_KEK: 'f', QYTHON_TOKEN_KEK: 't' });
+  assert.equal(env.CHROMA_SERVER_PORT, '45123');
+  assert.equal(env.LLM_BASE_URL, 'http://127.0.0.1:45124/v1');
+  assert.equal(env.ANONYMIZED_TELEMETRY, 'False');
+  assert.equal(env.HF_HUB_DISABLE_TELEMETRY, '1');
+});
