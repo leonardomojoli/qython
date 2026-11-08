@@ -13,9 +13,10 @@ name: Desktop
 #      (llama.cpp) sobe sob demanda com um modelo minúsculo (Qwen3 0.6B), responde, é
 #      desligado por inatividade e volta no pedido seguinte. Prova a fiação; a qualidade
 #      do Gemma 4 é avaliada à parte;
-#   5. usa a biblioteca: envia um PDF (armazenamento local), o Chroma sobe sob demanda, o
-#      embedder ONNX embutido indexa, a pergunta encontra o trecho; parado, o Chroma é
-#      desligado e o pedido seguinte o religa com os dados intactos.
+#   5. usa a biblioteca: baixa os modelos de busca (multilingual-e5 e reranker, em ONNX, com
+#      SHA-256 conferido), envia um PDF (armazenamento local), o Chroma e o serviço de
+#      embeddings sobem sob demanda, a pergunta encontra o trecho; parados, eles são
+#      desligados e o pedido seguinte os religa com os dados intactos.
 on:
   workflow_dispatch:
   pull_request:
@@ -115,10 +116,8 @@ jobs:
       - name: Backend empacotado (PyInstaller)
         working-directory: packages/desktop/python
         run: |
-          # Vocabulário do tiktoken e modelo de embeddings embutidos: o copiloto e a biblioteca
-          # não podem depender de internet.
+          # Vocabulário do tiktoken embutido: o copiloto não pode depender de internet.
           python prepare_tiktoken.py
-          python prepare_onnx.py
           pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec
           ./dist/qython-backend/qython-backend selftest
 
@@ -141,6 +140,14 @@ jobs:
         with:
           path: ${{ runner.temp }}/modelos
           key: qwen3-0.6b-q4_0-${{ env.SMOKE_MODEL_SHA256 }}
+
+      # Os modelos de busca da biblioteca (e5 + reranker, ~0,4 GB) o PRÓPRIO app baixa na fumaça, com
+      # o baixador de verdade e o SHA-256 conferido; o cache só evita repetir isso a cada execução.
+      - name: Modelos de busca da biblioteca (em cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/qython-perfil/models
+          key: modelos-busca-${{ runner.os }}-${{ hashFiles('packages/desktop/models.json') }}
 
       - name: Baixa o modelo do teste de fumaça
         if: steps.model.outputs.cache-hit != 'true'

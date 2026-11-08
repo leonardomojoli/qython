@@ -199,6 +199,39 @@ def test_config_com_data_dir_grava_fora_do_codigo():
     assert c['WEB_DIR'] == '/x/web'
 
 
+def test_servidor_de_embeddings_recebe_json_no_corpo():
+    """Regressão: com os modelos Pydantic dentro de build_app(), o FastAPI os tratava como query
+    ('Field required: query.req') e o /embed devolvia 422 a toda chamada real."""
+    sys.path.insert(0, ROOT)
+    os.environ.setdefault('JWT_SECRET_KEY', 'x' * 40)
+    from starlette.testclient import TestClient
+
+    from backend.embed_onnx import build_app
+
+    class FakeEmbedder:
+        dim = 4
+
+        def encode(self, texts, kind, batch_size=16):
+            return [[float(len(t)), 1.0 if kind == 'query' else 0.0, 0.0, 0.0] for t in texts]
+
+    class FakeReranker:
+        def score(self, query, documents, batch_size=16):
+            return [float(len(d)) for d in documents]
+
+    client = TestClient(build_app(embedder=FakeEmbedder(), reranker=FakeReranker()))
+    assert client.get('/health').json() == {'status': 'ok', 'dim': 4, 'rerank': True, 'engine': 'onnx'}
+    res = client.post('/embed', json={'texts': ['ab', 'abc'], 'kind': 'query'})
+    assert res.status_code == 200, res.text
+    assert res.json() == {'embeddings': [[2.0, 1.0, 0.0, 0.0], [3.0, 1.0, 0.0, 0.0]], 'dim': 4}
+    assert client.post('/embed', json={'texts': []}).json() == {'embeddings': [], 'dim': 4}
+    ranked = client.post('/rerank', json={'query': 'q', 'documents': ['a', 'ccc', 'bb'], 'top_k': 2}).json()
+    assert [r['index'] for r in ranked['results']] == [1, 2], ranked
+    # Sem reranker o backend precisa receber um erro que ele trata (cai na ordem da fusão).
+    bare = TestClient(build_app(embedder=FakeEmbedder()))
+    assert bare.post('/rerank', json={'query': 'q', 'documents': ['a']}).status_code == 503
+    assert bare.get('/health').json()['rerank'] is False
+
+
 def test_app_instalado_nao_le_env_solto_pelas_pastas():
     """Um .env esquecido numa pasta acima não pode vazar chave nenhuma para o app instalado."""
     base = tempfile.mkdtemp()
