@@ -76,9 +76,11 @@ class Config:
 
     # IAs
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-    PRIMARY_LLM_MODEL = os.getenv("PRIMARY_LLM_MODEL")
-    FALLBACK_LLM_MODEL = os.getenv("FALLBACK_LLM_MODEL")
-    SIMPLE_TASK_LLM_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL")
+    # Com o Gemini cada papel usa um modelo. O app desktop não tem .env, então há um padrão;
+    # no servidor o .env continua mandando. Com IA local o nome é ignorado (llm_provider).
+    PRIMARY_LLM_MODEL = os.getenv("PRIMARY_LLM_MODEL") or "gemini-3.5-flash"
+    FALLBACK_LLM_MODEL = os.getenv("FALLBACK_LLM_MODEL") or "gemini-3.1-flash-lite"
+    SIMPLE_TASK_LLM_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL") or "gemini-3.1-flash-lite"
     # Chat/RAG (alto volume) — modelo e thinking PRÓPRIOS, separados do PRIMARY (que segue p/
     # consultas/resumos/relatórios). Rota o chat p/ um modelo barato: no 3.1-flash-lite o output
     # é 6× mais barato que o 3.5-flash, então thinking pode ficar ALTO (raciocínio) e ainda dar
