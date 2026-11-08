@@ -5,7 +5,7 @@ import { useUser } from '../../contexts/UserContext';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import './Admin.css';
 import qythonLogo from '../../assets/qython-imagotipo.png';
-import { FaChartPie, FaChartLine, FaCog, FaSignOutAlt, FaArrowLeft, FaUsers, FaUserEdit, FaStore } from 'react-icons/fa';
+import { FaChartPie, FaChartLine, FaCog, FaSignOutAlt, FaArrowLeft, FaUsers, FaUserEdit, FaStore, FaRobot } from 'react-icons/fa';
 
 const AdminLayout = ({ children }) => {
     const { t } = useTranslation();
@@ -22,6 +22,7 @@ const AdminLayout = ({ children }) => {
         { id: 'users', label: 'Usuários', icon: <FaUsers />, path: '/admin/users' },
         { id: 'profile-updates', label: 'Atualizações Perfil', icon: <FaUserEdit />, path: '/admin/profile-updates' },
         isHosted && { id: 'pharmacies', label: 'Farmácias', icon: <FaStore />, path: '/admin/pharmacies' },
+        { id: 'ai', label: 'IA', icon: <FaRobot />, path: '/admin/ai' },
         { id: 'settings', label: 'Configurações', icon: <FaCog />, path: '/admin/settings' },
     ].filter(Boolean);
 

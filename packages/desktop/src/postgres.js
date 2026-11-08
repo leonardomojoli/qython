@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import pg from 'pg';
 import { DB_NAME, DB_USER } from './paths.js';
+import { baseEnv } from './env.js';
 
 const require = createRequire(import.meta.url);
 
@@ -53,7 +54,8 @@ export async function resolveBinaries() {
 
 function run(bin, args, { env, input } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { env: { ...process.env, ...env }, windowsHide: true });
+    // Sem herdar o ambiente: o psql/pg_ctl leriam PGPASSWORD, PGHOST e afins de qualquer lugar.
+    const child = spawn(bin, args, { env: { ...baseEnv(), ...env }, windowsHide: true });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => { stdout += d; });

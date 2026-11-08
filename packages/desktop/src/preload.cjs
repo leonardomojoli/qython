@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('qythonDesktop', {
   /** Notificação do sistema operacional (a janela pode estar em segundo plano). */
   notify: (title, body) => ipcRenderer.invoke('qython:notify', { title: String(title), body: String(body ?? '') }),
   openLogs: () => ipcRenderer.invoke('qython:open-logs'),
+  /** Abre o assistente da IA (escolher o modelo, ver o download). */
+  openAiSetup: () => ipcRenderer.invoke('qython:open-ai-setup'),
   appInfo: () => ipcRenderer.invoke('qython:app-info'),
 });

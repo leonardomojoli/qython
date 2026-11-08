@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { baseEnv } from './env.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -62,7 +63,7 @@ export class ManagedProcess extends EventEmitter {
     this.log.info(`[${this.name}] iniciando: ${path.basename(this.command)} ${shown.join(' ')}`);
     const child = spawn(this.command, this.args, {
       cwd: this.cwd,
-      env: { ...process.env, ...this.env },
+      env: { ...baseEnv(), ...this.env },
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });
