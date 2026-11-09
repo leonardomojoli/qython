@@ -7,9 +7,11 @@
 # (constraint): o desktop não deve testar versões que o servidor nunca viu.
 #
 # O que sai, e por quê:
-#   torch, sentence-transformers, transformers, faster-whisper
-#       só servem ao embedder e ao whisper, que rodam em outro processo e entram no pacote
-#       de ML (sob demanda), não no backend. Eram ~3 GB.
+#   torch, sentence-transformers, transformers
+#       só serviam ao embedder e ao whisper; os dois rodam sem torch (onnxruntime e
+#       ctranslate2), em outro processo do mesmo executável, sob demanda. Eram ~3 GB.
+#   (faster-whisper ENTRA: ctranslate2 + PyAV, que traz o ffmpeg dentro da roda, então não há
+#   ffmpeg para instalar. A transcrição roda no modo `whisper` do executável.)
 #   firebase-admin   login com Google e SMS do servidor hospedado (traz gRPC e o SDK do
 #                    Google Cloud). O backend sobe sem ele (firebase_service).
 #   presidio-*, spacy, pt_core_news_md
@@ -29,7 +31,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT=../../..
 
-grep -v -E '^(torch|sentence-transformers|transformers|faster-whisper|gunicorn|firebase-admin|opencv-python|python-magic|presidio-analyzer|presidio-anonymizer|pt_core_news_md)([ >=<#@]|$)' \
+grep -v -E '^(torch|sentence-transformers|transformers|gunicorn|firebase-admin|opencv-python|python-magic|presidio-analyzer|presidio-anonymizer|pt_core_news_md)([ >=<#@]|$)' \
   "$ROOT/requirements.txt" > requirements.in
 
 # Versões do Docker como teto/piso. O lock do Docker pina também o torch "+cpu"; como o

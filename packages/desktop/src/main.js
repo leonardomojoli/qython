@@ -164,6 +164,7 @@ function buildMenu() {
     { label: 'Exibir', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Ajuda', submenu: [
       { label: 'Escolher a IA…', click: () => { openWizard(); } },
+      { label: 'Baixar a transcrição de áudio e vídeo (1,6 GB)', click: () => { downloadWhisper(); } },
       { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
       { label: 'Código-fonte e documentação', click: () => shell.openExternal('https://github.com/leonardomojoli/qython') },
     ] },
@@ -198,6 +199,24 @@ function openWizard() {
   wizard.once('ready-to-show', () => wizard.show());
   wizard.loadFile(path.join(here, 'setup', 'index.html'));
   return new Promise((resolve) => wizard.once('closed', () => { wizard = null; resolve(); }));
+}
+
+function downloadWhisper() {
+  const w = ai?.models.defaultWhisper();
+  if (!w) return;
+  if (ai.models.isInstalled(w.id)) {
+    dialog.showMessageBox(mainWindow ?? undefined, { type: 'info', title: 'Qython', message: 'A transcrição de áudio e vídeo já está instalada.' });
+    return;
+  }
+  if (ai.downloading) {
+    dialog.showMessageBox(mainWindow ?? undefined, { type: 'info', title: 'Qython', message: 'Já há um download em andamento', detail: 'Quando ele terminar, peça de novo.' });
+    return;
+  }
+  ai.installWhisper().catch((err) => log.error(`transcrição: ${err.message}`));
+  dialog.showMessageBox(mainWindow ?? undefined, {
+    type: 'info', title: 'Qython', message: 'Baixando a transcrição de áudio e vídeo',
+    detail: 'São cerca de 1,6 GB, em segundo plano. Você será avisado quando terminar.',
+  });
 }
 
 // --- Backup e restauração ---------------------------------------------------------------
@@ -342,11 +361,15 @@ function wireAi() {
     }
     if (tray && p.total) tray.setToolTip(`Qython — baixando a IA (${Math.floor((p.received / p.total) * 100)}%)`);
   });
-  ai.on('installed', () => {
+  ai.on('installed', (id) => {
     tray?.setToolTip('Qython');
-    if (Notification.isSupported()) {
-      new Notification({ title: 'Qython', body: 'A IA local foi baixada e está pronta para usar.', icon: iconFile }).show();
-    }
+    if (!Notification.isSupported()) return;
+    const kind = ai.models.get(id)?.kind;
+    if (kind === 'support') return; // os modelos de busca são pequenos e não merecem aviso
+    const body = kind === 'whisper'
+      ? 'A transcrição de áudio e vídeo foi baixada e está pronta para usar.'
+      : 'A IA local foi baixada e está pronta para usar.';
+    new Notification({ title: 'Qython', body, icon: iconFile }).show();
   });
   ipcMain.handle('ai:state', () => ai.state());
   ipcMain.handle('ai:install', (_e, modelId) => {
@@ -445,6 +468,8 @@ async function boot() {
       // A biblioteca precisa dos modelos de busca: baixa (e confere o SHA-256) como o app faria.
       await ai.installSupport();
       if (ai.state().error) throw new Error(ai.state().error);
+      // A transcrição do CI usa o modelo tiny (75 MB) no lugar do large-v3-turbo (1,6 GB).
+      if (process.env.QYTHON_WHISPER_MODEL_ID) await ai.models.install(process.env.QYTHON_WHISPER_MODEL_ID);
       await runSmoke({ stack, log, window: mainWindow });
       process.stdout.write('SMOKE OK\n');
       await shutdown(0);

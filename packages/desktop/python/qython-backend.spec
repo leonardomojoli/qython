@@ -72,7 +72,9 @@ hiddenimports = []
 # pymupdf: o pacote "pymupdf-layout" instala os modelos ONNX dentro de pymupdf/layout.
 # tokenizers e onnxruntime: o servidor de embeddings (modo `embed`) os importa dentro de função,
 # então a análise estática do PyInstaller não os enxerga.
-for pkg in ("tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
+# faster_whisper, ctranslate2 e av: o modo `whisper` (transcrição) os importa dentro de função;
+# o faster-whisper tem o VAD (silero_vad_*.onnx) como arquivo de dados.
+for pkg in ("faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
             "pymupdf4llm", "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
             "cssselect2", "certifi", "email_validator", "slowapi", "limits"):
     try:
@@ -95,9 +97,9 @@ hiddenimports += [
 
 excludes = [
     "tkinter", "matplotlib", "IPython", "notebook", "pytest",
-    # Pesos do ML: ficam no pacote de IA, sob demanda (ver packages/desktop/python/lock.sh).
+    # Pesos do ML que o app não usa (o embedder e o whisper rodam sem torch; ver lock.sh).
     "torch", "torchvision", "torchaudio", "sentence_transformers", "transformers",
-    "faster_whisper", "ctranslate2", "tensorflow", "jax",
+    "tensorflow", "jax",
     # Redação de nomes para o Gemini: instalada à parte.
     "presidio_analyzer", "presidio_anonymizer", "spacy", "thinc", "blis",
     "firebase_admin", "cv2",

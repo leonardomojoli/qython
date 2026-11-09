@@ -17,7 +17,7 @@ const quiet = { info() {}, warn() {}, error() {}, sink: () => ({ write() {}, clo
 
 test('o manifesto fixa cada arquivo por tamanho, SHA-256 e revisão', () => {
   assert.equal(real.defaultModel, 'gemma-4-26b-a4b');
-  for (const m of real.models.filter((x) => x.kind !== 'support')) {
+  for (const m of real.models.filter((x) => !x.kind)) {
     assert.match(m.revision, /^[0-9a-f]{40}$/);
     assert.ok(m.files.some((f) => f.role === 'model'));
     for (const f of m.files) {
@@ -155,4 +155,19 @@ test('download que falha deixa o motivo no estado e a IA marcada como não pront
     assert.match(ai.state().error, /falhou/);
     assert.match(ai.notReadyReason(), /não terminou/);
   } finally { server.close(); }
+});
+
+test('o manifesto traz a transcrição (whisper) com tudo fixado e fora da lista de LLMs', () => {
+  const real = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'models.json'), 'utf8'));
+  const mm = new ModelManager(real, '/x');
+  const w = mm.defaultWhisper();
+  assert.equal(w.id, 'whisper-large-v3-turbo');
+  assert.ok(mm.llms().every((m) => m.kind === undefined), 'whisper não pode aparecer como modelo de linguagem');
+  for (const m of real.models.filter((x) => x.kind === 'whisper')) {
+    assert.match(m.revision, /^[0-9a-f]{40}$/, m.id);
+    assert.ok(m.files.some((f) => f.role === 'model' && f.name === 'model.bin' && f.size > 7e7), `${m.id} sem model.bin`);
+    assert.ok(m.files.some((f) => f.name === 'config.json') && m.files.some((f) => f.name === 'tokenizer.json'));
+    for (const f of m.files) assert.match(f.sha256, /^[0-9a-f]{64}$/, `${m.id}/${f.name}`);
+  }
+  assert.ok(w.files.find((f) => f.name === 'model.bin').size > 1.5e9, 'o padrão é o large-v3-turbo');
 });
