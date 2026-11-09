@@ -303,8 +303,13 @@ jobs:
           while kill -0 "$pid" 2>/dev/null; do
             elapsed=$(( $(date +%s) - start ))
             echo "[instalador] ${elapsed} s, $(find "$LOCALAPPDATA/Programs/Qython" -type f 2>/dev/null | wc -l) arquivos instalados"
+            if [ "$elapsed" -gt 300 ] && [ "$(find "$LOCALAPPDATA/Programs/Qython" -type f 2>/dev/null | wc -l)" -eq 0 ]; then
+              echo "::error::o instalador não instalou nenhum arquivo em 5 min; diagnóstico:"
+              powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w packages/desktop/scripts/ci-win-diag.ps1)" -OutDir "$(cygpath -w "$RUNNER_TEMP/diag-instalador")" || true
+              exit 1
+            fi
             if [ "$elapsed" -gt 720 ]; then
-              echo "::error::o instalador passou de 12 min"; tasklist | grep -i -E "qython|setup|install" || true; exit 1
+              echo "::error::o instalador passou de 12 min"; exit 1
             fi
             sleep 15
           done
@@ -315,6 +320,14 @@ jobs:
           test -f "$app"
           # Aplicativo gráfico: o Start-Process -Wait espera e devolve o código de saída.
           powershell -NoProfile -Command "\$p = Start-Process -FilePath '$(cygpath -w "$app")' -ArgumentList '--smoke' -Wait -PassThru; exit \$p.ExitCode"
+
+      - name: Foto da tela do instalador parado (Windows)
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-instalador-windows
+          path: ${{ runner.temp }}/diag-instalador
+          if-no-files-found: ignore
 
       - name: Instala o dmg e abre o app instalado (macOS)
         if: runner.os == 'macOS'
