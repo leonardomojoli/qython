@@ -44,6 +44,7 @@ export class OnDemandService extends EventEmitter {
     this.proc = null;
     this.state = 'idle'; // idle | starting | running
     this.starting = null;
+    this.stopping = null;
     this.inflight = 0;
     this.idleTimer = null;
     this.lastError = null;
@@ -68,6 +69,9 @@ export class OnDemandService extends EventEmitter {
   }
 
   async ensureRunning() {
+    // Um pedido que chega enquanto o processo antigo ainda está morrendo espera o fim dele:
+    // o novo usaria a mesma porta privada.
+    if (this.stopping) await this.stopping.catch(() => {});
     if (this.state === 'running' && this.proc?.isAlive()) return;
     if (this.starting) return this.starting;
     this.starting = (async () => {
@@ -156,13 +160,17 @@ export class OnDemandService extends EventEmitter {
 
   async stopChild() {
     clearTimeout(this.idleTimer);
+    if (this.stopping) return this.stopping;
     const proc = this.proc;
     if (!proc) return;
     this.proc = null;
     this.log?.info(`[${this.name}] parado há ${Math.round(this.idleMs / 1000)} s; desligando para liberar memória.`);
-    await proc.stop();
-    proc.dispose();
-    this._setState('idle');
+    this.stopping = (async () => {
+      await proc.stop();
+      proc.dispose();
+      this._setState('idle');
+    })().finally(() => { this.stopping = null; });
+    return this.stopping;
   }
 
   async stop() {
