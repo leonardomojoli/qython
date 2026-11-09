@@ -275,7 +275,9 @@ jobs:
           # O instalador roda em segundo plano para o log mostrar o andamento (a primeira execução no CI
           # passou 15 min aqui sem dizer nada) e para ele não segurar o passo se abrir o app no fim.
           start=$(date +%s)
-          "$installer" /S &
+          # MSYS_NO_PATHCONV: sem isto o Git Bash converte "/S" em "S:/" e o instalador abre o assistente
+          # em vez de instalar em silêncio (era isto que o travava: ficava esperando alguém clicar em Next).
+          MSYS_NO_PATHCONV=1 "$installer" /S &
           pid=$!
           while kill -0 "$pid" 2>/dev/null; do
             elapsed=$(( $(date +%s) - start ))
