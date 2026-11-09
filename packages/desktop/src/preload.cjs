@@ -10,4 +10,7 @@ contextBridge.exposeInMainWorld('qythonDesktop', {
   /** Abre o assistente da IA (escolher o modelo, ver o download). */
   openAiSetup: () => ipcRenderer.invoke('qython:open-ai-setup'),
   appInfo: () => ipcRenderer.invoke('qython:app-info'),
+  /** Backup cifrado dos dados (abre as janelas do sistema para escolher o arquivo e a senha). */
+  backup: () => ipcRenderer.invoke('qython:backup'),
+  restore: () => ipcRenderer.invoke('qython:restore'),
 });
