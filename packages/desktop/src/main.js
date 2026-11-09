@@ -263,6 +263,7 @@ async function boot() {
 
   const idleEnv = Number(process.env.QYTHON_LLM_IDLE_SECONDS);
   stack = new Stack({
+    chromaIdleSeconds: Number(process.env.QYTHON_CHROMA_IDLE_SECONDS) || undefined,
     paths, resources: { backend: path.join(resourcesDir(), 'backend'), web: path.join(resourcesDir(), 'web') },
     secrets, settings, logger: log, onStatus: setStatus,
     env: process.env.QYTHON_BACKEND_EXTRA_ENV ? JSON.parse(process.env.QYTHON_BACKEND_EXTRA_ENV) : {},

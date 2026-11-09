@@ -49,11 +49,21 @@ if not os.path.isdir(tiktoken_cache) or not os.listdir(tiktoken_cache):
 for name in os.listdir(tiktoken_cache):
     datas.append((os.path.join(tiktoken_cache, name), "tiktoken_cache"))
 
+# Modelo do embedder da biblioteca (ONNX), para ela indexar sem internet (prepare_onnx.py).
+onnx_model = os.path.join(SPECPATH, "onnx-model", "all-MiniLM-L6-v2")
+if not os.path.isdir(os.path.join(onnx_model, "onnx")):
+    raise SystemExit("Falta python/onnx-model: rode python/prepare_onnx.py antes do PyInstaller.")
+for folder, _dirs, files in os.walk(onnx_model):
+    for name in files:
+        datas.append((os.path.join(folder, name), os.path.join("onnx_model", "all-MiniLM-L6-v2", os.path.relpath(folder, onnx_model))))
+
 # --- dependências com arquivos de dados ou importações dinâmicas ---------------------
 binaries = []
 hiddenimports = []
 # pymupdf: o pacote "pymupdf-layout" instala os modelos ONNX dentro de pymupdf/layout.
-for pkg in ("chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
+# tokenizers e onnxruntime: o embedder ONNX da biblioteca os importa só na hora de usar (dentro
+# de try/except), então a análise estática do PyInstaller não os enxerga.
+for pkg in ("tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
             "pymupdf4llm", "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
             "cssselect2", "certifi", "email_validator", "slowapi", "limits"):
     try:

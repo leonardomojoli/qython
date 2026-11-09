@@ -44,6 +44,7 @@ export class OnDemandService extends EventEmitter {
     this.proc = null;
     this.state = 'idle'; // idle | starting | running
     this.starting = null;
+    this.starts = 0; // quantas vezes o processo subiu (diagnóstico e testes)
     this.stopping = null;
     this.inflight = 0;
     this.idleTimer = null;
@@ -94,6 +95,7 @@ export class OnDemandService extends EventEmitter {
         this.lastError = err.message;
         throw err;
       }
+      this.starts += 1;
       this._setState('running');
       this.log?.info(`[${this.name}] pronto.`);
       // Se o processo cair depois de pronto, volta a "idle" e o próximo pedido o sobe de novo.

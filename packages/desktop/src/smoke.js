@@ -102,9 +102,92 @@ export async function runSmoke({ stack, log, window }) {
   const stillAccepted = await call(`${base2}/api`, 'GET', '/user/info', { token });
   assert(stillAccepted.data.terms_pending === false, 'o aceite do termo se perdeu');
 
+  // A IA primeiro: ela confere que o llama-server começa desligado, e o chat da biblioteca (que
+  // também usa a IA) o religaria.
   if (process.env.QYTHON_AI_MODEL_FILE) await smokeAi({ stack, api: `${base2}/api`, token, step, log });
+  await smokeLibrary({ stack, api: `${base2}/api`, token, step, log, withAi: !!process.env.QYTHON_AI_MODEL_FILE });
 
   step('OK');
+}
+
+/** Um PDF de uma página com o texto, escrito à mão (sem dependências). Só ASCII. */
+function tinyPdf(text) {
+  const esc = text.replace(/[()\\]/g, '\\$&');
+  const content = `BT /F1 12 Tf 72 720 Td (${esc}) Tj ET`;
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
+    `<</Length ${content.length}>>\nstream\n${content}\nendstream`,
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [];
+  objects.forEach((body, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const off of offsets) pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
+/**
+ * Biblioteca com armazenamento local: o PDF é enviado, indexado no Chroma (que sobe sob
+ * demanda) com o embedder ONNX embutido, e uma pergunta encontra o trecho. Depois do Chroma
+ * ser desligado por inatividade, o próximo pedido o sobe de novo e os dados continuam lá.
+ */
+async function smokeLibrary({ stack, api, token, step, log, withAi }) {
+  const chroma = stack.chroma;
+  assert(chroma, 'o Chroma não foi criado');
+  assert(chroma.state === 'idle', `o Chroma deveria estar desligado antes de a biblioteca ser usada (estado: ${chroma.state})`);
+
+  step('biblioteca: envia um PDF');
+  const lib = await call(api, 'POST', '/academic/libraries', { token, json: { name: 'Biblioteca do CI' } });
+  assert(lib.status < 300 && lib.data.id, `criar biblioteca falhou: ${JSON.stringify(lib.data)}`);
+  const form = new FormData();
+  const pdf = tinyPdf('Amoxicilina na otite media aguda em criancas: 80 a 90 mg/kg/dia, dividida em duas tomadas, por 10 dias. '
+    + 'A dose maxima e 4 g por dia.');
+  form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'otite.pdf');
+  const up = await call(api, 'POST', `/academic/libraries/${lib.data.id}/documents`, { token, form });
+  assert(up.status === 202, `upload devolveu ${up.status}: ${JSON.stringify(up.data).slice(0, 300)}`);
+
+  step('biblioteca: espera a indexação (Chroma sob demanda + embedder ONNX)');
+  let doc;
+  const deadline = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const list = await call(api, 'GET', `/academic/libraries/${lib.data.id}/documents`, { token });
+    doc = list.data[0];
+    if (doc && (doc.status === 'processed' || doc.status === 'error')) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  assert(doc?.status === 'processed', `o documento não foi indexado: ${JSON.stringify(doc)}`);
+  assert(doc.storage_provider === null || doc.storage_provider === 'local',
+    `o documento deveria ficar no armazenamento local, veio ${doc.storage_provider}`);
+  assert(chroma.service.starts >= 1, 'o Chroma não subiu para indexar');
+
+  if (!withAi) return;
+  const ask = () => call(api, 'POST', `/academic/libraries/${lib.data.id}/chat`, {
+    token, json: { message: 'Qual a dose de amoxicilina na otite media aguda?', history: [] },
+  });
+  step('biblioteca: a pergunta encontra o trecho indexado');
+  const first = await ask();
+  assert(first.status === 200, `chat da biblioteca devolveu ${first.status}: ${JSON.stringify(first.data).slice(0, 300)}`);
+  assert(!/^(Não encontrei|Desculpe, não consegui)/.test(first.data.response), `a busca não achou o trecho: ${first.data.response}`);
+
+  step('biblioteca: parado, o Chroma é desligado e os dados continuam');
+  const idleMs = (Number(process.env.QYTHON_CHROMA_IDLE_SECONDS) || 600) * 1000;
+  const stopBy = Date.now() + idleMs + 30000;
+  while (chroma.state !== 'idle' && Date.now() < stopBy) await new Promise((r) => setTimeout(r, 500));
+  assert(chroma.state === 'idle', 'o Chroma não foi desligado depois de parado');
+  const chromaStarts = chroma.service.starts;
+  const again = await ask();
+  assert(chroma.service.starts > chromaStarts, 'o Chroma deveria ter subido de novo');
+  assert(again.status === 200 && !/^(Não encontrei|Desculpe, não consegui)/.test(again.data.response),
+    `depois de religar o Chroma a busca falhou: ${JSON.stringify(again.data).slice(0, 300)}`);
+  log.info('[fumaça] biblioteca: ok');
 }
 
 /**
@@ -132,7 +215,9 @@ async function smokeAi({ stack, api, token, step, log }) {
   assert(first.status === 200, `o copiloto devolveu ${first.status}: ${JSON.stringify(first.data).slice(0, 400)}`);
   assert(typeof first.data.response === 'string' && first.data.response.trim().length > 0,
     `resposta vazia: ${JSON.stringify(first.data).slice(0, 400)}`);
-  assert(llm.state === 'running', `o llama-server deveria estar rodando (estado: ${llm.state})`);
+  // Com a ociosidade curta do teste, ele pode ter sido desligado entre duas chamadas internas
+  // do copiloto; o que importa aqui é que subiu sob demanda.
+  assert(llm.service.starts >= 1, 'o llama-server não subiu para responder');
 
   step('IA local: parado, o llama-server é desligado');
   const idleMs = (Number(process.env.QYTHON_LLM_IDLE_SECONDS) || 900) * 1000;
@@ -141,9 +226,10 @@ async function smokeAi({ stack, api, token, step, log }) {
   assert(llm.state === 'idle', 'o llama-server não foi desligado depois de parado');
 
   step('IA local: o pedido seguinte o sobe de novo');
+  const startsBefore = llm.service.starts;
   const second = await ask('Diga apenas: de novo.');
   assert(second.status === 200 && second.data.response?.trim(), `2º pedido falhou: ${JSON.stringify(second.data).slice(0, 400)}`);
-  assert(llm.state === 'running', 'o llama-server deveria ter voltado');
+  assert(llm.service.starts > startsBefore, 'o llama-server deveria ter subido de novo');
   log.info('[fumaça] IA local: ok');
 }
 
