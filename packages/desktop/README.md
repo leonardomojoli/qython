@@ -74,8 +74,14 @@ backend, nas **mesmas versões** do lock do Docker. Não vão no pacote:
   da IA (fatia 3) não pode ligar o Gemini sem oferecer o pacote de redação.
 - `opencv-python` (nada importa o `cv2`) e `gunicorn` (não roda no Windows).
 
-Sem Pango/GTK (Windows e macOS não têm), o backend sobe e só a geração de PDF avisa que
-falta a biblioteca. O empacotamento dessas bibliotecas fica com os instaladores.
+**PDF (receita, atestado, materiais).** O WeasyPrint precisa do Pango/GTK. No Linux vem com o GTK do
+Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no macOS o CI reúne as
+bibliotecas e elas entram dentro do pacote do backend: no Windows as DLLs do MSYS2
+(`python/pdf-libs/windows.sh`), no macOS as dylibs do Homebrew com os caminhos reescritos para
+`@loader_path/` (`python/pdf-libs/bundle_dylibs.py`). Um `fonts-<so>.conf` mínimo vai junto, porque o
+fontconfig empacotado não traz a configuração do sistema onde foi compilado e, sem ela, o PDF sai
+sem texto. No macOS a `libharfbuzz-subset` não vai: ela derrubou o processo ao reduzir uma fonte do sistema
+(o WeasyPrint então reduz as fontes com o fontTools, mais lento e sem esse defeito). O `selftest` do executável gera um PDF e confere que o texto (com acentos) está nele.
 
 ## Desenvolvimento
 
@@ -186,11 +192,20 @@ assinatura e o SmartScreen avisa.
 
 ### O que ainda não está nos instaladores
 
-- **PDF de receita e atestado no Windows e no macOS.** O WeasyPrint precisa do Pango/GTK. No Linux vem
-  com o GTK do próprio Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no
-  macOS as bibliotecas ainda não são empacotadas: o backend sobe e só a geração de PDF avisa que
-  falta a biblioteca. É a próxima peça (DLLs do MSYS2 com `WEASYPRINT_DLL_DIRECTORIES`; dylibs do Homebrew
-  no macOS).
 - **OCR (Tesseract) e transcrição (ffmpeg e whisper).** Não vão no pacote ainda.
-- **macOS assinado e notarizado** (precisa de conta Apple) e **ícone `.ico`/`.icns` próprio**
-  (hoje o electron-builder converte o PNG).
+- **macOS assinado e notarizado** (precisa de conta Apple).
+
+## Backup e restauração
+
+Menu **Arquivo → Fazer backup…** (e na bandeja). O Qython pausa por alguns instantes, grava o banco, os
+dados do backend (biblioteca, exportações, Chroma) e as **chaves de criptografia** num único arquivo
+`.qybackup` cifrado com a senha escolhida (scrypt + AES-256-GCM, arquivo inteiro). As chaves vão dentro
+porque, sem elas, o CPF, o RG e as notas clínicas cifradas ficam ilegíveis no computador novo; é por isso
+que a senha precisa ser guardada em outro lugar. Os modelos de IA não entram (o assistente baixa de novo).
+
+**Arquivo → Restaurar backup…** confere a senha e a compatibilidade antes de parar qualquer coisa, e
+nunca apaga o que existia: os dados de agora ficam em `antes-do-restauro-<data>`, dentro da pasta de dados
+do Qython, para o médico apagar quando tiver certeza. Limite: o banco só restaura no **mesmo sistema,
+mesma arquitetura e mesma versão maior do PostgreSQL**; para trocar de sistema operacional é preciso a
+exportação por paciente (LGPD), que já existe no Qython. A API para o front é
+`window.qythonDesktop.backup()` / `.restore()`.

@@ -117,13 +117,48 @@ jobs:
             echo "::error::o build do desktop ainda busca fontes na internet"; exit 1
           fi
 
+      - name: Bibliotecas do PDF no Windows (Pango/GTK do MSYS2)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true  # com o banco de pacotes desatualizado, o pacman rejeita pacotes ('corrupted package (checksum)')
+          install: mingw-w64-x86_64-pango mingw-w64-x86_64-ntldd
+
+      - name: Reúne as DLLs do PDF (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        working-directory: packages/desktop/python
+        run: bash pdf-libs/windows.sh pdf-libs/win
+
+      - name: Reúne as bibliotecas do PDF (macOS)
+        if: runner.os == 'macOS'
+        working-directory: packages/desktop/python
+        run: |
+          brew install pango
+          python3 pdf-libs/bundle_dylibs.py pdf-libs/mac
+
       - name: Backend empacotado (PyInstaller)
         working-directory: packages/desktop/python
         run: |
           # Vocabulário do tiktoken embutido: o copiloto não pode depender de internet.
           python prepare_tiktoken.py
           pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec
-          ./dist/qython-backend/qython-backend selftest
+          # PYTHONFAULTHANDLER: se uma biblioteca nativa derrubar o processo, o log mostra o ponto do Python.
+          PYTHONFAULTHANDLER=1 ./dist/qython-backend/qython-backend selftest
+
+      - name: Relatório de falha do macOS (se o backend caiu)
+        if: failure() && runner.os == 'macOS'
+        working-directory: packages/desktop/python
+        run: |
+          # O mesmo selftest sob o lldb: mostra em qual biblioteca nativa o processo cai. A pasta do pacote vai
+          # em DYLD_FALLBACK_LIBRARY_PATH antes, para o executável não se reiniciar (o lldb não o acompanharia).
+          export DYLD_FALLBACK_LIBRARY_PATH="$PWD/dist/qython-backend/_internal:/usr/lib"
+          lldb --batch -o "process handle SIGSEGV -s true -p true" -o run -o "bt 25" -o "image list" -- ./dist/qython-backend/qython-backend selftest 2>&1 | grep -v "^\s*$" | tail -90 || true
+          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -20 || true
+          for f in $(ls -t ~/Library/Logs/DiagnosticReports/*qython* 2>/dev/null | head -2); do
+            echo "=== $f"; head -c 12000 "$f"
+          done
 
       - name: Tamanho do pacote
         run: |
