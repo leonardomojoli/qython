@@ -8,7 +8,11 @@ name: Desktop
 #   3. abre o app de verdade, sem tela (xvfb no Linux), e faz o que um médico novo faz:
 #      espera /api/health, cria a conta do dono, aceita o termo, cadastra um paciente,
 #      REINICIA tudo e confere que o dado cifrado continua legível (as chaves de
-#      criptografia sobrevivem a uma nova abertura).
+#      criptografia sobrevivem a uma nova abertura);
+#   4. pergunta algo ao copiloto: o backend fala com a porta fixa da IA, o llama-server
+#      (llama.cpp) sobe sob demanda com um modelo minúsculo (Qwen3 0.6B), responde, é
+#      desligado por inatividade e volta no pedido seguinte. Prova a fiação; a qualidade
+#      do Gemma 4 é avaliada à parte.
 on:
   workflow_dispatch:
   pull_request:
@@ -30,6 +34,11 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # Modelo do teste de fumaça da IA: o mesmo do ia-local.yml, fixado por revisão e SHA-256.
+  SMOKE_MODEL_URL: https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/13ac06624948e4d8589cb4b6f90100837342fcb8/Qwen3-0.6B-Q4_0.gguf
+  SMOKE_MODEL_SHA256: da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4
 
 concurrency:
   group: desktop-${{ github.ref }}
@@ -100,6 +109,8 @@ jobs:
       - name: Backend empacotado (PyInstaller)
         working-directory: packages/desktop/python
         run: |
+          # Vocabulário do tiktoken embutido: o copiloto não pode depender de internet.
+          python prepare_tiktoken.py
           pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec
           ./dist/qython-backend/qython-backend selftest
 
@@ -111,14 +122,34 @@ jobs:
             node packages/desktop/scripts/size-report.mjs packages/web/build "Front"
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Reúne os recursos do app
-        run: node packages/desktop/scripts/prepare-resources.mjs
+      - name: Reúne os recursos do app (backend, front e llama-server)
+        run: |
+          node packages/desktop/scripts/prepare-resources.mjs
+          node packages/desktop/scripts/fetch-llama.mjs
+
+      - name: Modelo do teste de fumaça (em cache)
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/modelos
+          key: qwen3-0.6b-q4_0-${{ env.SMOKE_MODEL_SHA256 }}
+
+      - name: Baixa o modelo do teste de fumaça
+        if: steps.model.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/modelos"
+          curl -fSL --retry 5 -o "$RUNNER_TEMP/modelos/qwen3.gguf" "$SMOKE_MODEL_URL"
+          echo "$SMOKE_MODEL_SHA256  $RUNNER_TEMP/modelos/qwen3.gguf" > "$RUNNER_TEMP/modelos/qwen3.sha256"
+          cd "$RUNNER_TEMP/modelos" && (sha256sum -c qwen3.sha256 2>/dev/null || shasum -a 256 -c qwen3.sha256)
 
       - name: Teste de fumaça (Linux, sem tela)
         if: runner.os == 'Linux'
         timeout-minutes: 12
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: xvfb-run -a npx electron packages/desktop --smoke --no-sandbox
 
       - name: Teste de fumaça
@@ -126,6 +157,9 @@ jobs:
         timeout-minutes: 12
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: npx electron packages/desktop --smoke
 
       - name: Logs do app em caso de falha

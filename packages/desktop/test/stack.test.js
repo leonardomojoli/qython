@@ -27,7 +27,7 @@ test('recusa abrir um banco que já tem dados quando as chaves sumiram', async (
   const paths = layout(root);
   fs.mkdirSync(paths.pgData, { recursive: true });
   fs.writeFileSync(path.join(paths.pgData, 'PG_VERSION'), '18\n');
-  const vault = { isEncryptionAvailable: () => false };
+  const vault = { available: async () => false };
   const stack = new Stack({
     paths, resources: { backend: 'b', web: 'w' }, logger: quiet,
     secrets: new SecretStore(paths.secrets, vault), settings: new Settings(paths.settings),
@@ -42,7 +42,7 @@ test('o ambiente do backend leva as chaves, a edição local e a origem da janel
   const paths = layout(root);
   const stack = new Stack({
     paths, resources: { backend: 'b', web: '/app/web' }, logger: quiet,
-    secrets: new SecretStore(paths.secrets, { isEncryptionAvailable: () => false }),
+    secrets: new SecretStore(paths.secrets, { available: async () => false }),
     settings: new Settings(paths.settings), env: { LLM_MODEL: 'gemma-4' },
   });
   stack.webPort = 41000;

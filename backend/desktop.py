@@ -43,6 +43,13 @@ def _watch_parent(server) -> None:
     server.should_exit = True
 
 
+def _use_bundled_tiktoken() -> None:
+    """Aponta o tiktoken para o vocabulário embutido: sem isso ele o baixaria da internet."""
+    bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "tiktoken_cache")
+    if getattr(sys, "frozen", False) and os.path.isdir(bundled):
+        os.environ.setdefault("TIKTOKEN_CACHE_DIR", bundled)
+
+
 def _stage(text: str) -> None:
     """Uma linha no stderr (que o Electron grava em backend.log), para uma falha mostrar até onde
     o boot chegou. O logging do backend só liga quando o main.py é importado, no fim."""
@@ -51,6 +58,8 @@ def _stage(text: str) -> None:
 
 def serve(args: argparse.Namespace) -> int:
     import uvicorn
+
+    _use_bundled_tiktoken()
 
     # Um travamento no boot (como o do pg_ctl no Windows, que só se via como 20 minutos de
     # silêncio) passa a ser um relatório: a cada 3 min parado, o Python imprime o que cada thread
@@ -144,6 +153,13 @@ def selftest(_args: argparse.Namespace) -> int:
             raise AssertionError(f"detecção de tipo inesperada: {kinds}")
         return library_service.magic.__name__
 
+    def tiktoken_offline():
+        # Com o vocabulário embutido, nenhuma requisição é feita (o app pode estar sem rede).
+        _use_bundled_tiktoken()
+        import tiktoken
+
+        return f"{len(tiktoken.get_encoding('cl100k_base').encode('olá, mundo'))} tokens"
+
     def import_chroma():
         import chromadb
 
@@ -183,6 +199,8 @@ def selftest(_args: argparse.Namespace) -> int:
 
     check("app", import_app)
     check("mime", mime_detection)
+
+    check("tiktoken", tiktoken_offline)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)

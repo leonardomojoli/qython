@@ -6,10 +6,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { layout } from './paths.js';
 import { createLogger } from './logger.js';
-import { SecretStore, SecretsUnavailableError } from './secrets.js';
+import { SecretStore, SecretsUnavailableError, electronVault } from './secrets.js';
 import { Settings } from './settings.js';
 import { Stack, KeysMissingError } from './stack.js';
 import { runSmoke } from './smoke.js';
+import { AiController } from './ai.js';
+import { LocalLlm } from './llm.js';
+import { ModelManager, loadManifest } from './models.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SMOKE = process.argv.includes('--smoke');
@@ -28,6 +31,9 @@ function resourcesDir() {
 }
 
 let stack = null;
+let ai = null;
+let settings = null;
+let wizard = null;
 let splash = null;
 let mainWindow = null;
 let tray = null;
@@ -95,6 +101,15 @@ function createMainWindow(baseUrl, { visible = true } = {}) {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
   });
+  // O que dá errado dentro da janela (página que não carrega, renderizador que cai, erro do
+  // React) vai para o app.log: sem isto o médico vê uma tela branca e ninguém sabe por quê.
+  win.webContents.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
+    if (isMainFrame && code !== -3) log.error(`A janela não carregou ${url}: ${desc} (${code})`);
+  });
+  win.webContents.on('render-process-gone', (_e, details) => log.error(`O renderizador caiu: ${details.reason}`));
+  win.webContents.on('console-message', (event) => {
+    if (event.level === 'error') log.warn(`[janela] ${event.message}`);
+  });
   win.loadURL(baseUrl);
   return win;
 }
@@ -113,6 +128,7 @@ function createTray() {
     tray.setToolTip('Qython');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Abrir o Qython', click: showMain },
+      { label: 'Escolher a IA…', click: () => { openWizard(); } },
       { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
       { type: 'separator' },
       { label: 'Sair', click: () => app.quit() },
@@ -130,6 +146,7 @@ function buildMenu() {
     { label: 'Editar', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Exibir', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Ajuda', submenu: [
+      { label: 'Escolher a IA…', click: () => { openWizard(); } },
       { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
       { label: 'Código-fonte e documentação', click: () => shell.openExternal('https://github.com/leonardomojoli/qython') },
     ] },
@@ -143,6 +160,59 @@ function hardenSession(origin) {
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
     cb(allowed.has(permission) && sameOrigin(wc.getURL(), origin));
   });
+}
+
+/** O assistente da IA: escolher o modelo e acompanhar o download. Resolve quando fecha. */
+function openWizard() {
+  if (wizard && !wizard.isDestroyed()) {
+    wizard.focus();
+    return new Promise((resolve) => wizard.once('closed', resolve));
+  }
+  log.info('Abrindo o assistente da IA.');
+  wizard = new BrowserWindow({
+    width: 820, height: 840, minWidth: 640, minHeight: 560, show: false, title: 'Escolher a IA',
+    icon: iconFile, autoHideMenuBar: true, parent: mainWindow ?? undefined, modal: false,
+    webPreferences: {
+      preload: path.join(here, 'setup', 'preload.cjs'),
+      contextIsolation: true, sandbox: true, nodeIntegration: false,
+    },
+  });
+  wizard.setMenuBarVisibility(false);
+  wizard.once('ready-to-show', () => wizard.show());
+  wizard.loadFile(path.join(here, 'setup', 'index.html'));
+  return new Promise((resolve) => wizard.once('closed', () => { wizard = null; resolve(); }));
+}
+
+function wireAi() {
+  const push = () => {
+    if (wizard && !wizard.isDestroyed()) wizard.webContents.send('ai:update', ai.state());
+  };
+  ai.on('change', push);
+  let lastPush = 0;
+  ai.on('progress', (p) => {
+    const now = Date.now();
+    if (now - lastPush > 400) {
+      lastPush = now;
+      push();
+    }
+    if (tray && p.total) tray.setToolTip(`Qython — baixando a IA (${Math.floor((p.received / p.total) * 100)}%)`);
+  });
+  ai.on('installed', () => {
+    tray?.setToolTip('Qython');
+    if (Notification.isSupported()) {
+      new Notification({ title: 'Qython', body: 'A IA local foi baixada e está pronta para usar.', icon: iconFile }).show();
+    }
+  });
+  ipcMain.handle('ai:state', () => ai.state());
+  ipcMain.handle('ai:install', (_e, modelId) => {
+    ai.install(modelId).catch((err) => log.error(`install: ${err.message}`));
+  });
+  ipcMain.handle('ai:cancel', () => ai.cancel());
+  ipcMain.handle('ai:skip', () => {
+    settings.set('aiSkipped', true);
+    wizard?.close();
+  });
+  ipcMain.handle('ai:done', () => wizard?.close());
 }
 
 async function fatal(err) {
@@ -184,11 +254,26 @@ async function boot() {
   buildMenu();
   if (!SMOKE) createSplash();
 
-  const secrets = new SecretStore(paths.secrets, safeStorage);
-  const settings = new Settings(paths.settings);
+  const secrets = new SecretStore(paths.secrets, electronVault(safeStorage));
+  settings = new Settings(paths.settings);
+  const manifest = loadManifest(path.join(here, '..', 'models.json'));
+  const models = new ModelManager(manifest, paths.models);
+  ai = new AiController({ models, settings, logger: log, llm: () => stack?.llm ?? null });
+  wireAi();
+
+  const idleEnv = Number(process.env.QYTHON_LLM_IDLE_SECONDS);
   stack = new Stack({
     paths, resources: { backend: path.join(resourcesDir(), 'backend'), web: path.join(resourcesDir(), 'web') },
     secrets, settings, logger: log, onStatus: setStatus,
+    env: process.env.QYTHON_BACKEND_EXTRA_ENV ? JSON.parse(process.env.QYTHON_BACKEND_EXTRA_ENV) : {},
+    makeLlm: (apiKey) => new LocalLlm({
+      models, settings, apiKey, logger: log,
+      llamaDir: path.join(resourcesDir(), 'llama'),
+      selectedId: () => ai.selectedId,
+      notReady: () => ai.notReadyReason(),
+      idleSeconds: idleEnv > 0 ? idleEnv : undefined,
+      customModelFile: process.env.QYTHON_AI_MODEL_FILE || null,
+    }),
   });
   stack.on('failed', (message) => {
     if (quitting) return;
@@ -223,6 +308,13 @@ async function boot() {
     splash = null;
   });
   createTray();
+
+  // Primeira abertura: o médico escolhe a IA antes de começar. O download segue em segundo
+  // plano e o cadastro da conta é feito na própria tela do Qython.
+  if (!ai.choice && !settings.get('aiSkipped') && !process.env.QYTHON_AI_MODEL_FILE) {
+    mainWindow.once('ready-to-show', () => { openWizard(); });
+  }
+  ai.resumePending();
 }
 
 ipcMain.handle('qython:notify', (_e, { title, body }) => {
