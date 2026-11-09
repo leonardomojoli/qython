@@ -235,6 +235,7 @@ def selftest(_args: argparse.Namespace) -> int:
             if getattr(sys, "frozen", False):
                 raise
             return f"indisponível: {exc}"
+        print(f"[selftest] pdf: gerado ({len(pdf)} bytes); conferindo o texto", file=sys.stderr, flush=True)
         if not pdf.startswith(b"%PDF"):
             raise RuntimeError(f"o PDF gerado não é válido ({len(pdf)} bytes)")
         # Sem fonte (fontconfig sem configuração) o PDF sai em branco: confere que o texto está lá.
@@ -242,6 +243,7 @@ def selftest(_args: argparse.Namespace) -> int:
 
         with fitz.open(stream=pdf, filetype="pdf") as doc:
             text = doc[0].get_text()
+        print("[selftest] pdf: texto lido", file=sys.stderr, flush=True)
         if "Receita" not in text or "ação" not in text:
             raise RuntimeError(f"o PDF saiu sem o texto esperado (fontes?): {text!r}")
         return f"ok ({len(pdf)} bytes, texto conferido)"
