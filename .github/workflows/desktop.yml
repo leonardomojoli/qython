@@ -16,7 +16,11 @@ name: Desktop
 #   5. usa a biblioteca: baixa os modelos de busca (multilingual-e5 e reranker, em ONNX, com
 #      SHA-256 conferido), envia um PDF (armazenamento local), o Chroma e o serviço de
 #      embeddings sobem sob demanda, a pergunta encontra o trecho; parados, eles são
-#      desligados e o pedido seguinte os religa com os dados intactos.
+#      desligados e o pedido seguinte os religa com os dados intactos;
+#   6. gera os instaladores (NSIS, AppImage e deb, dmg e zip), INSTALA de verdade (silencioso no
+#      Windows, dpkg no Linux, dmg no macOS) e repete a fumaça no app instalado: é isso que prova
+#      que os arquivos certos foram para dentro do instalador (backend, front, llama-server,
+#      Postgres) e que o app abre fora da pasta do repositório.
 on:
   workflow_dispatch:
   pull_request:
@@ -178,6 +182,126 @@ jobs:
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: npx electron packages/desktop --smoke
+
+      # --- Instaladores ------------------------------------------------------------------------
+      - name: Instalador
+        working-directory: packages/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"   # macOS sem assinatura
+        run: npx electron-builder --publish never
+
+      - name: Tamanho dos instaladores
+        run: |
+          {
+            echo "### Instaladores (${{ matrix.name }})"
+            echo
+            echo "| Arquivo | Tamanho |"
+            echo "|---|---|"
+            for f in packages/desktop/release/*.exe packages/desktop/release/*.AppImage packages/desktop/release/*.deb \
+                     packages/desktop/release/*.dmg packages/desktop/release/*.zip; do
+              # `[ ] && echo` devolveria 1 para o padrão que não casa (o shell roda com -e).
+              if [ -f "$f" ]; then echo "| $(basename "$f") | $(du -m "$f" | cut -f1) MB |"; fi
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepara o perfil da fumaça do app instalado (modelos em cache)
+        run: |
+          mkdir -p "$RUNNER_TEMP/qython-perfil-instalado"
+          [ -d "$RUNNER_TEMP/qython-perfil/models" ] && cp -r "$RUNNER_TEMP/qython-perfil/models" "$RUNNER_TEMP/qython-perfil-instalado/models" || true
+
+      - name: Instala o .deb e abre o app instalado (Linux, sem tela)
+        if: runner.os == 'Linux'
+        timeout-minutes: 12
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          sudo apt-get install -y ./packages/desktop/release/Qython-*-linux-amd64.deb
+          test -x /opt/Qython/qython
+          xvfb-run -a /opt/Qython/qython --smoke --no-sandbox
+
+      - name: Instala o NSIS e abre o app instalado (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 25
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          installer=$(ls packages/desktop/release/Qython-*-win-x64.exe | head -1)
+          app="$LOCALAPPDATA/Programs/Qython/Qython.exe"
+          # O Defender examinando os milhares de arquivos do pacote deixa a extração lentíssima no runner.
+          powershell -NoProfile -Command "Add-MpPreference -ExclusionPath \"\$env:LOCALAPPDATA\\Programs\\Qython\",\"\$env:RUNNER_TEMP\"" || echo "(sem exclusão do Defender)"
+          # O instalador roda em segundo plano para o log mostrar o andamento (a primeira execução no CI
+          # passou 15 min aqui sem dizer nada) e para ele não segurar o passo se abrir o app no fim.
+          start=$(date +%s)
+          # MSYS_NO_PATHCONV: sem isto o Git Bash converte "/S" em "S:/" e o instalador abre o assistente
+          # em vez de instalar em silêncio (era isto que o travava: ficava esperando alguém clicar em Next).
+          MSYS_NO_PATHCONV=1 "$installer" /S &
+          pid=$!
+          while kill -0 "$pid" 2>/dev/null; do
+            elapsed=$(( $(date +%s) - start ))
+            echo "[instalador] ${elapsed} s, $(find "$LOCALAPPDATA/Programs/Qython" -type f 2>/dev/null | wc -l) arquivos instalados"
+            if [ "$elapsed" -gt 300 ] && [ "$(find "$LOCALAPPDATA/Programs/Qython" -type f 2>/dev/null | wc -l)" -eq 0 ]; then
+              echo "::error::o instalador não instalou nenhum arquivo em 5 min; diagnóstico:"
+              powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w packages/desktop/scripts/ci-win-diag.ps1)" -OutDir "$(cygpath -w "$RUNNER_TEMP/diag-instalador")" || true
+              exit 1
+            fi
+            if [ "$elapsed" -gt 720 ]; then
+              echo "::error::o instalador passou de 12 min"; exit 1
+            fi
+            sleep 15
+          done
+          echo "[instalador] terminou em $(( $(date +%s) - start )) s"
+          # Se o instalador abriu o app ao terminar, fecha: a fumaça abaixo usa o perfil de teste.
+          taskkill //F //IM Qython.exe //T || true
+          ls -la "$LOCALAPPDATA/Programs/Qython" | head -20
+          test -f "$app"
+          # Aplicativo gráfico: o Start-Process -Wait espera e devolve o código de saída.
+          powershell -NoProfile -Command "\$p = Start-Process -FilePath '$(cygpath -w "$app")' -ArgumentList '--smoke' -Wait -PassThru; exit \$p.ExitCode"
+
+      - name: Foto da tela do instalador parado (Windows)
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-instalador-windows
+          path: ${{ runner.temp }}/diag-instalador
+          if-no-files-found: ignore
+
+      - name: Instala o dmg e abre o app instalado (macOS)
+        if: runner.os == 'macOS'
+        timeout-minutes: 15
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
+          QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
+          QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
+        run: |
+          dmg=$(ls packages/desktop/release/Qython-*-mac-*.dmg | head -1)
+          hdiutil attach "$dmg" -mountpoint /Volumes/QythonInstalador -nobrowse -quiet
+          cp -R /Volumes/QythonInstalador/Qython.app /Applications/
+          hdiutil detach /Volumes/QythonInstalador -quiet
+          /Applications/Qython.app/Contents/MacOS/Qython --smoke
+
+      - name: Guarda os instaladores
+        uses: actions/upload-artifact@v4
+        with:
+          name: instaladores-${{ matrix.name }}
+          path: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.AppImage
+            packages/desktop/release/*.deb
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.zip
+            packages/desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Logs do app em caso de falha
         if: failure()
