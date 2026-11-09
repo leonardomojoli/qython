@@ -41,7 +41,7 @@ export class AiController extends EventEmitter {
   notReadyReason() {
     if (this.downloading && this.progress) {
       const pct = Math.floor((this.progress.received / this.progress.total) * 100);
-      return `A IA local ainda está sendo baixada (${pct}%). Ela fica disponível quando terminar.`;
+      return `O download dos modelos ainda está em andamento (${this.progress.label ?? 'IA local'}: ${pct}%). Fica disponível quando terminar.`;
     }
     if (this.choice?.modelId && !this.models.isInstalled(this.choice.modelId)) {
       return 'O download da IA local não terminou. Abra o menu Ajuda > Escolher a IA para continuar.';
@@ -55,7 +55,7 @@ export class AiController extends EventEmitter {
       hardware: { ramGb: Math.round(hw.totalRamGb * 10) / 10, diskFreeGb: Math.round((hw.freeDiskBytes / 1024 ** 3) * 10) / 10 },
       defaultModel: this.models.manifest.defaultModel,
       selected: this.selectedId,
-      models: this.models.list().map((m) => {
+      models: this.models.llms().map((m) => {
         const installed = this.models.isInstalled(m.id);
         return {
           id: m.id, label: m.label, tag: m.tag, summary: m.summary, ramGb: m.ramGb, minTotalRamGb: m.minTotalRamGb,
@@ -83,28 +83,43 @@ export class AiController extends EventEmitter {
     this._emit();
   }
 
-  /** Baixa o modelo escolhido em segundo plano. Resolve quando termina (ou falha). */
+  /** Baixa o modelo escolhido, e depois os modelos de busca da biblioteca, em segundo plano. */
   async install(modelId) {
     if (this.downloading) throw new Error('Já existe um download em andamento.');
     await this.select(modelId);
-    if (this.models.isInstalled(modelId)) {
+    await this._download([modelId, ...this.models.supports().map((m) => m.id)]);
+  }
+
+  /** Só os modelos de busca da biblioteca (que valem com qualquer IA, até com o Gemini). */
+  async installSupport() {
+    if (this.downloading) return;
+    await this._download(this.models.supports().map((m) => m.id));
+  }
+
+  async _download(ids) {
+    const pending = ids.filter((id) => !this.models.isInstalled(id));
+    if (pending.length === 0) {
       this._emit();
       return;
     }
     this.abort = new AbortController();
     this.error = null;
-    this.progress = { phase: 'downloading', received: 0, total: modelBytes(this.models.get(modelId)), bytesPerSec: 0, etaSec: null };
+    const first = this.models.get(pending[0]);
+    this.progress = { phase: 'downloading', received: 0, total: modelBytes(first), bytesPerSec: 0, etaSec: null, stage: 1, stages: pending.length, label: first.label };
     this._emit();
     try {
-      await this.models.install(modelId, {
-        signal: this.abort.signal,
-        onProgress: (p) => {
-          this.progress = p;
-          this.emit('progress', p);
-        },
-      });
-      this.log.info(`Modelo ${modelId} instalado.`);
-      this.emit('installed', modelId);
+      for (const [i, id] of pending.entries()) {
+        const model = this.models.get(id);
+        await this.models.install(id, {
+          signal: this.abort.signal,
+          onProgress: (p) => {
+            this.progress = { ...p, stage: i + 1, stages: pending.length, label: model.label };
+            this.emit('progress', this.progress);
+          },
+        });
+        this.log.info(`Modelo ${id} instalado.`);
+        this.emit('installed', id);
+      }
     } catch (err) {
       if (err instanceof DownloadAborted) {
         this.log.info('Download cancelado pelo usuário.');
@@ -123,12 +138,18 @@ export class AiController extends EventEmitter {
     this.abort?.abort();
   }
 
-  /** Retoma, na abertura, um download que o app interrompeu ao fechar. */
+  /**
+   * Na abertura: retoma um download que o app interrompeu ao fechar e completa os modelos de
+   * busca da biblioteca que faltem (pequenos, e a biblioteca não indexa sem eles).
+   */
   resumePending() {
     const id = this.selectedId;
     if (id && !this.models.isInstalled(id) && !this.downloading && this.models.bytesOnDisk(this.models.get(id)) > 0) {
       this.log.info(`Retomando o download de ${id}.`);
       this.install(id).catch((err) => this.log.error(err.message));
+    } else if ((id || this.settings.get('aiSkipped')) && !this.downloading && this.models.supportMissing().length > 0) {
+      this.log.info('Baixando os modelos de busca da biblioteca.');
+      this.installSupport().catch((err) => this.log.error(err.message));
     }
   }
 }

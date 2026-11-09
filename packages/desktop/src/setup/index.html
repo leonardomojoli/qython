@@ -51,7 +51,8 @@
       <button id="skip">Decidir depois</button>
       <button id="go" class="primary">Baixar e continuar</button>
     </div>
-    <p class="foot">Você pode trocar de modelo a qualquer momento em Ajuda › Escolher a IA. O download continua em
+    <p class="foot">O download inclui também os modelos que fazem a busca da biblioteca entender português
+      (cerca de 0,4 GB). Você pode trocar de modelo a qualquer momento em Ajuda › Escolher a IA. O download continua em
       segundo plano se você fechar esta janela e retoma de onde parou se o Qython for fechado.</p>
   </section>
 
@@ -126,7 +127,7 @@ function renderChoose() {
 function renderProgress() {
   const d = state.download;
   const m = state.models.find((x) => x.id === (d?.id ?? state.selected));
-  $('pname').textContent = m ? m.label : '';
+  $('pname').textContent = d?.label ? `${d.label}${d.stages > 1 ? ` (etapa ${d.stage} de ${d.stages})` : ''}` : (m ? m.label : '');
   $('perr').textContent = state.error ?? '';
   $('retry').classList.toggle('hidden', !state.error);
   $('cancel').classList.toggle('hidden', !d);

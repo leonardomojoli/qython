@@ -8,7 +8,8 @@ export function loadManifest(file) {
 }
 
 export function fileUrl(model, file) {
-  return `https://huggingface.co/${model.repo}/resolve/${model.revision}/${file.name}`;
+  // `path` é o caminho dentro do repositório; `name` é como o arquivo fica no disco.
+  return `https://huggingface.co/${model.repo}/resolve/${model.revision}/${file.path ?? file.name}`;
 }
 
 export class ModelManager {
@@ -30,6 +31,25 @@ export class ModelManager {
 
   list() {
     return this.manifest.models;
+  }
+
+  /** Os modelos de linguagem, que o médico escolhe. */
+  llms() {
+    return this.manifest.models.filter((m) => m.kind !== 'support');
+  }
+
+  /** Modelos de apoio (busca da biblioteca): não se escolhem, baixam junto com a IA. */
+  supports() {
+    return this.manifest.models.filter((m) => m.kind === 'support');
+  }
+
+  supportMissing() {
+    return this.supports().filter((m) => !this.isInstalled(m.id));
+  }
+
+  /** Pasta do modelo no disco (model.onnx, tokenizer.json...). */
+  dirOf(id) {
+    return path.join(this.dir, id);
   }
 
   get(id) {

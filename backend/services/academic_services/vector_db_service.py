@@ -58,41 +58,11 @@ def get_embeddings_model() -> "SentenceTransformer":
                     from sentence_transformers import SentenceTransformer
                     _embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
                     logger.info("Sentence transformer model loaded successfully.")
-                except ImportError:
-                    # O app desktop não embute o torch (alguns GB). O mesmo modelo roda em
-                    # ONNX, que o chromadb já traz.
-                    logger.info("sentence-transformers ausente; usando o all-MiniLM-L6-v2 em ONNX.")
-                    _embeddings_model = _OnnxMiniLM()
                 except Exception as e:
                     logger.error(f"Failed to load SentenceTransformer model: {e}", exc_info=True)
                     raise e
     return _embeddings_model
 
-
-class _OnnxMiniLM:
-    """all-MiniLM-L6-v2 em ONNX, com a interface do SentenceTransformer que o resto usa
-    (`encode` de um texto ou de uma lista). É o mesmo modelo, com pooling por média e
-    normalização L2 iguais; só não precisa do torch.
-
-    QYTHON_ONNX_MODEL_DIR aponta para a pasta com o modelo já extraído (o app desktop o
-    embute: sem isso o chromadb o baixaria do S3 no primeiro uso).
-    """
-
-    def __init__(self):
-        from pathlib import Path
-        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
-
-        bundled = os.getenv("QYTHON_ONNX_MODEL_DIR")
-        if bundled:
-            ONNXMiniLM_L6_V2.DOWNLOAD_PATH = Path(bundled)
-        self._fn = ONNXMiniLM_L6_V2()
-
-    def encode(self, texts):
-        import numpy as np
-
-        single = isinstance(texts, str)
-        out = np.array(self._fn([texts] if single else list(texts)), dtype="float32")
-        return out[0] if single else out
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RAG v2 helpers (e5 + híbrido + rerank). Ativado por EMBED_SERVER_URL (embedding_client).

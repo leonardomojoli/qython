@@ -17,7 +17,7 @@ const quiet = { info() {}, warn() {}, error() {}, sink: () => ({ write() {}, clo
 
 test('o manifesto fixa cada arquivo por tamanho, SHA-256 e revisão', () => {
   assert.equal(real.defaultModel, 'gemma-4-26b-a4b');
-  for (const m of real.models) {
+  for (const m of real.models.filter((x) => x.kind !== 'support')) {
     assert.match(m.revision, /^[0-9a-f]{40}$/);
     assert.ok(m.files.some((f) => f.role === 'model'));
     for (const f of m.files) {
@@ -30,6 +30,27 @@ test('o manifesto fixa cada arquivo por tamanho, SHA-256 e revisão', () => {
   const def = real.models.find((m) => m.id === real.defaultModel);
   assert.ok(def.files.find((f) => f.role === 'model').name.endsWith('-Q4_0.gguf'));
   for (const asset of Object.values(real.llama.assets)) assert.match(asset.sha256, /^[0-9a-f]{64}$/);
+});
+
+test('os modelos de busca da biblioteca são multilíngues, fixados e não aparecem como escolha', () => {
+  const mm = new ModelManager(real, '/x');
+  assert.deepEqual(mm.supports().map((m) => m.id), ['e5-base-int8', 'rerank-mmarco-int8']);
+  assert.ok(mm.llms().every((m) => m.kind !== 'support'));
+  assert.ok(mm.llms().length === 3 && !mm.llms().some((m) => m.id.includes('e5')));
+  for (const m of mm.supports()) {
+    assert.match(m.revision, /^[0-9a-f]{40}$/);
+    for (const f of m.files) {
+      assert.match(f.sha256, /^[0-9a-f]{64}$/, `${m.id}/${f.name}`);
+      assert.ok(f.size > 1e6);
+    }
+  }
+  // O arquivo no disco tem o nome simples; a URL usa o caminho dentro do repositório.
+  const e5 = mm.get('e5-base-int8');
+  const model = e5.files.find((f) => f.role === 'model');
+  assert.equal(model.name, 'model.onnx');
+  assert.equal(fileUrl(e5, model), `https://huggingface.co/Xenova/multilingual-e5-base/resolve/${e5.revision}/onnx/model_quantized.onnx`);
+  assert.equal(fileUrl(e5, e5.files.find((f) => f.role === 'tokenizer')).endsWith('/tokenizer.json'), true);
+  assert.equal(mm.supportMissing().length, 2);
 });
 
 test('avisa quando falta RAM, mas nunca troca de modelo sozinha', () => {
