@@ -166,11 +166,14 @@ export class Stack extends EventEmitter {
       PYTHONUNBUFFERED: '1',
       PYTHONUTF8: '1',
       PYTHONIOENCODING: 'utf-8',
+      PYTHON_DOTENV_DISABLED: '1', // nenhum .env solto pelas pastas entra no app
       // Nada sai da máquina: o Chroma mandaria telemetria anônima por padrão.
       ANONYMIZED_TELEMETRY: 'False',
       HF_HUB_DISABLE_TELEMETRY: '1',
       ...(this.chroma ? this.chroma.backendEnv() : {}),
-      ...(this.llm ? this.llm.backendEnv() : {}),
+      // Com a IA local gerenciada pelo app, a tela de Configurações da IA não pede endereço:
+      // manda o médico para o assistente.
+      ...(this.llm ? { ...this.llm.backendEnv(), QYTHON_MANAGED_LLM: '1' } : {}),
       ...this.extraEnv,
     };
   }

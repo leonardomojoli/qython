@@ -199,6 +199,25 @@ def test_config_com_data_dir_grava_fora_do_codigo():
     assert c['WEB_DIR'] == '/x/web'
 
 
+def test_app_instalado_nao_le_env_solto_pelas_pastas():
+    """Um .env esquecido numa pasta acima não pode vazar chave nenhuma para o app instalado."""
+    base = tempfile.mkdtemp()
+    work = os.path.join(base, 'a', 'b')
+    os.makedirs(work)
+    open(os.path.join(base, 'a', '.env'), 'w').write('STRAY_KEY=vazou\n')
+    env = {k: v for k, v in os.environ.items() if k not in ('PYTHON_DOTENV_DISABLED', 'STRAY_KEY')}
+    env.update({'JWT_SECRET_KEY': 'x' * 40, 'PYTHONPATH': ROOT})
+
+    def run(code):
+        out = subprocess.run([sys.executable, '-c', code], env=env, capture_output=True, text=True, cwd=work)
+        assert out.returncode == 0, out.stderr[-600:]
+        return out.stdout.strip().splitlines()[-1]
+
+    probe = "from dotenv import load_dotenv; load_dotenv(); import os; print(os.getenv('STRAY_KEY'))"
+    assert run(probe) == 'vazou', 'o controle falhou: sem o desktop o .env deveria ser achado'
+    assert run('import backend.desktop;' + probe) == 'None'
+
+
 def _boot(env):
     """Roda o `serve` do backend e devolve (código, stderr). Se travar, o teste falha com o que o
     processo escreveu até ali, incluindo o despejo de threads do faulthandler (a cada 15 s)."""
