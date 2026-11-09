@@ -416,7 +416,7 @@ async def export_dpo_jsonl(
 
         # === 2. PREPARAR OUTPUT PATH ===
         if not output_path:
-            exports_dir = os.path.join(Config.PROJECT_ROOT, 'exports')
+            exports_dir = str(Config.EXPORTS_DIR)
             os.makedirs(exports_dir, exist_ok=True)
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             output_path = os.path.join(exports_dir, f"dpo_{timestamp}.jsonl")
@@ -489,7 +489,7 @@ async def export_dpo_parquet(
 
         # === 2. PREPARAR OUTPUT PATH ===
         if not output_path:
-            exports_dir = os.path.join(Config.PROJECT_ROOT, 'exports')
+            exports_dir = str(Config.EXPORTS_DIR)
             os.makedirs(exports_dir, exist_ok=True)
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             output_path = os.path.join(exports_dir, f"dpo_{timestamp}.parquet")
@@ -554,7 +554,7 @@ async def export_dpo_jsonl_validated(
     )
 
     if not output_path:
-        exports_dir = os.path.join(Config.PROJECT_ROOT, 'exports')
+        exports_dir = str(Config.EXPORTS_DIR)
         os.makedirs(exports_dir, exist_ok=True)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         output_path = os.path.join(exports_dir, f"dpo_{timestamp}.jsonl")
@@ -634,7 +634,7 @@ async def export_dpo_parquet_validated(
     )
 
     if not output_path:
-        exports_dir = os.path.join(Config.PROJECT_ROOT, 'exports')
+        exports_dir = str(Config.EXPORTS_DIR)
         os.makedirs(exports_dir, exist_ok=True)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         output_path = os.path.join(exports_dir, f"dpo_{timestamp}.parquet")

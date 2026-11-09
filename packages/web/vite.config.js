@@ -6,6 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
 
+    // Build do app desktop (vite build --mode desktop): sem service worker. O SW guardava
+    // as respostas de /api por 1 h no cache do navegador, ou seja, dado clínico (pacientes,
+    // consultas) em storage da página. No desktop o backend está na mesma máquina e não há
+    // o que cachear; o app também não depende de PWA para abrir offline.
+    const isDesktop = mode === 'desktop';
+
     // Resolve API origin for Service Worker cache patterns and dev proxy.
     // Defaults to canonical (qython.ai). qython.app/qython.com are Nginx 301 redirects.
     const apiUrl = env.VITE_API_URL || 'https://qython.ai/api';
@@ -30,7 +36,7 @@ export default defineConfig(({ mode }) => {
     return {
     plugins: [
         react(),
-        VitePWA({
+        !isDesktop && VitePWA({
             registerType: 'autoUpdate',
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}'],

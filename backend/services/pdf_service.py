@@ -3,11 +3,29 @@ import io
 import os
 import logging
 from datetime import datetime
-from weasyprint import HTML, CSS
+
 
 from ..config import Config
 
 logger = logging.getLogger("qython_logger")
+
+try:
+    from weasyprint import HTML, CSS
+except OSError as _exc:
+    # O WeasyPrint carrega as bibliotecas Pango/GTK ao importar. Sem elas (um Windows ou
+    # macOS sem o runtime) o import falhava e derrubava o backend INTEIRO no boot. Agora
+    # só a geração de PDF falha, com a causa dita, e o resto do Qython segue de pé.
+    _WEASYPRINT_ERROR = _exc
+
+    class HTML:  # type: ignore[no-redef]
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "A geração de PDF precisa das bibliotecas Pango/GTK, que não foram "
+                f"encontradas: {_WEASYPRINT_ERROR}"
+            ) from _WEASYPRINT_ERROR
+
+    class CSS(HTML):  # type: ignore[no-redef]
+        pass
 
 # Traduções para o rodapé do PDF
 PDF_FOOTER_TRANSLATIONS = {

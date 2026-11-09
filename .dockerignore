@@ -20,3 +20,6 @@ packages/mobile/ios/Pods
 site
 *.tar.gz
 *.dump
+packages/desktop/build-resources
+packages/desktop/python/dist
+packages/desktop/python/build

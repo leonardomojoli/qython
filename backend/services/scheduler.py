@@ -284,12 +284,12 @@ def _resolve_generated_media_path(path_val):
         return None
     p = str(path_val).strip()
     if os.path.isabs(p):
-        if p.startswith(Config.BACKEND_DIR):
+        if p.startswith(str(Config.DATA_BACKEND_DIR)) or p.startswith(str(Config.BACKEND_DIR)):
             return p
         p = p.lstrip('/')  # URL-like '/static/uploads/x'
     if p.startswith('static/'):
-        return os.path.join(Config.BACKEND_DIR, p)
-    return os.path.join(Config.BACKEND_DIR, 'static', p)
+        return os.path.join(Config.DATA_BACKEND_DIR, p)
+    return os.path.join(Config.DATA_BACKEND_DIR, 'static', p)
 
 
 def _delete_generated_file(path_val, label=""):
