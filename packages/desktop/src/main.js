@@ -14,6 +14,8 @@ import { AiController } from './ai.js';
 import { LocalLlm } from './llm.js';
 import { ModelManager, loadManifest } from './models.js';
 import { startUpdater } from './updater.js';
+import { BackupError, EXTENSION, suggestedName } from './backup.js';
+import { backupFlow, restoreFlow } from './backup-flow.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SMOKE = process.argv.includes('--smoke');
@@ -129,6 +131,7 @@ function trayMenu() {
     { label: 'Abrir o Qython', click: showMain },
     ...(installUpdate ? [{ label: 'Reiniciar para atualizar', click: () => installUpdate() }] : []),
     { label: 'Escolher a IA…', click: () => { openWizard(); } },
+    { label: 'Fazer backup…', click: () => { runBackup().catch(() => {}); } },
     { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
     { type: 'separator' },
     { label: 'Sair', click: () => app.quit() },
@@ -151,6 +154,12 @@ function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
     ...(isMac ? [{ role: 'appMenu' }] : []),
+    { label: 'Arquivo', submenu: [
+      { label: 'Fazer backup…', click: () => { runBackup().catch(() => {}); } },
+      { label: 'Restaurar backup…', click: () => { runRestore().catch(() => {}); } },
+      { type: 'separator' },
+      isMac ? { role: 'close' } : { label: 'Sair', click: () => app.quit() },
+    ] },
     { label: 'Editar', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Exibir', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Ajuda', submenu: [
@@ -190,6 +199,134 @@ function openWizard() {
   wizard.loadFile(path.join(here, 'setup', 'index.html'));
   return new Promise((resolve) => wizard.once('closed', () => { wizard = null; resolve(); }));
 }
+
+// --- Backup e restauração ---------------------------------------------------------------
+
+const prompts = new Map(); // webContents.id -> resolve
+ipcMain.on('passphrase:submit', (e, value) => prompts.get(e.sender.id)?.(typeof value === 'string' ? value : null));
+ipcMain.on('passphrase:cancel', (e) => prompts.get(e.sender.id)?.(null));
+
+/** Pede a senha do backup numa janela própria (o Electron não tem prompt). Null = cancelou. */
+function askPassphrase({ title, message, confirm }) {
+  return new Promise((resolve) => {
+    const win = new BrowserWindow({
+      width: 460, height: confirm ? 380 : 300, resizable: false, minimizable: false, show: false, title,
+      icon: iconFile, autoHideMenuBar: true, parent: mainWindow ?? undefined, modal: !!mainWindow,
+      webPreferences: {
+        preload: path.join(here, 'passphrase', 'preload.cjs'),
+        contextIsolation: true, sandbox: true, nodeIntegration: false,
+      },
+    });
+    win.setMenuBarVisibility(false);
+    const id = win.webContents.id;
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      prompts.delete(id);
+      resolve(value);
+      if (!win.isDestroyed()) win.close();
+    };
+    prompts.set(id, finish);
+    win.once('ready-to-show', () => win.show());
+    win.on('closed', () => finish(null));
+    win.loadFile(path.join(here, 'passphrase', 'index.html'), {
+      query: { title, message, confirm: confirm ? '1' : '0' },
+    });
+  });
+}
+
+let paused = false;
+
+/** Esconde a janela e mostra a tela de espera enquanto a pilha está parada. */
+async function whilePaused(status, fn) {
+  paused = true;
+  mainWindow?.hide();
+  createSplash();
+  setStatus(status);
+  try {
+    return await fn();
+  } finally {
+    splash?.close();
+    splash = null;
+    paused = false;
+    if (mainWindow && stack?.running) {
+      mainWindow.loadURL(stack.webUrl).catch(() => {});
+      mainWindow.show();
+    }
+  }
+}
+
+async function runBackup() {
+  if (!stack?.running || paused) return { ok: false, reason: 'busy' };
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow ?? undefined, {
+    title: 'Salvar o backup do Qython',
+    defaultPath: path.join(app.getPath('documents'), suggestedName()),
+    filters: [{ name: 'Backup do Qython', extensions: [EXTENSION.slice(1)] }],
+  });
+  if (canceled || !filePath) return { ok: false, reason: 'canceled' };
+  const passphrase = await askPassphrase({
+    title: 'Senha do backup', confirm: true,
+    message: 'O backup inclui os dados dos pacientes e as chaves de criptografia, e é cifrado com esta senha. ' +
+      'Sem ela não há como abrir o arquivo: guarde-a em lugar seguro.',
+  });
+  if (!passphrase) return { ok: false, reason: 'canceled' };
+  try {
+    const result = await whilePaused('Fazendo o backup… (o Qython volta em instantes)', () => backupFlow({
+      stack, passphrase, outFile: filePath, appVersion: app.getVersion(),
+    }));
+    log.info(`Backup gravado em ${filePath} (${result.bytes} bytes).`);
+    await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: 'info', title: 'Qython', message: 'Backup concluído',
+      detail: `${filePath}\n\nOs modelos de IA não entram no backup (o assistente baixa de novo). ` +
+        'Guarde o arquivo e a senha em lugares diferentes.',
+    });
+    return { ok: true, file: filePath, bytes: result.bytes };
+  } catch (err) {
+    log.error(`Backup falhou: ${err.stack ?? err.message}`);
+    await dialog.showMessageBox(mainWindow ?? undefined, { type: 'error', title: 'Qython', message: 'O backup falhou', detail: err.message });
+    return { ok: false, reason: 'failed', message: err.message };
+  }
+}
+
+async function runRestore() {
+  if (!stack?.running || paused) return { ok: false, reason: 'busy' };
+  const picked = await dialog.showOpenDialog(mainWindow ?? undefined, {
+    title: 'Escolher o backup do Qython', properties: ['openFile'],
+    filters: [{ name: 'Backup do Qython', extensions: [EXTENSION.slice(1)] }],
+  });
+  if (picked.canceled || !picked.filePaths[0]) return { ok: false, reason: 'canceled' };
+  const file = picked.filePaths[0];
+  const sure = await dialog.showMessageBox(mainWindow ?? undefined, {
+    type: 'warning', title: 'Qython', message: 'Restaurar este backup?',
+    detail: 'Os dados de agora serão substituídos pelos do backup. O que existe hoje fica guardado numa pasta ' +
+      '"antes-do-restauro" dentro dos dados do Qython, e você pode apagá-la depois.',
+    buttons: ['Restaurar', 'Cancelar'], defaultId: 1, cancelId: 1,
+  });
+  if (sure.response !== 0) return { ok: false, reason: 'canceled' };
+  const passphrase = await askPassphrase({ title: 'Senha do backup', confirm: false, message: path.basename(file) });
+  if (!passphrase) return { ok: false, reason: 'canceled' };
+  try {
+    const { antes } = await whilePaused('Restaurando o backup…', () => restoreFlow({ stack, file, passphrase }));
+    log.info(`Backup restaurado de ${file}; o que havia ficou em ${antes}.`);
+    await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: 'info', title: 'Qython', message: 'Backup restaurado',
+      detail: `Os dados anteriores ficaram em:\n${antes}\n\nQuando tiver certeza de que está tudo certo, pode apagar essa pasta.`,
+    });
+    return { ok: true, antes };
+  } catch (err) {
+    log.error(`Restauração falhou: ${err.stack ?? err.message}`);
+    await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: 'error', title: 'Qython',
+      message: err instanceof BackupError ? 'Não foi possível restaurar' : 'A restauração falhou',
+      detail: err.message,
+    });
+    return { ok: false, reason: 'failed', message: err.message };
+  }
+}
+
+ipcMain.handle('qython:backup', () => runBackup());
+ipcMain.handle('qython:restore', () => runRestore());
 
 function wireAi() {
   const push = () => {

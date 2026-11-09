@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>Qython</title>
+  <style>
+    :root { color-scheme: light dark; --fg: #1d2433; --muted: #5b6475; --bg: #ffffff; --line: #cfd5e1; --accent: #2c3e50; --bad: #b3261e; }
+    @media (prefers-color-scheme: dark) { :root { --fg: #e8ebf2; --muted: #a2abbd; --bg: #1a1a2e; --line: #3a4258; --accent: #8fb3d9; --bad: #f2b8b5; } }
+    body { margin: 0; padding: 22px 24px; font: 14px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--fg); background: var(--bg); }
+    h1 { font-size: 17px; margin: 0 0 6px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    label { display: block; font-weight: 600; margin: 10px 0 4px; }
+    input { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; color: var(--fg); background: transparent; }
+    #erro { min-height: 20px; margin: 8px 0 0; color: var(--bad); }
+    .botoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    button { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+    button.principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+    @media (prefers-color-scheme: dark) { button.principal { color: #10131c; } }
+  </style>
+</head>
+<body>
+  <h1 id="titulo"></h1>
+  <p id="mensagem"></p>
+  <form id="form">
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="off" autofocus>
+    <div id="bloco-confirma">
+      <label for="confirma">Repita a senha</label>
+      <input id="confirma" type="password" autocomplete="off">
+    </div>
+    <div id="erro" role="alert"></div>
+    <div class="botoes">
+      <button type="button" id="cancelar">Cancelar</button>
+      <button type="submit" class="principal" id="ok">Continuar</button>
+    </div>
+  </form>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const confirmar = q.get('confirm') === '1';
+    document.getElementById('titulo').textContent = q.get('title') || 'Senha';
+    document.getElementById('mensagem').textContent = q.get('message') || '';
+    document.getElementById('bloco-confirma').style.display = confirmar ? 'block' : 'none';
+    const erro = (t) => { document.getElementById('erro').textContent = t; };
+    document.getElementById('cancelar').onclick = () => window.passphrase.cancel();
+    document.getElementById('form').onsubmit = (e) => {
+      e.preventDefault();
+      const senha = document.getElementById('senha').value;
+      if (confirmar) {
+        if (senha.length < 8) return erro('Use ao menos 8 caracteres.');
+        if (senha !== document.getElementById('confirma').value) return erro('As duas senhas não são iguais.');
+      } else if (!senha) {
+        return erro('Digite a senha do backup.');
+      }
+      window.passphrase.submit(senha);
+    };
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.passphrase.cancel(); });
+  </script>
+</body>
+</html>
