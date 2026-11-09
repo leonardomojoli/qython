@@ -1,0 +1,145 @@
+name: Desktop
+
+# O app que o médico instala: Electron + PostgreSQL embarcado + backend empacotado com
+# PyInstaller, sem Docker. Em cada sistema (Linux, Windows e macOS) o job:
+#   1. roda os testes unitários do processo principal e do backend desktop;
+#   2. empacota o backend com o PyInstaller e confere, com o `selftest` do próprio
+#      executável, que nada que o app importa ficou de fora do pacote;
+#   3. abre o app de verdade, sem tela (xvfb no Linux), e faz o que um médico novo faz:
+#      espera /api/health, cria a conta do dono, aceita o termo, cadastra um paciente,
+#      REINICIA tudo e confere que o dado cifrado continua legível (as chaves de
+#      criptografia sobrevivem a uma nova abertura).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/desktop/**"
+      - "packages/web/**"
+      - "packages/shared/**"
+      - "backend/**"
+      - "requirements.txt"
+      - "requirements.lock"
+      - "tests/backend/test_desktop_backend.py"
+      - "package-lock.json"
+      - ".github/workflows/desktop.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/desktop/**"
+      - ".github/workflows/desktop.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest }
+          - { name: Windows, os: windows-latest }
+          - { name: macOS, os: macos-latest }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/desktop/python/requirements.lock
+            packages/desktop/python/requirements-build.txt
+
+      - name: Bibliotecas do Electron e do xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm1 libnss3 libgtk-3-0 libasound2t64 libxss1 libxtst6
+
+      - name: Dependências do monorepo
+        run: npm ci
+
+      - name: Dependências do backend (lock do desktop)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r packages/desktop/python/requirements.lock -r packages/desktop/python/requirements-build.txt
+
+      - name: Testes do processo principal (Electron)
+        run: npm test --workspace=packages/desktop
+
+      - name: Testes do backend desktop
+        run: python tests/backend/test_desktop_backend.py
+
+      - name: Front do desktop (sem service worker, fontes locais)
+        run: |
+          npm run build:desktop --workspace=packages/web
+          # O service worker guardava /api no cache do navegador (dado clínico em storage).
+          if [ -n "$(find packages/web/build -maxdepth 1 -name 'sw.js' -o -maxdepth 1 -name 'registerSW.js' -o -maxdepth 1 -name 'workbox-*.js')" ]; then
+            echo "::error::o build do desktop trouxe service worker"; exit 1
+          fi
+          if grep -rIl 'fonts.googleapis.com\|fonts.gstatic.com' packages/web/build; then
+            echo "::error::o build do desktop ainda busca fontes na internet"; exit 1
+          fi
+
+      - name: Backend empacotado (PyInstaller)
+        working-directory: packages/desktop/python
+        run: |
+          pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec
+          ./dist/qython-backend/qython-backend selftest
+
+      - name: Tamanho do pacote
+        run: |
+          {
+            node packages/desktop/scripts/size-report.mjs packages/desktop/python/dist/qython-backend "Backend empacotado (${{ matrix.name }})"
+            echo
+            node packages/desktop/scripts/size-report.mjs packages/web/build "Front"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Reúne os recursos do app
+        run: node packages/desktop/scripts/prepare-resources.mjs
+
+      - name: Teste de fumaça (Linux, sem tela)
+        if: runner.os == 'Linux'
+        timeout-minutes: 12
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
+        run: xvfb-run -a npx electron packages/desktop --smoke --no-sandbox
+
+      - name: Teste de fumaça
+        if: runner.os != 'Linux'
+        timeout-minutes: 12
+        env:
+          QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
+        run: npx electron packages/desktop --smoke
+
+      - name: Logs do app em caso de falha
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP"/qython-perfil/logs/*.log "$RUNNER_TEMP"/qython-perfil/logs/backend/*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$f"; tail -n 120 "$f"; echo "::endgroup::"
+          done
+
+      - name: Guarda os logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.name }}
+          path: ${{ runner.temp }}/qython-perfil/logs
+          if-no-files-found: ignore

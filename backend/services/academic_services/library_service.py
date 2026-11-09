@@ -9,7 +9,10 @@ import time
 import uuid
 from typing import List, Optional
 
-import magic
+try:
+    import magic
+except ImportError:  # sem libmagic no sistema (app desktop em Windows/macOS)
+    from .. import mime_sniff as magic
 from fastapi import BackgroundTasks, HTTPException, UploadFile, status
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession

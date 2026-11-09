@@ -160,10 +160,23 @@ class Config:
     DLOCAL_COUNTRY = os.getenv('DLOCAL_COUNTRY', '')      # vazio = dLocal detecta no checkout
 
     # --- Diretórios ---
+    # BACKEND_DIR e PROJECT_ROOT são o CÓDIGO (somente leitura: no app desktop, a pasta
+    # do executável empacotado). Tudo o que o backend GRAVA vai para DATA_ROOT: a raiz do
+    # projeto por padrão (Docker e desenvolvimento, como sempre foi) ou, com
+    # QYTHON_DATA_DIR, uma pasta à parte (o perfil do usuário, no app desktop).
     BACKEND_DIR = Path(__file__).resolve().parent
     PROJECT_ROOT = BACKEND_DIR.parent
+    DATA_ROOT = Path(os.getenv('QYTHON_DATA_DIR')).expanduser().resolve() if os.getenv('QYTHON_DATA_DIR') else PROJECT_ROOT
+    DATA_BACKEND_DIR = DATA_ROOT / 'backend'
+    LOG_DIR = os.getenv('QYTHON_LOG_DIR') or str(DATA_ROOT / 'log')
+    CONFIG_DIR = DATA_ROOT / 'config'
+    EXPORTS_DIR = DATA_ROOT / 'exports'
+    CHROMA_PATH = os.getenv('CHROMA_PATH') or str(DATA_ROOT / 'chroma_db')
+    # Pasta do SPA (packages/web/build). Com ela, o backend serve também o front, na
+    # mesma origem do /api: é como o app desktop abre. Vazio = só a API (Docker, com nginx).
+    WEB_DIR = os.getenv('QYTHON_WEB_DIR') or ''
     STATIC_URL_PATH_PREFIX = "static"
-    STATIC_FOLDER = os.path.join(BACKEND_DIR, 'static')
+    STATIC_FOLDER = os.path.join(DATA_BACKEND_DIR, 'static')
     PERMANENT_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
     UPLOAD_FOLDER_PROFILE = os.path.join(PERMANENT_UPLOAD_FOLDER, 'profile_pictures')
     UPLOAD_FOLDER_DOCTOR_LOGOS = os.path.join(PERMANENT_UPLOAD_FOLDER, 'doctor_logos')
@@ -171,7 +184,7 @@ class Config:
     SLIDESHOW_FOLDER = os.path.join(PERMANENT_UPLOAD_FOLDER, 'slideshows')
     CHAT_IMAGES_FOLDER = os.path.join(PERMANENT_UPLOAD_FOLDER, 'chat_images')
     DOCUMENT_IMAGES_FOLDER = os.path.join(PERMANENT_UPLOAD_FOLDER, 'document_images')
-    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.join(PROJECT_ROOT, 'temp_upload'))
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.join(DATA_ROOT, 'temp_upload'))
     PDF_FONT_PATH = os.getenv('PDF_FONT_PATH', os.path.join(PROJECT_ROOT, 'fonts', 'DejaVuSans.ttf'))
     ENABLE_ANALYTICS = os.getenv("ENABLE_ANALYTICS", "0").lower() in ("1", "true")
 
@@ -220,7 +233,7 @@ class Config:
 
     # --- Firebase (Phone Authentication) ---
     # Credentials stored in /opt/qython/config/ for cleaner project structure
-    FIREBASE_CREDENTIALS_PATH = os.path.join(PROJECT_ROOT, 'config', 'firebase_credentials.json')
+    FIREBASE_CREDENTIALS_PATH = os.path.join(CONFIG_DIR, 'firebase_credentials.json')
 
     # --- Storage Quotas ---
     STORAGE_QUOTAS = {

@@ -1,6 +1,7 @@
 # information-department-adapter/utils/file_handler
 
 import os
+import shutil
 import subprocess
 import tempfile
 from PIL import Image
@@ -11,13 +12,20 @@ from .transcription_service import transcribe_audio # Importar transcriber
 from ...config import Config # Importar Config
 import fitz
 
-# Define o caminho para o executável do Tesseract para evitar problemas de PATH
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+# Caminho do executável do Tesseract. No Linux/Docker é /usr/bin/tesseract; no app desktop
+# ele pode vir embutido (QYTHON_TESSERACT) ou estar instalado no sistema. Sem nenhum, o
+# OCR de PDF escaneado falha com uma mensagem clara e o resto da biblioteca funciona.
+pytesseract.pytesseract.tesseract_cmd = (
+    os.getenv('QYTHON_TESSERACT') or shutil.which('tesseract') or '/usr/bin/tesseract'
+)
 
 # Configurar logging
 logger = logging.getLogger(__name__)
 
-os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata/"
+if os.getenv("QYTHON_TESSDATA"):
+    os.environ["TESSDATA_PREFIX"] = os.environ["QYTHON_TESSDATA"]
+elif os.path.isdir("/usr/share/tesseract-ocr/5/tessdata/"):
+    os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata/"
 
 def limpar_arquivos_locais(arquivos):
     """

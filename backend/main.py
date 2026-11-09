@@ -39,7 +39,7 @@ from .services.llm_services import initialize_prompt_cache
 # - Níveis apropriados por componente
 # =============================================================================
 
-log_directory = "log"
+log_directory = Config.LOG_DIR
 os.makedirs(log_directory, exist_ok=True)
 
 

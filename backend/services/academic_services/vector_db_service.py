@@ -42,8 +42,8 @@ def get_chroma_client():
                     logger.info(f"Initializing ChromaDB HttpClient ({host}:{port})...")
                     _client = chromadb.HttpClient(host=host, port=port)
                 else:
-                    logger.info("Initializing ChromaDB PersistentClient (./chroma_db)...")
-                    _client = chromadb.PersistentClient(path="./chroma_db")
+                    logger.info("Initializing ChromaDB PersistentClient (%s)...", Config.CHROMA_PATH)
+                    _client = chromadb.PersistentClient(path=Config.CHROMA_PATH)
                 logger.info("ChromaDB client initialized successfully.")
     return _client
 

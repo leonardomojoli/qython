@@ -10,8 +10,13 @@ import logging
 import os
 from typing import Optional
 
-import firebase_admin
-from firebase_admin import credentials, auth
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth
+except ImportError:
+    # O app desktop não embute o firebase-admin (traz gRPC e o SDK do Google Cloud, algumas
+    # centenas de MB) porque login com Google e SMS são recursos do servidor hospedado.
+    firebase_admin = credentials = auth = None
 from fastapi import HTTPException, status
 
 from ..config import Config
@@ -27,7 +32,9 @@ _missing_credentials_logged = False
 def _initialize_firebase():
     """Initialize Firebase Admin SDK with service account credentials."""
     global _firebase_initialized, _missing_credentials_logged
-    
+
+    if firebase_admin is None:
+        return False
     if _firebase_initialized or firebase_admin._apps:
         return True
     
