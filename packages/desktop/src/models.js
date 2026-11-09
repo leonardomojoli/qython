@@ -35,7 +35,12 @@ export class ModelManager {
 
   /** Os modelos de linguagem, que o médico escolhe. */
   llms() {
-    return this.manifest.models.filter((m) => m.kind !== 'support');
+    return this.manifest.models.filter((m) => !m.kind);
+  }
+
+  /** O modelo de transcrição de áudio e vídeo que baixa junto com a IA (null se o manifesto não tem). */
+  defaultWhisper() {
+    return this.manifest.defaultWhisper ? this.get(this.manifest.defaultWhisper) : null;
   }
 
   /** Modelos de apoio (busca da biblioteca): não se escolhem, baixam junto com a IA. */

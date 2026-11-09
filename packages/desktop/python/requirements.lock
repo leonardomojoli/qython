@@ -12,6 +12,7 @@ anyio==4.15.1
 apscheduler==3.11.3
 asyncpg==0.32.0
 attrs==26.1.0
+av==18.1.0
 bcrypt==5.0.0
 beautifulsoup4==4.15.0
 brotli==1.2.1 ; platform_python_implementation == 'CPython'
@@ -25,6 +26,7 @@ click==8.5.0
 colorama==0.4.6 ; os_name == 'nt' or sys_platform == 'win32'
 cryptography==50.0.2
 cssselect2==0.10.1
+ctranslate2==4.8.3
 defusedxml==0.7.1
 demjson3==3.0.6
 deprecated==3.0.0
@@ -34,6 +36,7 @@ durationpy==0.11
 ecdsa==0.19.2
 email-validator==2.3.0
 fastapi==0.162.0
+faster-whisper==1.2.1
 filelock==4.2.4
 flatbuffers==25.12.19
 fonttools==4.67.0

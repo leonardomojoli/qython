@@ -143,6 +143,18 @@ def embed(args: argparse.Namespace) -> int:
     return 0
 
 
+def whisper(args: argparse.Namespace) -> int:
+    """Transcrição de áudio e vídeo (faster-whisper): o mesmo serviço do servidor
+    (backend/whisper_server.py, POST /transcribe), aqui dentro do executável. WHISPER_MODEL aponta
+    para a pasta do modelo já baixado (formato CTranslate2)."""
+    import uvicorn
+
+    from backend import whisper_server
+
+    uvicorn.run(whisper_server.app, host=args.host, port=args.port, log_config=None, access_log=False, workers=1)
+    return 0
+
+
 def selftest(_args: argparse.Namespace) -> int:
     """Importa os módulos que o app carrega e relata o que faltou. Sem rede nem banco."""
     os.environ.setdefault("JWT_SECRET_KEY", "x" * 40)
@@ -190,6 +202,21 @@ def selftest(_args: argparse.Namespace) -> int:
         from backend import embed_onnx
 
         return f"onnxruntime {onnxruntime.__version__}, tokenizers {tokenizers.__version__}, {embed_onnx.__name__}"
+
+    def whisper_runtime():
+        # O modo `whisper` importa tudo isto dentro de função: a análise estática do PyInstaller
+        # não os vê. O silero_vad.onnx do faster-whisper é arquivo de dados dentro do pacote; o PyAV
+        # traz as bibliotecas do ffmpeg, então não há ffmpeg para instalar.
+        import av
+        import ctranslate2
+        import faster_whisper
+
+        from backend import whisper_server
+
+        assets = os.path.join(os.path.dirname(faster_whisper.__file__), "assets")
+        if not any(n.startswith("silero_vad") and n.endswith(".onnx") for n in os.listdir(assets)):
+            raise RuntimeError(f"falta o modelo de VAD do faster-whisper em {assets}: {os.listdir(assets)}")
+        return f"faster-whisper {faster_whisper.__version__}, ctranslate2 {ctranslate2.__version__}, av {av.__version__}, {whisper_server.__name__}"
 
     def import_chroma():
         import chromadb
@@ -247,6 +274,7 @@ def selftest(_args: argparse.Namespace) -> int:
 
     check("tiktoken", tiktoken_offline)
     check("onnx", onnx_runtime)
+    check("whisper", whisper_runtime)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)
@@ -276,6 +304,11 @@ def main(argv: list[str] | None = None) -> int:
     p_embed.add_argument("--host", default="127.0.0.1")
     p_embed.add_argument("--port", type=int, required=True)
     p_embed.set_defaults(fn=embed)
+
+    p_whisper = sub.add_parser("whisper")
+    p_whisper.add_argument("--host", default="127.0.0.1")
+    p_whisper.add_argument("--port", type=int, required=True)
+    p_whisper.set_defaults(fn=whisper)
 
     sub.add_parser("selftest").set_defaults(fn=selftest)
 

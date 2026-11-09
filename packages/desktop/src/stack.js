@@ -11,6 +11,7 @@ import { SecretsUnavailableError } from './secrets.js';
 import { processCommand } from './stack-command.js';
 import { LocalChroma } from './chroma.js';
 import { LocalEmbedder } from './embed.js';
+import { LocalWhisper } from './whisper.js';
 
 export class KeysMissingError extends Error {
   constructor() {
@@ -49,6 +50,7 @@ export class Stack extends EventEmitter {
     this.llm = null;
     this.chroma = null;
     this.embedder = null;
+    this.whisper = null;
     this.models = o.models ?? null; // com os modelos, o serviço de embeddings da biblioteca entra
     this.notReadyReason = o.notReadyReason ?? (() => null);
     this.withChroma = o.chroma !== false;
@@ -115,6 +117,16 @@ export class Stack extends EventEmitter {
         notReady: this.notReadyReason, idleSeconds: this.chromaIdleSeconds,
       });
       await this.embedder.listen([this.webPort, pgPort, this.chroma?.publicPort].filter(Boolean));
+    }
+
+    // Transcrição de áudio e vídeo (faster-whisper), também sob demanda.
+    if (this.models?.defaultWhisper()) {
+      this.whisper = new LocalWhisper({
+        resources: this.resources, models: this.models, settings: this.settings, logger: this.log,
+        modelId: process.env.QYTHON_WHISPER_MODEL_ID || undefined,
+        notReady: this.notReadyReason, idleSeconds: this.chromaIdleSeconds,
+      });
+      await this.whisper.listen([this.webPort, pgPort, this.chroma?.publicPort, this.embedder?.publicPort].filter(Boolean));
     }
 
     // A porta da IA tem que existir antes do backend, que a recebe por variável de ambiente.
@@ -185,6 +197,7 @@ export class Stack extends EventEmitter {
       HF_HUB_DISABLE_TELEMETRY: '1',
       ...(this.chroma ? this.chroma.backendEnv() : {}),
       ...(this.embedder ? this.embedder.backendEnv() : {}),
+      ...(this.whisper ? this.whisper.backendEnv() : {}),
       // Com a IA local gerenciada pelo app, a tela de Configurações da IA não pede endereço:
       // manda o médico para o assistente.
       ...(this.llm ? { ...this.llm.backendEnv(), QYTHON_MANAGED_LLM: '1' } : {}),
@@ -198,6 +211,10 @@ export class Stack extends EventEmitter {
       await this.backend.stop();
       this.backend.dispose();
       this.backend = null;
+    }
+    if (this.whisper) {
+      await this.whisper.stop().catch((err) => this.log.error(`Falha ao desligar a transcrição: ${err.message}`));
+      this.whisper = null;
     }
     if (this.embedder) {
       await this.embedder.stop().catch((err) => this.log.error(`Falha ao desligar os embeddings: ${err.message}`));
