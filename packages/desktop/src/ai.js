@@ -87,7 +87,18 @@ export class AiController extends EventEmitter {
   async install(modelId) {
     if (this.downloading) throw new Error('Já existe um download em andamento.');
     await this.select(modelId);
-    await this._download([modelId, ...this.models.supports().map((m) => m.id)]);
+    await this._download([modelId, ...this.models.supports().map((m) => m.id), ...this._whisperIds()]);
+  }
+
+  _whisperIds() {
+    const w = this.models.defaultWhisper();
+    return w ? [w.id] : [];
+  }
+
+  /** A transcrição de áudio e vídeo (1,6 GB), para quem pulou a IA ou quer baixá-la depois. */
+  async installWhisper() {
+    if (this.downloading) throw new Error('Já existe um download em andamento.');
+    await this._download(this._whisperIds());
   }
 
   /** Só os modelos de busca da biblioteca (que valem com qualquer IA, até com o Gemini). */
@@ -150,6 +161,11 @@ export class AiController extends EventEmitter {
     } else if ((id || this.settings.get('aiSkipped')) && !this.downloading && this.models.supportMissing().length > 0) {
       this.log.info('Baixando os modelos de busca da biblioteca.');
       this.installSupport().catch((err) => this.log.error(err.message));
+    } else if (id && this.models.isInstalled(id) && !this.downloading
+      && this._whisperIds().some((w) => !this.models.isInstalled(w))) {
+      // Quem escolheu a IA recebe também a transcrição; depois de pular, é o médico que pede.
+      this.log.info('Baixando a transcrição de áudio e vídeo.');
+      this.installWhisper().catch((err) => this.log.error(err.message));
     }
   }
 }

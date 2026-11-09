@@ -13,6 +13,9 @@ name: Desktop
 #      (llama.cpp) sobe sob demanda com um modelo minúsculo (Qwen3 0.6B), responde, é
 #      desligado por inatividade e volta no pedido seguinte. Prova a fiação; a qualidade
 #      do Gemma 4 é avaliada à parte;
+#   5b. transcreve um áudio: o faster-whisper (modo `whisper` do executável) sobe sob demanda com o
+#      modelo tiny, transcreve uma fala em domínio público e o backend transcreve e indexa um áudio
+#      enviado à biblioteca;
 #   5. usa a biblioteca: baixa os modelos de busca (multilingual-e5 e reranker, em ONNX, com
 #      SHA-256 conferido), envia um PDF (armazenamento local), o Chroma e o serviço de
 #      embeddings sobem sob demanda, a pergunta encontra o trecho; parados, eles são
@@ -48,6 +51,8 @@ env:
   # Modelo do teste de fumaça da IA: o mesmo do ia-local.yml, fixado por revisão e SHA-256.
   SMOKE_MODEL_URL: https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/13ac06624948e4d8589cb4b6f90100837342fcb8/Qwen3-0.6B-Q4_0.gguf
   SMOKE_MODEL_SHA256: da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4
+  SMOKE_AUDIO_URL: https://raw.githubusercontent.com/ggml-org/whisper.cpp/bd9e1a12352fa57e448bdea6a0649aa9c24c64aa/samples/jfk.wav
+  SMOKE_AUDIO_SHA256: 59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e
 
 concurrency:
   group: desktop-${{ github.ref }}
@@ -182,12 +187,24 @@ jobs:
           echo "$SMOKE_MODEL_SHA256  $RUNNER_TEMP/modelos/qwen3.gguf" > "$RUNNER_TEMP/modelos/qwen3.sha256"
           cd "$RUNNER_TEMP/modelos" && (sha256sum -c qwen3.sha256 2>/dev/null || shasum -a 256 -c qwen3.sha256)
 
+      # Uma fala curta em domínio público (discurso de JFK, 11 s) para provar a transcrição. O modelo
+      # (Whisper tiny, 75 MB) o próprio app baixa na fumaça, com o SHA-256 do manifesto conferido.
+      - name: Áudio do teste de transcrição
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/audio"
+          curl -fSL --retry 5 -o "$RUNNER_TEMP/audio/jfk.wav" "$SMOKE_AUDIO_URL"
+          echo "$SMOKE_AUDIO_SHA256  $RUNNER_TEMP/audio/jfk.wav" > "$RUNNER_TEMP/audio/jfk.sha256"
+          cd "$RUNNER_TEMP/audio" && (sha256sum -c jfk.sha256 2>/dev/null || shasum -a 256 -c jfk.sha256)
+
       - name: Teste de fumaça (Linux, sem tela)
         if: runner.os == 'Linux'
         timeout-minutes: 12
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_WHISPER_MODEL_ID: whisper-tiny
+          QYTHON_SMOKE_AUDIO: ${{ runner.temp }}/audio/jfk.wav
           QYTHON_LLM_IDLE_SECONDS: "8"
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
@@ -199,6 +216,8 @@ jobs:
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_WHISPER_MODEL_ID: whisper-tiny
+          QYTHON_SMOKE_AUDIO: ${{ runner.temp }}/audio/jfk.wav
           QYTHON_LLM_IDLE_SECONDS: "8"
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
@@ -236,6 +255,8 @@ jobs:
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_WHISPER_MODEL_ID: whisper-tiny
+          QYTHON_SMOKE_AUDIO: ${{ runner.temp }}/audio/jfk.wav
           QYTHON_LLM_IDLE_SECONDS: "8"
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
@@ -250,6 +271,8 @@ jobs:
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_WHISPER_MODEL_ID: whisper-tiny
+          QYTHON_SMOKE_AUDIO: ${{ runner.temp }}/audio/jfk.wav
           QYTHON_LLM_IDLE_SECONDS: "8"
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
@@ -269,6 +292,8 @@ jobs:
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
+          QYTHON_WHISPER_MODEL_ID: whisper-tiny
+          QYTHON_SMOKE_AUDIO: ${{ runner.temp }}/audio/jfk.wav
           QYTHON_LLM_IDLE_SECONDS: "8"
           QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
