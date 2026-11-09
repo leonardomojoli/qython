@@ -7,6 +7,14 @@ import { randomFreePort } from '../src/ports.js';
 
 const quiet = { info() {}, warn() {}, error() {}, sink: () => ({ write() {}, close() {} }) };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// Espera uma condição de verdade em vez de um tempo fixo: o desligamento leva mais no Windows.
+async function until(cond, ms = 8000) {
+  const end = Date.now() + ms;
+  while (!cond()) {
+    if (Date.now() > end) assert.fail('a condição não se cumpriu a tempo');
+    await wait(50);
+  }
+}
 
 // Um "llama-server" de mentira: /health só responde 200 depois de um tempo, /echo devolve o
 // corpo, /stream manda pedaços, /slow demora, e cada início grava uma linha em stdout.
@@ -14,6 +22,7 @@ const FAKE = `
 const http = require('http');
 const port = Number(process.argv[1]);
 const readyAt = Date.now() + Number(process.env.READY_MS || 300);
+if (process.env.STOP_DELAY_MS) process.on('SIGTERM', () => setTimeout(() => process.exit(0), Number(process.env.STOP_DELAY_MS)));
 http.createServer((req, res) => {
   if (req.url === '/health') { res.statusCode = Date.now() < readyAt ? 503 : 200; return res.end('{}'); }
   if (req.url === '/stream') { let n = 0; res.write('a'); const t = setInterval(() => { res.write('b'); if (++n === 3) { clearInterval(t); res.end('z'); } }, 40); return; }
@@ -34,7 +43,7 @@ async function setup(opts = {}) {
     createProcess: () => {
       const p = new ManagedProcess({
         name: 'fake', command: process.execPath, args: ['-e', FAKE, String(privatePort)],
-        env: { READY_MS: String(opts.readyMs ?? 300) }, logger: capture, restart: null, stopTimeoutMs: 2000,
+        env: { READY_MS: String(opts.readyMs ?? 300), ...(opts.stopDelayMs ? { STOP_DELAY_MS: String(opts.stopDelayMs) } : {}) }, logger: capture, restart: null, stopTimeoutMs: 2000,
       });
       spawned.push(p);
       return p;
@@ -84,8 +93,7 @@ test('desliga o processo depois de parado e o sobe de novo no pedido seguinte', 
     await fetch(`${base}/echo`).then((r) => r.text());
     assert.equal(svc.state, 'running');
     const first = spawned[0];
-    await wait(1500);
-    assert.equal(svc.state, 'idle');
+    await until(() => svc.state === 'idle');
     assert.equal(first.isAlive(), false);
     const res = await fetch(`${base}/echo`);
     assert.equal(res.status, 200);
@@ -138,5 +146,19 @@ test('quando o cliente desiste, o pedido ao processo é cancelado (o modelo para
     assert.equal(svc.inflight, 0);
     assert.equal(spawned.length, 1);
     assert.ok(output.join('').includes('CLOSED'), 'o processo deveria ter visto a conexão fechar');
+  } finally { await svc.stop(); }
+});
+
+test('um pedido durante o desligamento espera o processo antigo morrer e sobe um novo', async () => {
+  const { svc, base, spawned } = await setup({ idleMs: 0, stopDelayMs: 700 });
+  try {
+    await fetch(`${base}/echo`).then((r) => r.text());
+    const stopping = svc.stopChild(); // o SIGTERM demora 700 ms para valer (no Windows morre na hora)
+    const res = await fetch(`${base}/echo`);
+    assert.equal(res.status, 200);
+    await stopping;
+    assert.equal(spawned.length, 2);
+    assert.equal(spawned[0].isAlive(), false);
+    assert.equal(svc.state, 'running');
   } finally { await svc.stop(); }
 });

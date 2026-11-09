@@ -151,7 +151,9 @@ export class ManagedProcess extends EventEmitter {
         // já fechado
       }
     } else {
-      this._terminate(child, false);
+      // No Windows não existe SIGTERM: o taskkill sem /F só fala com quem tem janela e falha
+      // com os demais, e esperar o prazo inteiro (15 s no Chroma) não mudaria o resultado.
+      this._terminate(child, process.platform === 'win32');
     }
     const winner = await Promise.race([exited.then(() => 'exit'), sleep(this.stopTimeoutMs).then(() => 'timeout')]);
     if (winner === 'timeout' && this.isAlive()) {
