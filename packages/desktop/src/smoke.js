@@ -112,9 +112,50 @@ export async function runSmoke({ stack, log, window }) {
   if (process.env.QYTHON_AI_MODEL_FILE) await smokeAi({ stack, api: `${base2}/api`, token, step, log });
   await smokeLibrary({ stack, api: `${base2}/api`, token, step, log, withAi: !!process.env.QYTHON_AI_MODEL_FILE });
 
+  if (process.env.QYTHON_SMOKE_AUDIO) {
+    await smokeTranscription({ stack, api: `${base2}/api`, token, step, audioFile: process.env.QYTHON_SMOKE_AUDIO });
+  }
+
   await smokeBackup({ stack, step, patientId });
 
   step('OK');
+}
+
+/**
+ * Transcrição de áudio: o serviço (faster-whisper, modo `whisper` do executável) sobe sob demanda
+ * e transcreve um áudio de verdade; depois o backend transcreve um áudio enviado à biblioteca, que
+ * é indexado. O CI usa o modelo tiny (a fiação, não a qualidade) e uma fala em domínio público.
+ */
+async function smokeTranscription({ stack, api, token, step, audioFile }) {
+  const whisper = stack.whisper;
+  assert(whisper, 'o serviço de transcrição não foi criado');
+  assert(whisper.state === 'idle', `a transcrição deveria estar desligada antes de ser usada (estado: ${whisper.state})`);
+  const wav = fs.readFileSync(audioFile);
+
+  step('transcrição: o serviço sobe sob demanda e transcreve o áudio');
+  const direct = new FormData();
+  direct.append('file', new Blob([wav], { type: 'audio/wav' }), 'jfk.wav');
+  const res = await fetch(`http://127.0.0.1:${whisper.publicPort}/transcribe`, { method: 'POST', body: direct });
+  const body = await res.json().catch(() => ({}));
+  assert(res.status === 200 && /country/i.test(body.text ?? ''), `transcrição inesperada (${res.status}): ${JSON.stringify(body).slice(0, 300)}`);
+  assert(whisper.service.starts >= 1, 'o serviço de transcrição não subiu');
+
+  step('transcrição: um áudio enviado à biblioteca é transcrito pelo backend e indexado');
+  const lib = await call(api, 'POST', '/academic/libraries', { token, json: { name: 'Áudios do CI' } });
+  assert(lib.status < 300 && lib.data.id, `criar biblioteca falhou: ${JSON.stringify(lib.data)}`);
+  const form = new FormData();
+  form.append('file', new Blob([wav], { type: 'audio/wav' }), 'jfk.wav');
+  const up = await call(api, 'POST', `/academic/libraries/${lib.data.id}/documents`, { token, form });
+  assert(up.status === 202, `upload do áudio devolveu ${up.status}: ${JSON.stringify(up.data).slice(0, 300)}`);
+  let doc;
+  const deadline = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const list = await call(api, 'GET', `/academic/libraries/${lib.data.id}/documents`, { token });
+    doc = list.data[0];
+    if (doc && (doc.status === 'processed' || doc.status === 'error')) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  assert(doc?.status === 'processed', `o áudio não foi transcrito e indexado: ${JSON.stringify(doc)}`);
 }
 
 async function login(base) {
