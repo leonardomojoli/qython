@@ -74,6 +74,7 @@ test('o backend recebe a porta fixa do Chroma e a telemetria vem desligada', () 
   const env = stack.backendEnv({ JWT_SECRET_KEY: 'j', QYTHON_FIELD_KEK: 'f', QYTHON_TOKEN_KEK: 't' });
   assert.equal(env.CHROMA_SERVER_PORT, '45123');
   assert.equal(env.LLM_BASE_URL, 'http://127.0.0.1:45124/v1');
+  assert.equal(env.QYTHON_MANAGED_LLM, '1');
   assert.equal(env.ANONYMIZED_TELEMETRY, 'False');
   assert.equal(env.HF_HUB_DISABLE_TELEMETRY, '1');
 });

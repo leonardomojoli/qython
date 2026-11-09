@@ -326,6 +326,7 @@ ipcMain.handle('qython:notify', (_e, { title, body }) => {
   return true;
 });
 ipcMain.handle('qython:open-logs', () => shell.openPath(paths.logs));
+ipcMain.handle('qython:open-ai-setup', () => { openWizard(); });
 ipcMain.handle('qython:app-info', () => ({
   version: app.getVersion(), platform: process.platform, userData: paths.root, logs: paths.logs,
   secretsProtection: stack?.secrets.protection ?? null,

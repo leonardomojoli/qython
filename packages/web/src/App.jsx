@@ -63,6 +63,7 @@ import { consultationTourSteps, handleConsultationStepChange, copilotTourSteps, 
 const AdminRoute = lazy(() => import('./components/admin/AdminRoute'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const AdminSettings = lazy(() => import('./components/admin/AdminSettings'));
+const AdminAiSettings = lazy(() => import('./components/admin/AdminAiSettings'));
 const UserManager = lazy(() => import('./components/admin/UserManager'));
 const AdminConsultations = lazy(() => import('./components/admin/AdminConsultations'));
 const AdminFinance = lazy(() => import('./components/admin/AdminFinance'));
@@ -320,6 +321,7 @@ const AppLayoutAndRoutes = () => {
                 <Route path="/admin/consultations" element={<AdminRoute><AdminConsultations /></AdminRoute>} />
                 <Route path="/admin/finance" element={onlyIf(billingEnabled, <AdminRoute><AdminFinance /></AdminRoute>, '/admin')} />
                 <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+                <Route path="/admin/ai" element={<AdminRoute><AdminAiSettings /></AdminRoute>} />
                 <Route path="/admin/profile-updates" element={<AdminRoute><ProfileUpdateManager /></AdminRoute>} />
                 <Route path="/admin/pharmacies" element={onlyIf(isHosted, <AdminRoute><PharmacyAdmin /></AdminRoute>, '/admin')} />
                 <Route path="/admin/analytics" element={onlyIf(isHosted, <AdminRoute><AnalyticsDashboard /></AdminRoute>, '/admin')} />

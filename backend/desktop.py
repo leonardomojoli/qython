@@ -31,6 +31,12 @@ import traceback
 
 logger = logging.getLogger("qython_logger")
 
+# O app instalado não lê .env: a configuração vem do ambiente que o Electron monta. Vários
+# módulos chamam `load_dotenv()` sem caminho, que procura um .env subindo pelas pastas, e
+# acharia o arquivo de outro projeto (ou um ~/.env esquecido) com GEMINI_API_KEY e afins. Isto
+# precisa valer antes de qualquer import do backend.
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+
 
 def _watch_parent(server) -> None:
     """Pede o encerramento do uvicorn quando o processo pai fecha o stdin."""

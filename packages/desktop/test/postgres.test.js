@@ -34,6 +34,16 @@ test('runCommand sem canais devolve só o código', async () => {
   assert.equal(res.stdout, '');
 });
 
+test('runCommand não herda o ambiente do computador', async () => {
+  process.env.PGPASSWORD = 'vazou';
+  try {
+    const res = await runCommand(process.execPath, ['-e', 'console.log(process.env.PGPASSWORD ?? "ausente")']);
+    assert.equal(res.stdout.trim(), 'ausente');
+  } finally {
+    delete process.env.PGPASSWORD;
+  }
+});
+
 test('o Postgres escuta só em 127.0.0.1, sem socket Unix, e nasce em UTF-8 com locale embutido', () => {
   const opts = serverOptions(5432);
   assert.match(opts, /-p 5432/);

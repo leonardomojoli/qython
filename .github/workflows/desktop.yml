@@ -27,6 +27,7 @@ on:
       - "requirements.txt"
       - "requirements.lock"
       - "tests/backend/test_desktop_backend.py"
+      - "tests/backend/test_ai_settings.py"
       - "package-lock.json"
       - ".github/workflows/desktop.yml"
   push:
@@ -96,7 +97,9 @@ jobs:
         run: npm test --workspace=packages/desktop
 
       - name: Testes do backend desktop
-        run: python tests/backend/test_desktop_backend.py
+        run: |
+          python tests/backend/test_desktop_backend.py
+          python tests/backend/test_ai_settings.py
 
       - name: Front do desktop (sem service worker, fontes locais)
         run: |

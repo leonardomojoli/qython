@@ -37,6 +37,7 @@ import logging
 import os
 import re
 import time
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
@@ -417,6 +418,19 @@ def gemini_client():
     return _gemini_client
 
 
+_lazy_clients: "weakref.WeakSet[LazyClient]" = weakref.WeakSet()
+
+
+def reset_clients() -> None:
+    """Descarta os clientes de IA já construídos. A configuração da IA pode mudar em tempo de
+    execução (tela de Configurações): o próximo uso reconstrói o cliente com o provedor, o
+    endereço e a chave novos."""
+    global _gemini_client
+    _gemini_client = None
+    for lazy in list(_lazy_clients):
+        lazy._client = None
+
+
 class LazyClient:
     """Adia a construção do cliente até o primeiro uso. Os módulos importam `client`
     no carregamento; com isto, importar não exige chave nem servidor no ar."""
@@ -424,6 +438,7 @@ class LazyClient:
     def __init__(self, factory):
         self._factory = factory
         self._client = None
+        _lazy_clients.add(self)
 
     def _resolve(self):
         if self._client is None:

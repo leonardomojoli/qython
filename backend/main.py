@@ -26,7 +26,7 @@ from .routes import (
     prescription_routes, document_routes, exam_routes, icd10_routes,
     profile_update_routes, orientation_routes,
     medication_routes, pharmacy_routes, public_routes, sync_routes,
-    notification_routes, verification_routes, connector_routes
+    notification_routes, verification_routes, connector_routes, ai_settings_routes
 )
 from .services.llm_services import initialize_prompt_cache
 
@@ -204,6 +204,14 @@ async def lifespan(app: FastAPI):
 
             await db.execute(text("SELECT pg_advisory_unlock(100001)"))
 
+    # A configuração da IA salva pela interface vale sobre o ambiente.
+    try:
+        from .services import ai_settings_service
+        async with AsyncSessionLocal() as db:
+            await ai_settings_service.apply_from_store(ai_settings_service.db_store(db))
+    except Exception as e:
+        logger.error(f"Error applying stored AI settings: {e}")
+
     # Start internal scheduler for ranking updates
     start_scheduler()
     logger.info("Internal scheduler started")
@@ -296,6 +304,7 @@ app.include_router(sync_routes.router, prefix="/api/sync", tags=["Sync"])
 app.include_router(notification_routes.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(verification_routes.router, prefix="/api", tags=["Verification"])
 app.include_router(connector_routes.router, prefix="/api/connectors", tags=["Connectors"])
+app.include_router(ai_settings_routes.router, prefix="/api/admin/ai", tags=["AI settings"])
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
