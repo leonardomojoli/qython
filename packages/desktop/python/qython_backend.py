@@ -9,7 +9,7 @@ def _prepare_pdf_libs():
     if not getattr(sys, "frozen", False):
         return
     base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
-    conf = os.path.join(base, "pdf-libs", "fonts.conf")
+    conf = os.path.join(base, "pdf-libs", f"fonts-{sys.platform}.conf")
     if os.path.exists(conf):
         os.environ.setdefault("FONTCONFIG_FILE", conf)
     if sys.platform == "darwin":
