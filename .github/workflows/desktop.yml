@@ -199,7 +199,8 @@ jobs:
             echo "|---|---|"
             for f in packages/desktop/release/*.exe packages/desktop/release/*.AppImage packages/desktop/release/*.deb \
                      packages/desktop/release/*.dmg packages/desktop/release/*.zip; do
-              [ -f "$f" ] && echo "| $(basename "$f") | $(du -m "$f" | cut -f1) MB |"
+              # `[ ] && echo` devolveria 1 para o padrão que não casa (o shell roda com -e).
+              if [ -f "$f" ]; then echo "| $(basename "$f") | $(du -m "$f" | cut -f1) MB |"; fi
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
