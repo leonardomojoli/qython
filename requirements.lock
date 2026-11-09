@@ -42,7 +42,7 @@ attrs==26.1.0
     #   aiohttp
     #   jsonschema
     #   referencing
-av==19.0.2
+av==18.1.0
     # via faster-whisper
 bcrypt==5.0.0
     # via
