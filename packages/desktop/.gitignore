@@ -6,3 +6,5 @@ release/
 .cache/
 python/tiktoken-cache/
 release/
+python/pdf-libs/win/
+python/pdf-libs/mac/
