@@ -21,6 +21,9 @@ const require = createRequire(import.meta.url);
 // Banco novo: UTF-8 e o locale "builtin" C.UTF-8 do Postgres 17+. Não depende de nenhum
 // locale do sistema (o macOS não tem C.UTF-8, o Windows nomeia os locales de outro jeito),
 // então o cluster se comporta igual nos três; lower()/upper()/ILIKE tratam acentos.
+/** Versão maior do Postgres embarcado (o backup só restaura na mesma; há teste contra o pacote). */
+export const PG_MAJOR = '18';
+
 export const INITDB_FLAGS = ['--encoding=UTF8', '--locale=C', '--locale-provider=builtin', '--builtin-locale=C.UTF-8'];
 
 /** Opções do servidor, como a string de `pg_ctl -o`. */

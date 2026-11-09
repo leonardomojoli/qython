@@ -57,6 +57,11 @@ export default function NotificationCenter() {
     if (data.type === 'new_notification') {
       setNotifications((prev) => [data.notification, ...prev]);
       setUnreadCount((prev) => prev + 1);
+      // No app desktop, com a janela em segundo plano, avisa pelo sistema operacional
+      // (no navegador e no celular não existe essa ponte e nada muda).
+      if (window.qythonDesktop?.notify && !document.hasFocus() && data.notification?.title) {
+        window.qythonDesktop.notify(data.notification.title, data.notification.body || '').catch(() => {});
+      }
     } else if (data.type === 'unread_count') {
       setUnreadCount(data.unread_count);
     }

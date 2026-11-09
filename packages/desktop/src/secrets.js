@@ -160,6 +160,22 @@ export class SecretStore {
     return out;
   }
 
+  /**
+   * Troca TODAS as chaves por estas (restauração de backup): os dados restaurados só abrem
+   * com as chaves com que foram cifrados. Sela com o cofre DESTE computador, que pode ser outro.
+   * @param {Record<string,string>} values
+   */
+  async replaceAll(values) {
+    for (const name of Object.keys(GENERATORS)) {
+      if (typeof values[name] !== 'string' || !values[name]) throw new Error(`O backup não traz a chave ${name}.`);
+    }
+    const protection = (await this.osVaultAvailable()) ? 'os' : 'file';
+    const doc = { version: 1, protection, items: {} };
+    for (const name of Object.keys(GENERATORS)) doc.items[name] = await this._seal(values[name], protection);
+    this.mode = protection;
+    this._write(doc);
+  }
+
   /** 'os' (cofre do sistema) ou 'file' (arquivo de uso restrito); conhecido depois de load(). */
   get protection() {
     return this.mode;
