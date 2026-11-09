@@ -1,0 +1,80 @@
+# Instaladores do Qython: NSIS (Windows), AppImage e deb (Linux), dmg e zip (macOS, sem assinatura).
+#
+# Sem asar: o Postgres e o backend são binários que o app executa, e o que roda de dentro de um
+# asar precisaria ser desempacotado de qualquer jeito. O código é aberto (AGPL), então não há o
+# que esconder, e a pasta solta deixa o antivírus e o diagnóstico mais simples.
+appId: br.com.qython.desktop
+productName: Qython
+copyright: Olympos Group SAS. Software livre (AGPL-3.0-only).
+asar: false
+artifactName: Qython-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - package.json
+  - models.json
+  - src/**
+  - assets/icon.png
+  - "!**/*.test.js"
+
+# O que o app executa e serve vem da pasta build-resources (scripts/prepare-resources.mjs e
+# scripts/fetch-llama.mjs): o backend empacotado, o front e o llama-server.
+extraResources:
+  - { from: build-resources/backend, to: backend }
+  - { from: build-resources/web, to: web }
+  - { from: build-resources/llama, to: llama }
+
+linux:
+  target: [AppImage, deb]
+  executableName: qython
+  category: Office
+  icon: assets/icon.png
+  maintainer: Qython <171846753+leonardomojoli@users.noreply.github.com>
+  synopsis: Apoio clínico com IA local para médicos
+  description: Copiloto clínico, consultas, receitas e biblioteca de estudo, com a IA rodando no seu computador.
+
+deb:
+  # As bibliotecas do Electron mais as que o WeasyPrint (PDF de receita e atestado) carrega: o
+  # Pango e o HarfBuzz já vêm com o GTK, e o libpangoft2 não vem sempre.
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+    - libpango-1.0-0
+    - libpangoft2-1.0-0
+
+win:
+  target:
+    - { target: nsis, arch: x64 }
+  icon: assets/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false              # instala para o usuário: não pede administrador
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false   # NUNCA apagar os dados dos pacientes ao desinstalar
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+mac:
+  target: [dmg, zip]             # o zip é o que o atualizador automático lê
+  category: public.app-category.medical
+  icon: assets/icon.png
+  identity: null                 # sem assinatura (não há conta Apple); ver o README
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+publish:
+  provider: github
+  owner: leonardomojoli
+  repo: qython
+  releaseType: release

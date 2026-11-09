@@ -13,6 +13,7 @@ import { runSmoke } from './smoke.js';
 import { AiController } from './ai.js';
 import { LocalLlm } from './llm.js';
 import { ModelManager, loadManifest } from './models.js';
+import { startUpdater } from './updater.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SMOKE = process.argv.includes('--smoke');
@@ -121,18 +122,25 @@ function showMain() {
   mainWindow.focus();
 }
 
+let installUpdate = null; // definida quando uma atualização já foi baixada
+
+function trayMenu() {
+  return Menu.buildFromTemplate([
+    { label: 'Abrir o Qython', click: showMain },
+    ...(installUpdate ? [{ label: 'Reiniciar para atualizar', click: () => installUpdate() }] : []),
+    { label: 'Escolher a IA…', click: () => { openWizard(); } },
+    { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
+    { type: 'separator' },
+    { label: 'Sair', click: () => app.quit() },
+  ]);
+}
+
 function createTray() {
   try {
     const image = nativeImage.createFromPath(iconFile).resize({ width: 22, height: 22 });
     tray = new Tray(image);
     tray.setToolTip('Qython');
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Abrir o Qython', click: showMain },
-      { label: 'Escolher a IA…', click: () => { openWizard(); } },
-      { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
-      { type: 'separator' },
-      { label: 'Sair', click: () => app.quit() },
-    ]));
+    tray.setContextMenu(trayMenu());
     tray.on('click', showMain);
   } catch (err) {
     log.warn(`Bandeja indisponível: ${err.message}`);
@@ -313,6 +321,19 @@ async function boot() {
     splash = null;
   });
   createTray();
+
+  // Atualização automática pelo GitHub Releases (só no app instalado; ver updater.js).
+  startUpdater({
+    app, settings, log,
+    notify: (title, body) => {
+      if (Notification.isSupported()) new Notification({ title, body, icon: iconFile }).show();
+    },
+    openExternal: (url) => shell.openExternal(url),
+    onInstallReady: (fn) => {
+      installUpdate = fn;
+      tray?.setContextMenu(trayMenu());
+    },
+  }).catch((err) => log.warn(`Atualizador: ${err.message}`));
 
   // Primeira abertura: o médico escolhe a IA antes de começar. O download segue em segundo
   // plano e o cadastro da conta é feito na própria tela do Qython.

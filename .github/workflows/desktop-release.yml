@@ -1,0 +1,141 @@
+name: Desktop (release)
+
+# Instaladores do app desktop na release da tag v*: Windows (NSIS), Linux (AppImage e deb) e macOS
+# (dmg e zip, sem assinatura). Cria nada de release: o release.yml cria (depois de testar a stack
+# inteira) e aqui os arquivos são anexados a ela, como o APK no mobile.yml. Quem faz a tag é o
+# mantenedor; este workflow nunca cria tag nem publica sozinho.
+#
+# Assinatura do Windows pela SignPath Foundation: está PRONTA e desligada. Liga quando o
+# mantenedor conclui o cadastro e configura (ver packages/desktop/README.md, "Assinatura"):
+#   vars:    SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG,
+#            SIGNPATH_ARTIFACT_CONFIGURATION_SLUG
+#   secret:  SIGNPATH_API_TOKEN
+# Sem isso, o instalador do Windows sai sem assinatura (o SmartScreen avisa) e o job diz isso.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # anexar os instaladores à release
+
+jobs:
+  instaladores:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest }
+          - { name: Windows, os: windows-latest }
+          - { name: macOS, os: macos-latest }
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/desktop/python/requirements.lock
+            packages/desktop/python/requirements-build.txt
+
+      - name: Dependências do monorepo e do backend
+        run: |
+          npm ci
+          python -m pip install --upgrade pip
+          pip install -r packages/desktop/python/requirements.lock -r packages/desktop/python/requirements-build.txt
+
+      - name: Front, backend empacotado e llama-server
+        run: |
+          npm run build:desktop --workspace=packages/web
+          (cd packages/desktop/python && python prepare_tiktoken.py && pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec && ./dist/qython-backend/qython-backend selftest)
+          node packages/desktop/scripts/prepare-resources.mjs
+          node packages/desktop/scripts/fetch-llama.mjs
+
+      - name: Instalador
+        working-directory: packages/desktop
+        run: |
+          # A versão do app é a da tag (v1.2.3 -> 1.2.3); sem tag, a do package.json.
+          if [ "$VERSION" != "dev" ]; then v="${VERSION#v}"; extra="-c.extraMetadata.version=$v"; else extra=""; fi
+          npx electron-builder --publish never $extra
+
+      # --- Windows: assinatura pela SignPath, se configurada --------------------------------
+      - name: Windows sem assinatura (SignPath não configurada)
+        if: runner.os == 'Windows' && vars.SIGNPATH_ORGANIZATION_ID == ''
+        run: |
+          echo "::warning::instalador do Windows SEM assinatura, configure a SignPath (packages/desktop/README.md)"
+
+      - name: Guarda o instalador do Windows para a SignPath
+        id: unsigned
+        if: runner.os == 'Windows' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-windows-sem-assinatura
+          path: packages/desktop/release/*.exe
+          if-no-files-found: error
+
+      - name: Assina com a SignPath
+        if: runner.os == 'Windows' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: packages/desktop/release-assinado
+
+      - name: Troca pelo instalador assinado e refaz o latest.yml
+        if: runner.os == 'Windows' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: |
+          cp packages/desktop/release-assinado/*.exe packages/desktop/release/
+          # O sha512 do latest.yml descrevia o .exe sem assinatura; o atualizador reprovaria o novo.
+          node packages/desktop/scripts/refresh-latest-yml.mjs packages/desktop/release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instaladores-${{ matrix.name }}
+          path: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.AppImage
+            packages/desktop/release/*.deb
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.zip
+            packages/desktop/release/latest*.yml
+          if-no-files-found: error
+
+      # O release.yml roda em paralelo e só cria a release depois de testar a stack inteira.
+      - name: Anexa à release da tag
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(packages/desktop/release/*.exe packages/desktop/release/*.AppImage packages/desktop/release/*.deb \
+                 packages/desktop/release/*.dmg packages/desktop/release/*.zip packages/desktop/release/latest*.yml)
+          for i in $(seq 1 40); do
+            if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+              gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+              exit 0
+            fi
+            echo "release $GITHUB_REF_NAME ainda não existe (tentativa $i/40), nova tentativa em 30 s"
+            sleep 30
+          done
+          echo "::warning::a release $GITHUB_REF_NAME não apareceu em 20 min; os instaladores ficaram só como artifact deste run"

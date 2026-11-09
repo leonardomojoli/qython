@@ -133,3 +133,64 @@ models/         modelos de IA baixados (<id>/<arquivo>.gguf, mais .part e .ok)
 secrets.json    chaves cifradas pelo cofre do sistema
 settings.json   preferências do app (porta lembrada)
 ```
+
+## Instaladores, atualização e assinatura (fatia 4)
+
+`electron-builder.yml` gera, por sistema: **NSIS** (Windows, instala por usuário, sem pedir
+administrador, e **nunca apaga os dados dos pacientes ao desinstalar**), **AppImage** e **deb**
+(Linux) e **dmg** e **zip** (macOS, sem assinatura). Sem asar: o Postgres e o backend são binários
+executados pelo app. O backend, o front e o llama-server vão em `resources/` (`extraResources`).
+
+```bash
+npm run build:desktop --workspace=packages/web
+(cd python && python prepare_tiktoken.py && pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec)
+node scripts/prepare-resources.mjs && node scripts/fetch-llama.mjs
+npm run dist --workspace=packages/desktop          # gera release/
+```
+
+O `desktop.yml` faz isso nos três sistemas e **instala de verdade** (apt/dpkg no Linux, NSIS
+silencioso no Windows, dmg no macOS) antes de repetir a fumaça no app instalado. O
+`desktop-release.yml` roda em tag `v*`, usa a versão da tag e anexa os instaladores à release que o
+`release.yml` cria (como o APK). Não cria tag nem release.
+
+### Atualização automática
+
+`electron-updater` pelo GitHub Releases (`src/updater.js`): baixa em segundo plano e **instala quando o
+app é fechado**, sem interromper o médico; o banco se atualiza sozinho na abertura seguinte (as
+migrations rodam no bootstrap). Para desligar: `autoUpdate: false` no `settings.json` ou
+`QYTHON_NO_UPDATE=1` (checar atualização revela o IP e a versão ao GitHub).
+
+| Sistema | Atualização |
+|---|---|
+| Windows (NSIS) | automática |
+| Linux AppImage | automática |
+| Linux deb | pelo gerenciador de pacotes do sistema |
+| macOS | **só avisa**: sem assinatura o macOS não deixa o app se trocar sozinho |
+
+### Assinatura do Windows (SignPath Foundation): o que falta é cadastro seu
+
+O workflow já tem os passos, desligados. Para ligar:
+
+1. Candidatar o projeto à [SignPath Foundation](https://signpath.org/) (grátis para código aberto) e
+   conectar o repositório pelo trusted build do GitHub.
+2. No repositório, em *Settings > Secrets and variables > Actions*:
+   - **variáveis**: `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`,
+     `SIGNPATH_SIGNING_POLICY_SLUG`, `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`;
+   - **secret**: `SIGNPATH_API_TOKEN`.
+3. Na SignPath, uma configuração de artefato que assine o `.exe` dentro do zip do artifact
+   `instalador-windows-sem-assinatura`.
+
+Depois da assinatura o `scripts/refresh-latest-yml.mjs` refaz o sha512 do `latest.yml` (o
+atualizador reprova o instalador se o hash não bater). Sem a configuração, o instalador sai sem
+assinatura e o SmartScreen avisa.
+
+### O que ainda não está nos instaladores
+
+- **PDF de receita e atestado no Windows e no macOS.** O WeasyPrint precisa do Pango/GTK. No Linux vem
+  com o GTK do próprio Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no
+  macOS as bibliotecas ainda não são empacotadas: o backend sobe e só a geração de PDF avisa que
+  falta a biblioteca. É a próxima peça (DLLs do MSYS2 com `WEASYPRINT_DLL_DIRECTORIES`; dylibs do Homebrew
+  no macOS).
+- **OCR (Tesseract) e transcrição (ffmpeg e whisper).** Não vão no pacote ainda.
+- **macOS assinado e notarizado** (precisa de conta Apple) e **ícone `.ico`/`.icns` próprio**
+  (hoje o electron-builder converte o PNG).
