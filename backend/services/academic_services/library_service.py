@@ -651,7 +651,9 @@ async def handle_document_upload(db: AsyncSession, user: User, library_id: int, 
     mime_type = magic.from_buffer(file_content, mime=True)
     allowed_mimes = [
         'application/pdf', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/m4a', 'video/mp4', 'video/x-msvideo', 'video/quicktime',
+        # O libmagic devolve audio/x-wav para um .wav (audio/wav é o nome registrado, que nunca sai dele):
+        # só audio/wav barrava todo WAV real com "Conteúdo de arquivo inválido".
+        'audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/m4a', 'video/mp4', 'video/x-msvideo', 'video/quicktime',
         'text/plain', 'text/markdown', 'text/csv', 'text/html', 'text/xml',
         'application/json', 'application/csv', 'application/xml',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
