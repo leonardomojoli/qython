@@ -9,6 +9,7 @@ repetiria as bibliotecas (alguns GB com o chromadb e o numpy):
 
   serve      prepara o banco e sobe a API (e o front, se QYTHON_WEB_DIR existir)
   chroma     o servidor do ChromaDB (a busca da biblioteca), em outra porta
+  embed      embeddings e reranking da biblioteca (multilingual-e5 em ONNX, sem torch)
   selftest   importa o que o app usa e imprime um JSON; pega o que o PyInstaller deixou
              de fora sem precisar de banco nem de rede
 
@@ -50,17 +51,14 @@ def _watch_parent(server) -> None:
 
 
 def _use_bundled_models() -> None:
-    """Aponta o tiktoken e o embedder para os arquivos embutidos: sem isso cada um baixaria o
-    seu da internet no primeiro uso (e o copiloto e a biblioteca quebrariam sem rede)."""
+    """Aponta o tiktoken para o vocabulário embutido: sem isso ele o baixaria da internet no
+    primeiro uso (e o copiloto quebraria sem rede)."""
     if not getattr(sys, "frozen", False):
         return
     base = getattr(sys, "_MEIPASS", "")
     tiktoken_dir = os.path.join(base, "tiktoken_cache")
     if os.path.isdir(tiktoken_dir):
         os.environ.setdefault("TIKTOKEN_CACHE_DIR", tiktoken_dir)
-    onnx_dir = os.path.join(base, "onnx_model", "all-MiniLM-L6-v2")
-    if os.path.isdir(onnx_dir):
-        os.environ.setdefault("QYTHON_ONNX_MODEL_DIR", onnx_dir)
 
 
 def _stage(text: str) -> None:
@@ -134,6 +132,17 @@ def chroma(args: argparse.Namespace) -> int:
     return 0
 
 
+def embed(args: argparse.Namespace) -> int:
+    """Embeddings e reranking da biblioteca (multilingual-e5 em ONNX): EMBED_MODEL_DIR e,
+    opcional, RERANK_MODEL_DIR dizem onde estão os modelos."""
+    import uvicorn
+
+    from backend.embed_onnx import build_app
+
+    uvicorn.run(build_app(), host=args.host, port=args.port, log_config=None, access_log=False, workers=1)
+    return 0
+
+
 def selftest(_args: argparse.Namespace) -> int:
     """Importa os módulos que o app carrega e relata o que faltou. Sem rede nem banco."""
     os.environ.setdefault("JWT_SECRET_KEY", "x" * 40)
@@ -173,13 +182,14 @@ def selftest(_args: argparse.Namespace) -> int:
 
         return f"{len(tiktoken.get_encoding('cl100k_base').encode('olá, mundo'))} tokens"
 
-    def onnx_embedder():
-        # O embedder da biblioteca sem torch e sem rede: o modelo vem embutido.
-        _use_bundled_models()
-        from backend.services.academic_services.vector_db_service import get_embeddings_model
+    def onnx_runtime():
+        # O servidor de embeddings roda neste mesmo executável (modo `embed`), sem torch.
+        import onnxruntime
+        import tokenizers
 
-        vec = get_embeddings_model().encode(["dor torácica"])
-        return f"{len(vec[0])} dimensões"
+        from backend import embed_onnx
+
+        return f"onnxruntime {onnxruntime.__version__}, tokenizers {tokenizers.__version__}, {embed_onnx.__name__}"
 
     def import_chroma():
         import chromadb
@@ -222,7 +232,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("mime", mime_detection)
 
     check("tiktoken", tiktoken_offline)
-    check("onnx_embedder", onnx_embedder)
+    check("onnx", onnx_runtime)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
     check("pdf", import_pdf)
@@ -247,6 +257,11 @@ def main(argv: list[str] | None = None) -> int:
     p_chroma.add_argument("--port", type=int, required=True)
     p_chroma.add_argument("--path", required=True)
     p_chroma.set_defaults(fn=chroma)
+
+    p_embed = sub.add_parser("embed")
+    p_embed.add_argument("--host", default="127.0.0.1")
+    p_embed.add_argument("--port", type=int, required=True)
+    p_embed.set_defaults(fn=embed)
 
     sub.add_parser("selftest").set_defaults(fn=selftest)
 

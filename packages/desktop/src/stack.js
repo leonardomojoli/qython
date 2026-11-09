@@ -10,6 +10,7 @@ import { pickPort } from './ports.js';
 import { SecretsUnavailableError } from './secrets.js';
 import { processCommand } from './stack-command.js';
 import { LocalChroma } from './chroma.js';
+import { LocalEmbedder } from './embed.js';
 
 export class KeysMissingError extends Error {
   constructor() {
@@ -47,6 +48,9 @@ export class Stack extends EventEmitter {
     this.makeLlm = o.makeLlm ?? null;
     this.llm = null;
     this.chroma = null;
+    this.embedder = null;
+    this.models = o.models ?? null; // com os modelos, o serviço de embeddings da biblioteca entra
+    this.notReadyReason = o.notReadyReason ?? (() => null);
     this.withChroma = o.chroma !== false;
     this.chromaIdleSeconds = o.chromaIdleSeconds;
     this.pg = null;
@@ -102,6 +106,15 @@ export class Stack extends EventEmitter {
         idleSeconds: this.chromaIdleSeconds,
       });
       await this.chroma.listen([this.webPort, pgPort]);
+    }
+
+    // Embeddings (multilingual-e5 em ONNX) para a busca da biblioteca, também sob demanda.
+    if (this.models) {
+      this.embedder = new LocalEmbedder({
+        resources: this.resources, models: this.models, settings: this.settings, logger: this.log,
+        notReady: this.notReadyReason, idleSeconds: this.chromaIdleSeconds,
+      });
+      await this.embedder.listen([this.webPort, pgPort, this.chroma?.publicPort].filter(Boolean));
     }
 
     // A porta da IA tem que existir antes do backend, que a recebe por variável de ambiente.
@@ -171,6 +184,7 @@ export class Stack extends EventEmitter {
       ANONYMIZED_TELEMETRY: 'False',
       HF_HUB_DISABLE_TELEMETRY: '1',
       ...(this.chroma ? this.chroma.backendEnv() : {}),
+      ...(this.embedder ? this.embedder.backendEnv() : {}),
       // Com a IA local gerenciada pelo app, a tela de Configurações da IA não pede endereço:
       // manda o médico para o assistente.
       ...(this.llm ? { ...this.llm.backendEnv(), QYTHON_MANAGED_LLM: '1' } : {}),
@@ -184,6 +198,10 @@ export class Stack extends EventEmitter {
       await this.backend.stop();
       this.backend.dispose();
       this.backend = null;
+    }
+    if (this.embedder) {
+      await this.embedder.stop().catch((err) => this.log.error(`Falha ao desligar os embeddings: ${err.message}`));
+      this.embedder = null;
     }
     if (this.chroma) {
       await this.chroma.stop().catch((err) => this.log.error(`Falha ao desligar o Chroma: ${err.message}`));
