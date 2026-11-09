@@ -199,13 +199,27 @@ def selftest(_args: argparse.Namespace) -> int:
     def import_pdf():
         from backend.services import pdf_service
 
-        # Sem Pango/GTK o backend sobe e só o PDF falha (ver pdf_service); aqui isso conta
-        # como aviso, não como defeito do empacotamento.
+        # Sem Pango/GTK o backend sobe e só o PDF falha (ver pdf_service). No pacote isso é
+        # defeito: as bibliotecas vão dentro dele (Windows e macOS) ou vêm do GTK do Electron
+        # (Linux). Fora do pacote (desenvolvimento), a falta é só um aviso.
         try:
-            pdf_service.HTML(string="<p>ok</p>").write_pdf()
-            return "ok"
+            pdf = pdf_service.HTML(string="<h1>Receita</h1><p>Dipirona 500 mg — ação, coração</p>").write_pdf()
         except RuntimeError as exc:
+            if getattr(sys, "frozen", False):
+                raise
             return f"indisponível: {exc}"
+        print(f"[selftest] pdf: gerado ({len(pdf)} bytes); conferindo o texto", file=sys.stderr, flush=True)
+        if not pdf.startswith(b"%PDF"):
+            raise RuntimeError(f"o PDF gerado não é válido ({len(pdf)} bytes)")
+        # Sem fonte (fontconfig sem configuração) o PDF sai em branco: confere que o texto está lá.
+        import fitz
+
+        with fitz.open(stream=pdf, filetype="pdf") as doc:
+            text = doc[0].get_text()
+        print("[selftest] pdf: texto lido", file=sys.stderr, flush=True)
+        if "Receita" not in text or "ação" not in text:
+            raise RuntimeError(f"o PDF saiu sem o texto esperado (fontes?): {text!r}")
+        return f"ok ({len(pdf)} bytes, texto conferido)"
 
     def import_fitz():
         import fitz
