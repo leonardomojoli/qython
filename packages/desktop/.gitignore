@@ -5,3 +5,4 @@ python/requirements.in.tmp
 release/
 .cache/
 python/tiktoken-cache/
+python/onnx-model/

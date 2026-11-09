@@ -30,7 +30,8 @@ if (!fs.existsSync(path.join(webSrc, 'index.html'))) {
   process.exit(1);
 }
 
-fs.rmSync(out, { recursive: true, force: true });
+// Troca só o backend e o front: as outras pastas (llama/, de fetch-llama.mjs) ficam.
+for (const name of ['backend', 'web']) fs.rmSync(path.join(out, name), { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.cpSync(backendSrc, path.join(out, 'backend'), { recursive: true, verbatimSymlinks: true });
 fs.cpSync(webSrc, path.join(out, 'web'), { recursive: true });

@@ -12,7 +12,10 @@ name: Desktop
 #   4. pergunta algo ao copiloto: o backend fala com a porta fixa da IA, o llama-server
 #      (llama.cpp) sobe sob demanda com um modelo minúsculo (Qwen3 0.6B), responde, é
 #      desligado por inatividade e volta no pedido seguinte. Prova a fiação; a qualidade
-#      do Gemma 4 é avaliada à parte.
+#      do Gemma 4 é avaliada à parte;
+#   5. usa a biblioteca: envia um PDF (armazenamento local), o Chroma sobe sob demanda, o
+#      embedder ONNX embutido indexa, a pergunta encontra o trecho; parado, o Chroma é
+#      desligado e o pedido seguinte o religa com os dados intactos.
 on:
   workflow_dispatch:
   pull_request:
@@ -109,8 +112,10 @@ jobs:
       - name: Backend empacotado (PyInstaller)
         working-directory: packages/desktop/python
         run: |
-          # Vocabulário do tiktoken embutido: o copiloto não pode depender de internet.
+          # Vocabulário do tiktoken e modelo de embeddings embutidos: o copiloto e a biblioteca
+          # não podem depender de internet.
           python prepare_tiktoken.py
+          python prepare_onnx.py
           pyinstaller --noconfirm --distpath dist --workpath build qython-backend.spec
           ./dist/qython-backend/qython-backend selftest
 
@@ -149,6 +154,7 @@ jobs:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
           QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: xvfb-run -a npx electron packages/desktop --smoke --no-sandbox
 
@@ -159,6 +165,7 @@ jobs:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
           QYTHON_LLM_IDLE_SECONDS: "8"
+          QYTHON_CHROMA_IDLE_SECONDS: "8"
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: npx electron packages/desktop --smoke
 
