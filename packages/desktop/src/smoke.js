@@ -5,6 +5,11 @@
 //   3. a conta do dono nasce sem captcha, SMS nem e-mail, e o termo de uso é aceito;
 //   4. dado cifrado (documento de um paciente) continua legível DEPOIS de reiniciar tudo,
 //      ou seja, as chaves de criptografia sobrevivem a uma nova abertura do app.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { backupFlow, restoreFlow } from './backup-flow.js';
+
 const OWNER = { email: 'dona@clinica-ci.com.br', password: 'Senha123!' };
 
 function assert(cond, message) {
@@ -107,7 +112,58 @@ export async function runSmoke({ stack, log, window }) {
   if (process.env.QYTHON_AI_MODEL_FILE) await smokeAi({ stack, api: `${base2}/api`, token, step, log });
   await smokeLibrary({ stack, api: `${base2}/api`, token, step, log, withAi: !!process.env.QYTHON_AI_MODEL_FILE });
 
+  await smokeBackup({ stack, step, patientId });
+
   step('OK');
+}
+
+async function login(base) {
+  const res = await call(`${base}/api`, 'POST', '/auth/login', { form: { username: OWNER.email, password: OWNER.password } });
+  assert(res.status === 200 && res.data.access_token, `login falhou: ${JSON.stringify(res.data)}`);
+  return res.data.access_token;
+}
+
+// Backup e restauração de ponta a ponta, do jeito que o menu faz: o arquivo cifrado sai com a
+// pilha parada, o médico continua usando (cadastra outro paciente), restaura, e o app tem de
+// voltar ao instante do backup, com o documento cifrado ainda legível (as chaves vão no arquivo).
+export async function smokeBackup({ stack, step, patientId }) {
+  const file = path.join(os.tmpdir(), `qython-fumaca-${process.pid}.qybackup`);
+  try {
+    step('backup: para a pilha, guarda tudo num arquivo cifrado e religa');
+    const { bytes } = await backupFlow({ stack, passphrase: 'senha-da-fumaca', outFile: file });
+    assert(bytes > 1000, `o backup saiu pequeno demais (${bytes} bytes)`);
+    const base = stack.webUrl;
+    const token = await login(base);
+
+    const later = await call(`${base}/api`, 'POST', '/patients', {
+      token, json: { full_name: 'Depois do Backup', document_id: '111.444.777-35', gender: 'M' },
+    });
+    assert(later.status < 300 && later.data.id, `cadastrar o paciente posterior falhou: ${JSON.stringify(later.data)}`);
+
+    step('restauração com a senha errada não derruba nem muda nada');
+    let wrong = null;
+    try {
+      await restoreFlow({ stack, file, passphrase: 'senha-errada-123' });
+    } catch (err) {
+      wrong = err;
+    }
+    assert(wrong && /Senha incorreta/.test(wrong.message), `a senha errada deveria ser recusada: ${wrong?.message}`);
+    assert((await fetch(`${base}/api/health`)).status === 200, 'a pilha deveria seguir de pé depois da senha errada');
+
+    step('restauração: volta ao instante do backup');
+    const { antes } = await restoreFlow({ stack, file, passphrase: 'senha-da-fumaca' });
+    assert(fs.existsSync(path.join(antes, 'db')), 'o banco anterior deveria ter sido guardado, não apagado');
+    assert(stack.webUrl === base, 'a porta mudou depois de restaurar');
+
+    const token2 = await login(base);
+    const back = await call(`${base}/api`, 'GET', `/patients/${patientId}`, { token: token2 });
+    assert(back.status === 200 && back.data.document_id === '529.982.247-25',
+      `o paciente do backup deveria estar lá e legível: ${back.status} ${JSON.stringify(back.data)}`);
+    const gone = await call(`${base}/api`, 'GET', `/patients/${later.data.id}`, { token: token2 });
+    assert(gone.status === 404, `o paciente posterior ao backup não deveria existir (veio ${gone.status})`);
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
 }
 
 /** Um PDF de uma página com o texto, escrito à mão (sem dependências). Só ASCII. */
