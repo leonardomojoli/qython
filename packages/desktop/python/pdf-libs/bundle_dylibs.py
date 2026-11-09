@@ -13,9 +13,12 @@ import shutil
 import subprocess
 import sys
 
+# SEM libharfbuzz-subset: o WeasyPrint a usa para reduzir as fontes embutidas no PDF e, sem ela, cai no
+# fontTools (mais lento, mas puro Python). No CI do macOS a harfbuzz-subset do Homebrew derrubou o processo
+# (EXC_BAD_ACCESS em OT::StatAxisRecord::get_name_id) ao reduzir uma fonte do sistema com tabela STAT.
 ROOTS = [
     "libgobject-2.0.0.dylib", "libpango-1.0.0.dylib", "libpangoft2-1.0.0.dylib",
-    "libharfbuzz.0.dylib", "libharfbuzz-subset.0.dylib", "libfontconfig.1.dylib",
+    "libharfbuzz.0.dylib", "libfontconfig.1.dylib",
 ]
 RENAME = {"libpango-1.0.0.dylib": "libpango-1.0.dylib", "libpangoft2-1.0.0.dylib": "libpangoft2-1.0.dylib"}
 SYSTEM = ("/usr/lib/", "/System/")
