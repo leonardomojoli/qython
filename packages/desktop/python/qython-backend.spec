@@ -63,7 +63,8 @@ if _pdf_dir:
     else:
         print(f"AVISO: {_pdf_libs} vazio; o pacote sai SEM as bibliotecas do PDF (o selftest vai falhar).")
 # Configuração mínima do fontconfig (sem ela o PDF sai sem texto): o entry point aponta FONTCONFIG_FILE para cá.
-datas.append((os.path.join(SPECPATH, "pdf-libs", "fonts.conf"), "pdf-libs"))
+for _conf in ("fonts-win32.conf", "fonts-darwin.conf"):
+    datas.append((os.path.join(SPECPATH, "pdf-libs", _conf), "pdf-libs"))
 
 # --- dependências com arquivos de dados ou importações dinâmicas ---------------------
 binaries = []

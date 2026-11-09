@@ -64,7 +64,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: false
+          update: true  # com o banco de pacotes desatualizado, o pacman rejeita pacotes ('corrupted package (checksum)')
           install: mingw-w64-x86_64-pango mingw-w64-x86_64-ntldd
 
       - name: Reúne as DLLs do PDF (Windows)
