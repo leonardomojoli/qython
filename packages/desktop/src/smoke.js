@@ -102,7 +102,49 @@ export async function runSmoke({ stack, log, window }) {
   const stillAccepted = await call(`${base2}/api`, 'GET', '/user/info', { token });
   assert(stillAccepted.data.terms_pending === false, 'o aceite do termo se perdeu');
 
+  if (process.env.QYTHON_AI_MODEL_FILE) await smokeAi({ stack, api: `${base2}/api`, token, step, log });
+
   step('OK');
+}
+
+/**
+ * IA local de ponta a ponta com um modelo minúsculo (o CI usa o Qwen3 0.6B): a pergunta vai
+ * pelo copiloto do backend, atravessa a porta fixa da IA, sobe o llama-server sob demanda,
+ * volta como resposta; parado, ele é desligado para liberar a memória e o pedido seguinte
+ * o sobe de novo. Prova a fiação, não a qualidade da resposta.
+ */
+async function smokeAi({ stack, api, token, step, log }) {
+  const llm = stack.llm;
+  assert(llm, 'a IA local não foi criada');
+  assert(llm.state === 'idle', `o llama-server deveria estar desligado antes do primeiro pedido (estado: ${llm.state})`);
+
+  const cfg = await call(api, 'GET', '/public/config');
+  assert(cfg.data.ai?.provider === 'openai', `provedor de IA esperado: openai, veio ${JSON.stringify(cfg.data.ai)}`);
+
+  const ask = async (text) => {
+    const form = new FormData();
+    form.append('message', text);
+    return call(api, 'POST', '/copilot', { token, form });
+  };
+
+  step('IA local: 1º pedido sobe o llama-server');
+  const first = await ask('Responda apenas com a palavra OK.');
+  assert(first.status === 200, `o copiloto devolveu ${first.status}: ${JSON.stringify(first.data).slice(0, 400)}`);
+  assert(typeof first.data.response === 'string' && first.data.response.trim().length > 0,
+    `resposta vazia: ${JSON.stringify(first.data).slice(0, 400)}`);
+  assert(llm.state === 'running', `o llama-server deveria estar rodando (estado: ${llm.state})`);
+
+  step('IA local: parado, o llama-server é desligado');
+  const idleMs = (Number(process.env.QYTHON_LLM_IDLE_SECONDS) || 900) * 1000;
+  const deadline = Date.now() + idleMs + 30000;
+  while (llm.state !== 'idle' && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500));
+  assert(llm.state === 'idle', 'o llama-server não foi desligado depois de parado');
+
+  step('IA local: o pedido seguinte o sobe de novo');
+  const second = await ask('Diga apenas: de novo.');
+  assert(second.status === 200 && second.data.response?.trim(), `2º pedido falhou: ${JSON.stringify(second.data).slice(0, 400)}`);
+  assert(llm.state === 'running', 'o llama-server deveria ter voltado');
+  log.info('[fumaça] IA local: ok');
 }
 
 async function waitForDom(window, expression, timeoutMs) {

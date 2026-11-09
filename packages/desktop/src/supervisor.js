@@ -63,7 +63,9 @@ export class ManagedProcess extends EventEmitter {
   }
 
   _spawn() {
-    this.log.info(`[${this.name}] iniciando: ${path.basename(this.command)} ${this.args.join(' ')}`);
+    // A chave de API da IA local é argumento do processo: não vai para o log.
+    const shown = this.args.map((a, i) => (/^--(api-key|key)$/.test(this.args[i - 1] ?? '') ? '***' : a));
+    this.log.info(`[${this.name}] iniciando: ${path.basename(this.command)} ${shown.join(' ')}`);
     const child = spawn(this.command, this.args, {
       cwd: this.cwd,
       env: { ...process.env, ...this.env },
@@ -112,12 +114,14 @@ export class ManagedProcess extends EventEmitter {
     this.log.warn(`[${this.name}] caiu (código ${code ?? signal}).`);
     this.emit('crash', { code, signal });
     const now = Date.now();
-    this.crashes = this.crashes.filter((t) => now - t < this.restartPolicy.windowMs);
-    this.crashes.push(now);
+    if (this.restartPolicy) {
+      this.crashes = this.crashes.filter((t) => now - t < this.restartPolicy.windowMs);
+      this.crashes.push(now);
+    }
     if (!this.restartPolicy || this.crashes.length > this.restartPolicy.max) {
       this.state = 'failed';
       this.wantRunning = false;
-      this.log.error(`[${this.name}] caiu vezes demais; desisti de reiniciar.`);
+      this.log.error(`[${this.name}] ${this.restartPolicy ? 'caiu vezes demais; desisti de reiniciar.' : 'caiu.'}`);
       this.emit('failed');
       return;
     }
@@ -147,7 +151,9 @@ export class ManagedProcess extends EventEmitter {
         // já fechado
       }
     } else {
-      this._terminate(child, false);
+      // No Windows não existe SIGTERM: o taskkill sem /F só fala com quem tem janela e falha
+      // com os demais, e esperar o prazo inteiro (15 s no Chroma) não mudaria o resultado.
+      this._terminate(child, process.platform === 'win32');
     }
     const winner = await Promise.race([exited.then(() => 'exit'), sleep(this.stopTimeoutMs).then(() => 'timeout')]);
     if (winner === 'timeout' && this.isAlive()) {

@@ -91,6 +91,18 @@ test('killStale encerra o processo órfão apontado pelo pid file', { skip: proc
   assert.equal(killStale(pidFile, quiet), false);
 });
 
+test('a chave de API passada ao processo não aparece no log', async () => {
+  const lines = [];
+  const logger = { ...quiet, info: (m) => lines.push(m) };
+  const p = new ManagedProcess({
+    name: 't', command: node, args: ['-e', 'setTimeout(() => {}, 200)', '--api-key', 'SEGREDO123'], logger, restart: null,
+  });
+  p.start();
+  await p.stop();
+  assert.ok(lines.some((l) => l.includes('iniciando')));
+  assert.ok(!lines.join('\n').includes('SEGREDO123'), 'a chave vazou no log');
+});
+
 test('tail devolve as últimas linhas que o processo escreveu (para o erro dizer a causa)', async () => {
   const p = new ManagedProcess({
     name: 't', command: node, logger: quiet, restart: null,
