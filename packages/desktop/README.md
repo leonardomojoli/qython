@@ -45,8 +45,15 @@ O llama-server escuta só em 127.0.0.1, exige uma chave de API (guardada no cofr
 outras) e roda com um slot: CPU não ganha com paralelismo e a conversa fica com o contexto
 inteiro (16 384 tokens, o mesmo do `docker-compose.yml`).
 
-A transcrição (whisper), o Chroma sob demanda, as Configurações da IA no web, os instaladores
-e a atualização automática são as fatias seguintes.
+### Transcrição de áudio e vídeo
+
+A biblioteca transcreve com o **faster-whisper** (Whisper large-v3 turbo, 1,6 GB, no formato
+CTranslate2), o mesmo serviço do servidor (`backend/whisper_server.py`), como modo `whisper` do
+executável do backend. Entra com o ctranslate2 e o PyAV, **sem torch e sem ffmpeg para instalar**: o
+PyAV traz o ffmpeg dentro da roda. Sobe sob demanda atrás de uma porta fixa (`WHISPER_SERVER_URL`) e
+desliga parado. O modelo baixa junto com a IA; quem pulou a IA baixa por **Ajuda > Baixar a
+transcrição de áudio e vídeo**. Se o modelo ainda não está no disco o serviço responde 503 e o
+documento volta para a fila de retentativa do backend, em vez de falhar de vez.
 
 ### As chaves de criptografia
 
@@ -64,8 +71,8 @@ colunas cifradas ficariam ilegíveis. Por isso:
 `python/lock.sh` gera o lock universal do desktop a partir do `requirements.txt` do
 backend, nas **mesmas versões** do lock do Docker. Não vão no pacote:
 
-- `torch`, `sentence-transformers`, `transformers`, `faster-whisper`: o embedder e o whisper
-  rodam em outro processo, sob demanda (próxima fatia). Eram ~3 GB.
+- `torch`, `sentence-transformers`, `transformers`: o embedder (onnxruntime) e o whisper
+  (ctranslate2) rodam sem eles, em outro processo, sob demanda. Eram ~3 GB.
 - `firebase-admin`: login com Google e SMS são do servidor hospedado (`firebase_service`
   continua funcionando sem ele).
 - `presidio-*`, `spacy`, `pt_core_news_md`: redação de nomes antes de o texto ir ao Gemini.
@@ -191,7 +198,8 @@ assinatura e o SmartScreen avisa.
 
 ### O que ainda não está nos instaladores
 
-- **OCR (Tesseract) e transcrição (ffmpeg e whisper).** Não vão no pacote ainda.
+- **OCR (Tesseract).** Não vai no pacote: imagens e PDFs escaneados só viram texto se o Tesseract estiver
+  instalado no computador (o backend o procura no PATH). PDFs com texto não dependem dele.
 - **macOS assinado e notarizado** (precisa de conta Apple).
 
 ## Backup e restauração
