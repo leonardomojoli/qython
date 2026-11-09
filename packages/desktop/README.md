@@ -80,7 +80,8 @@ bibliotecas e elas entram dentro do pacote do backend: no Windows as DLLs do MSY
 (`python/pdf-libs/windows.sh`), no macOS as dylibs do Homebrew com os caminhos reescritos para
 `@loader_path/` (`python/pdf-libs/bundle_dylibs.py`). Um `fonts-<so>.conf` mínimo vai junto, porque o
 fontconfig empacotado não traz a configuração do sistema onde foi compilado e, sem ela, o PDF sai
-sem texto. O `selftest` do executável gera um PDF e confere que o texto (com acentos) está nele.
+sem texto. No macOS a `libharfbuzz-subset` não vai: ela derrubou o processo ao reduzir uma fonte do sistema
+(o WeasyPrint então reduz as fontes com o fontTools, mais lento e sem esse defeito). O `selftest` do executável gera um PDF e confere que o texto (com acentos) está nele.
 
 ## Desenvolvimento
 
