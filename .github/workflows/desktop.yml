@@ -260,7 +260,7 @@ jobs:
 
       - name: Instala o NSIS e abre o app instalado (Windows)
         if: runner.os == 'Windows'
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           QYTHON_USER_DATA: ${{ runner.temp }}/qython-perfil-instalado
           QYTHON_AI_MODEL_FILE: ${{ runner.temp }}/modelos/qwen3.gguf
@@ -269,9 +269,25 @@ jobs:
           QYTHON_BACKEND_EXTRA_ENV: '{"COPILOT_PUBMED":"0"}'
         run: |
           installer=$(ls packages/desktop/release/Qython-*-win-x64.exe | head -1)
-          "$installer" /S
           app="$LOCALAPPDATA/Programs/Qython/Qython.exe"
-          for i in $(seq 1 60); do [ -f "$app" ] && break; sleep 2; done
+          # O Defender examinando os milhares de arquivos do pacote deixa a extração lentíssima no runner.
+          powershell -NoProfile -Command "Add-MpPreference -ExclusionPath \"\$env:LOCALAPPDATA\\Programs\\Qython\",\"\$env:RUNNER_TEMP\"" || echo "(sem exclusão do Defender)"
+          # O instalador roda em segundo plano para o log mostrar o andamento (a primeira execução no CI
+          # passou 15 min aqui sem dizer nada) e para ele não segurar o passo se abrir o app no fim.
+          start=$(date +%s)
+          "$installer" /S &
+          pid=$!
+          while kill -0 "$pid" 2>/dev/null; do
+            elapsed=$(( $(date +%s) - start ))
+            echo "[instalador] ${elapsed} s, $(find "$LOCALAPPDATA/Programs/Qython" -type f 2>/dev/null | wc -l) arquivos instalados"
+            if [ "$elapsed" -gt 720 ]; then
+              echo "::error::o instalador passou de 12 min"; tasklist | grep -i -E "qython|setup|install" || true; exit 1
+            fi
+            sleep 15
+          done
+          echo "[instalador] terminou em $(( $(date +%s) - start )) s"
+          # Se o instalador abriu o app ao terminar, fecha: a fumaça abaixo usa o perfil de teste.
+          taskkill //F //IM Qython.exe //T || true
           ls -la "$LOCALAPPDATA/Programs/Qython" | head -20
           test -f "$app"
           # Aplicativo gráfico: o Start-Process -Wait espera e devolve o código de saída.
