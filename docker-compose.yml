@@ -78,9 +78,16 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:8080/v1}
       LLM_MODEL: ${LLM_MODEL:-gemma-4}
       LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-16384}
+      # Chaves de criptografia dos campos sensíveis (nome, CPF, notas clínicas). Sem
+      # QYTHON_FIELD_KEK e QYTHON_TOKEN_KEK no .env, o backend gera as duas na primeira vez e as
+      # guarda neste volume. FAÇA BACKUP DELE junto com o banco: sem as chaves os campos cifrados
+      # não abrem. Para usar chaves suas (recomendado em servidor de instituição), defina as duas
+      # no .env: elas têm prioridade.
+      QYTHON_KEYS_FILE: /var/lib/qython/keys.json
     volumes:
       - uploads:/app/backend/static/uploads
       - permanent:/app/backend/static/permanent_uploads
+      - keys:/var/lib/qython
     # Aplica as migrations antes de servir: sem isto o primeiro boot sobe com o
     # banco vazio e todo request quebra em tabela inexistente.
     # bootstrap_db decide entre criar o schema (banco novo) e aplicar as
@@ -154,5 +161,6 @@ volumes:
   chromadata:
   uploads:
   permanent:
+  keys:
   models:
   llmmodels:
