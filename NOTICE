@@ -51,7 +51,6 @@ Third-party services and components
 Qython can integrate with third-party services that are governed by their own
 terms and are NOT covered by this license:
 
-  - Groq API (speech-to-text fallback, optional)
   - Lastreo (medical credential verification, optional)
   - Google Drive API (optional backup of the user's own documents)
   - Firebase Authentication (optional)
