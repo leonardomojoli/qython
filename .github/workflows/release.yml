@@ -197,6 +197,10 @@ jobs:
           [ "$claro" = "Maria da Silva" ] || { echo "::error::as chaves de criptografia não persistem entre processos"; exit 1; }
           echo "criptografia dos campos: ok (chaves geradas no volume)"
 
+          # Pareamento do celular: código de uso único -> segredo do aparelho -> acesso renovável ->
+          # revogação, contra o backend da imagem (a dona do CI já existe).
+          python3 tests/backend/test_pairing_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
+
       - name: Logs em caso de falha
         if: failure()
         run: docker compose logs --tail=150 || true

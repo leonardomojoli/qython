@@ -13,7 +13,7 @@ from sqlalchemy.future import select
 
 from .config import Config
 from .database import get_db
-from .models import User
+from .models import PairedDevice, User
 
 # Configurar logging
 logger = logging.getLogger("qython_logger")
@@ -159,6 +159,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     except JWTError as e:
         logger.warning(f"Erro de decodificação do JWT: {e}")
         raise credentials_exception
+
+    # Acesso de um celular pareado: vale só enquanto o aparelho não foi revogado. Sem esta checagem, o
+    # token que o aparelho já tinha continuaria abrindo a API até expirar (até uma hora).
+    device_id = payload.get("device_id")
+    if device_id is not None:
+        device = (await db.execute(select(PairedDevice).where(PairedDevice.id == device_id))).scalars().first()
+        if device is None or device.revoked_at is not None or device.user_id != user_id:
+            logger.warning("Token de aparelho pareado revogado ou desconhecido (device_id=%s).", device_id)
+            raise credentials_exception
 
     # Async query using select
     result = await db.execute(select(User).where(User.id == user_id))
