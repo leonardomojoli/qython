@@ -77,6 +77,9 @@ jobs:
             exit 1
           fi
           docker image ls --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep qython
+          # Camada por camada (maiores primeiro): mostra onde o tamanho da imagem está, para o próximo corte.
+          echo "--- camadas da imagem do backend ---"
+          docker history --format '{{.Size}}\t{{.CreatedBy}}' --no-trunc=false "$IMG" | sort -hr | head -8
 
       - name: Sobe a stack com as imagens recém-construídas
         env:
