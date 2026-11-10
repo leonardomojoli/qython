@@ -8,6 +8,7 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  Pair: undefined;
 };
 
 // Main tabs for compact layout (phones)
