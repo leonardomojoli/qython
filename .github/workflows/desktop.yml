@@ -43,6 +43,7 @@ on:
       - "tests/backend/test_fetch_models.py"
       - "tests/backend/test_imports_resolve.py"
       - "tests/backend/test_jwt_tokens.py"
+      - "tests/backend/test_webhook_signatures.py"
       - "tests/backend/test_vector_search.py"
       - "scripts/fetch_models.py"
       - "backend/routes/pairing_routes.py"
@@ -127,6 +128,7 @@ jobs:
           python tests/backend/test_fetch_models.py
           python tests/backend/test_imports_resolve.py
           python tests/backend/test_jwt_tokens.py
+          python tests/backend/test_webhook_signatures.py
           python tests/backend/test_vector_search.py
 
       - name: Front do desktop (sem service worker, fontes locais)
