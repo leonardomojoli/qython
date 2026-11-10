@@ -155,6 +155,24 @@ def whisper(args: argparse.Namespace) -> int:
     return 0
 
 
+def _probe_pdf_libs() -> str:
+    """No pacote do macOS: o erro REAL do dlopen de cada biblioteca do Pango, por caminho absoluto.
+    O WeasyPrint só relata o último nome que tentou; aqui aparece qual dependência não carregou."""
+    import ctypes
+    import glob
+
+    base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    found = sorted(glob.glob(os.path.join(base, "**", "libgobject-2.0*.dylib"), recursive=True))
+    out = [f"DYLD_FALLBACK={os.environ.get('DYLD_FALLBACK_LIBRARY_PATH')}", f"libgobject em: {found}"]
+    for path in found[:2]:
+        try:
+            ctypes.CDLL(path)
+            out.append(f"{path}: carregou")
+        except OSError as exc:
+            out.append(f"{path}: {exc}")
+    return " | ".join(out)
+
+
 def selftest(_args: argparse.Namespace) -> int:
     """Importa os módulos que o app carrega e relata o que faltou. Sem rede nem banco."""
     os.environ.setdefault("JWT_SECRET_KEY", "x" * 40)
@@ -233,7 +251,7 @@ def selftest(_args: argparse.Namespace) -> int:
             pdf = pdf_service.HTML(string="<h1>Receita</h1><p>Dipirona 500 mg — ação, coração</p>").write_pdf()
         except RuntimeError as exc:
             if getattr(sys, "frozen", False):
-                raise
+                raise RuntimeError(f"{exc} || sonda: {_probe_pdf_libs()}") from exc
             return f"indisponível: {exc}"
         print(f"[selftest] pdf: gerado ({len(pdf)} bytes); conferindo o texto", file=sys.stderr, flush=True)
         if not pdf.startswith(b"%PDF"):
