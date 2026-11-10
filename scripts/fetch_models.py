@@ -68,7 +68,7 @@ def download(url: str, dest: str, file: dict, retries: int = 3) -> None:
     raise RuntimeError(f"não consegui baixar {url}: {last}")
 
 
-def fetch(manifest_path: str, out_dir: str, ids: list[str]) -> list[str]:
+def fetch(manifest_path: str, out_dir: str, ids: list[str], retries: int = 3) -> list[str]:
     with open(manifest_path, encoding="utf-8") as handle:
         models = {m["id"]: m for m in json.load(handle)["models"]}
     unknown = [i for i in ids if i not in models]
@@ -82,7 +82,7 @@ def fetch(manifest_path: str, out_dir: str, ids: list[str]) -> list[str]:
             if is_verified(dest, file):
                 continue
             print(f"baixando {model_id}/{file['name']} ({file['size'] / 1e6:.0f} MB)", flush=True)
-            download(file_url(model, file), dest, file)
+            download(file_url(model, file), dest, file, retries=retries)
             written.append(dest)
     return written
 
