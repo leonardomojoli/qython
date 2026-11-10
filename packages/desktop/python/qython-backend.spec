@@ -52,10 +52,9 @@ for name in os.listdir(tiktoken_cache):
 # Pango/GTK para o PDF (WeasyPrint): o Windows e o macOS não têm. O CI as reúne em pdf-libs/<so>
 # (windows.sh, bundle_dylibs.py). No Windows entram na raiz do pacote, onde o carregador as procura.
 # No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac): na raiz elas dividiriam o nome com as que
-# outras rodas trazem (o opencv do OCR traz libpng, libfreetype...). O PyInstaller trata todo .dylib
-# como binário, mesmo vindo de `datas`: reescreve as dependências para @rpath/<irmã> e define o
-# LC_RPATH como @loader_path/../.., a raiz do pacote, onde as irmãs não estão. Por isso, depois do
-# COLLECT (fim deste arquivo), cada uma ganha @loader_path no LC_RPATH e é reassinada.
+# outras rodas trazem (o opencv do OCR traz libglib, libpng, libfreetype...). O PyInstaller resolve
+# dependência por nome de arquivo e liga a libgobject do Pango à libglib do opencv; por isso, depois
+# do COLLECT (fim deste arquivo), cada biblioteca da pasta aponta as irmãs por @loader_path.
 # No Linux vêm do sistema (o GTK que o Electron já exige).
 import sys
 _pdf_dir = {"win32": "win", "darwin": "mac"}.get(sys.platform)
@@ -138,18 +137,14 @@ exe = EXE(
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="qython-backend")
 
-# macOS: o LC_RPATH que o PyInstaller deu às bibliotecas do PDF (@loader_path/../..) não alcança a
-# pasta delas. Acrescenta @loader_path (a própria pasta) e reassina: o install_name_tool invalida a
-# assinatura e o macOS em arm64 mata o processo que carrega uma biblioteca com assinatura inválida.
+# macOS: deixa as bibliotecas do PDF autocontidas em pdf-libs/mac (pdf-libs/fix_dylibs.py explica):
+# o opencv do OCR traz uma libglib mais antiga, e o PyInstaller liga a libgobject do Pango a ela.
 if sys.platform == "darwin":
-    import glob
-    import subprocess
+    sys.path.insert(0, os.path.join(SPECPATH, "pdf-libs"))
+    import fix_dylibs
 
     _libs_dir = os.path.join(DISTPATH, "qython-backend", "_internal", "pdf-libs", "mac")
-    _dylibs = sorted(glob.glob(os.path.join(_libs_dir, "*.dylib")))
-    if not _dylibs:
+    _fixed = fix_dylibs.main(_libs_dir)
+    if not _fixed:
         print(f"AVISO: nenhuma biblioteca do PDF em {_libs_dir}; o PDF vai falhar no macOS.")
-    for _dylib in _dylibs:
-        subprocess.run(["install_name_tool", "-add_rpath", "@loader_path", _dylib], check=True)
-        subprocess.run(["codesign", "--force", "--sign", "-", _dylib], check=True)
-    print(f"pdf-libs/mac: @loader_path no LC_RPATH e assinatura refeita em {len(_dylibs)} bibliotecas")
+    print(f"pdf-libs/mac: {_fixed} bibliotecas autocontidas (@loader_path) e reassinadas")
