@@ -176,6 +176,26 @@ export class SecretStore {
     this._write(doc);
   }
 
+  /**
+   * Segredo avulso (fora de GENERATORS), protegido como os demais. Serve a coisas que não entram no
+   * backup e podem ser refeitas, como a chave do certificado da rede local: quem restaura um backup
+   * em outro computador ganha um certificado novo e pareia o celular de novo.
+   * @returns {Promise<string|null>}
+   */
+  async getItem(name) {
+    const doc = this._read();
+    if (!doc || !(name in doc.items)) return null;
+    return (await this._open(doc.items[name], doc.protection)).value;
+  }
+
+  /** Guarda um segredo avulso. As chaves de GENERATORS precisam já existir (load() cria o arquivo). */
+  async setItem(name, value) {
+    const doc = this._read();
+    if (!doc) throw new SecretsUnavailableError('O arquivo de chaves ainda não existe.');
+    doc.items[name] = await this._seal(value, doc.protection);
+    this._write(doc);
+  }
+
   /** 'os' (cofre do sistema) ou 'file' (arquivo de uso restrito); conhecido depois de load(). */
   get protection() {
     return this.mode;

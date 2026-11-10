@@ -225,3 +225,20 @@ do Qython, para o médico apagar quando tiver certeza. Limite: o banco só resta
 mesma arquitetura e mesma versão maior do PostgreSQL**; para trocar de sistema operacional é preciso a
 exportação por paciente (LGPD), que já existe no Qython. A API para o front é
 `window.qythonDesktop.backup()` / `.restore()`.
+
+## Celular na rede local (pareamento)
+
+A porta da rede local (`src/lan.js`) fica **fechada por padrão**: o médico a liga em *Perfil → Configurações →
+Conectar o celular* (`window.qythonDesktop.lan.setEnabled(true)`). Ligada, é um servidor HTTPS que repassa ao
+backend local só o que a política deixa (`src/lan-policy.js`): `GET /api/health`, `GET /api/public/config`,
+`POST /api/pairing/claim|token` sem login, e o resto de `/api/*` apenas com `Authorization: Bearer`. O app web,
+`/api/auth*`, `/api/admin*`, `/api/pairing/start` e `/api/pairing/devices*` nunca passam (só valem pela janela do
+computador), e os endereços são decididos sobre o caminho já decodificado (nada de `%2F` para furar). `claim` e
+`token` têm limite de tentativas por origem na própria porta, além do que o backend já aplica.
+
+O certificado é autoassinado (EC P-256, 10 anos), gerado na primeira vez por `qython-backend gencert`; a chave
+privada fica no cofre do sistema (`SecretStore.setItem('LAN_TLS_KEY')`, fora do backup) e a impressão digital vai
+no QR code, que é o que o celular confere (ver [`docs/PAREAMENTO.md`](../../docs/PAREAMENTO.md)). A porta é lembrada
+(padrão 8443) porque o celular pareado depende dela. Restaurar um backup em outro computador gera certificado novo:
+o celular precisa parear de novo. O teste de fumaça (`src/smoke-lan.js`) exercita tudo isto de verdade: HTTPS com
+impressão digital, pareamento, rotas barradas, renovação e revogação imediata.

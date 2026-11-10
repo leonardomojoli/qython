@@ -65,3 +65,11 @@ dela, inclusive um válido de outra autoridade.
 A porta da rede local não serve o app web nem as rotas de login por senha: só `claim`, `token`,
 `health` e a API com o acesso do aparelho. Gerar código e administrar aparelhos só vale pela
 própria janela do computador.
+
+## Onde cada peça está
+
+| Peça | Estado | Onde |
+|---|---|---|
+| Backend (código, aparelhos, renovação, revogação imediata) | pronto | `backend/services/pairing_service.py`, `backend/routes/pairing_routes.py` |
+| Desktop (porta HTTPS, política, certificado, tela do QR code) | pronto | `packages/desktop/src/lan*.js`, `packages/web/src/components/user/PairingSection.jsx` |
+| Celular (confiança por impressão digital, leitor do QR code, renovação do acesso) | em andamento | `packages/mobile` |
