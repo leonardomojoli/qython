@@ -14,6 +14,11 @@ export function pairingPayload({ addresses, fingerprint, code }) {
   return JSON.stringify({ t: 'qython-pair', v: 1, a: addresses, f: fingerprint || null, c: code });
 }
 
+/** "AB12 CD34 EF56 7890 1A2B": o que o celular mostra no pareamento digitado, para o médico conferir. */
+export function formatFingerprint(fingerprint) {
+  return (String(fingerprint).slice(0, 20).toUpperCase().match(/.{1,4}/g) || []).join(' ');
+}
+
 function formatDate(iso) {
   if (!iso) return 'nunca';
   const d = new Date(iso);
@@ -188,6 +193,13 @@ const PairingSection = () => {
               Sem câmera? Digite o endereço <code>{access.addresses[0]}</code> e o código
               {' '}<code className={local.code}>{pairing.displayCode}</code>.
             </p>
+            {access.fingerprint && (
+              <p className={local.hint}>
+                Nesse caso o celular mostra uma impressão digital do computador, e ela precisa ser igual a
+                {' '}<code className={local.code}>{formatFingerprint(access.fingerprint)}</code>. Se for diferente,
+                não continue.
+              </p>
+            )}
             <p className={local.hint}>
               O código vale por <strong>{formatRemaining(remaining)}</strong> e só funciona uma vez.
             </p>
