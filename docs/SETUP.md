@@ -1,378 +1,281 @@
-# Guia de Configuração de Serviços Externos
+# Instalação e configuração
 
-Este guia detalha como configurar cada serviço externo necessário para o Qython funcionar completamente.
+Como instalar e configurar o Qython. Há dois jeitos, sobre a mesma base de código:
+
+| | App desktop | Docker |
+|---|---|---|
+| Para quem | um médico, no próprio computador | a instituição, num servidor |
+| O que precisa | Windows, macOS ou Linux; 32 GB de RAM para a IA recomendada | Docker; 32 GB de RAM; uns 20 GB de disco |
+| Terminal e `.env` | não | sim, uma vez |
+| Onde ficam os dados | na pasta do perfil do usuário | nos volumes do Docker |
+
+O Qython roda **só com IA local**: não existe provedor em nuvem nem chave de IA a configurar. O
+texto das perguntas, das consultas e dos documentos não sai da máquina.
 
 ## Índice
 
-1. [Firebase (SMS e Google Authentication)](#1-firebase-sms-e-google-authentication)
-2. [Google Cloud (OAuth Branding)](#2-google-cloud-oauth-branding)
-3. [Resend (E-mails Transacionais)](#3-resend-e-mails-transacionais)
-4. [ImprovMX (Recebimento de E-mail)](#4-improvmx-recebimento-de-e-mail)
-5. [IA local](#5-ia-local)
-6. [Stripe (Pagamentos Cartão)](#6-stripe-pagamentos-cartão)
-7. [Cloudflare Turnstile (CAPTCHA)](#7-cloudflare-turnstile-captcha)
-8. [Latreo (Verificação Médica)](#8-latreo-verificação-médica)
+1. [App desktop](#1-app-desktop)
+2. [Servidor com Docker](#2-servidor-com-docker)
+3. [IA local](#3-ia-local)
+4. [Transcrição, busca e OCR](#4-transcrição-busca-e-ocr)
+5. [Servidor exposto na internet ou na rede](#5-servidor-exposto-na-internet-ou-na-rede)
+6. [Privacidade e chaves de criptografia](#6-privacidade-e-chaves-de-criptografia)
+7. [Solução de problemas](#7-solução-de-problemas)
 
 ---
 
-## 1. Firebase (SMS e Google Authentication)
+## 1. App desktop
 
-**Custo:** Gratuito até 50.000 MAUs (usuários ativos/mês) no plano Blaze
-**Projeto atual:** `qython-ai`
+Baixe o instalador da página de [releases](https://github.com/leonardomojoli/qython/releases):
 
-### Configuração
+- **Windows:** instalador `.exe` (NSIS). Instala só para o seu usuário, sem pedir administrador, e
+  **nunca apaga os dados dos pacientes ao desinstalar**.
+- **macOS:** `.dmg` (ou `.zip`).
+- **Linux:** `AppImage` ou `.deb`.
 
-1. Acesse o [Firebase Console](https://console.firebase.google.com/)
-2. Crie um novo projeto (ID: `qython-ai`)
-3. Ative o plano **Blaze** (pagamento por utilização) — gratuito até 50K MAUs
-4. Faça upgrade para **Authentication with Identity Platform** (gratuito até 50K MAUs, desbloqueia MFA, funções de bloqueio, cota de SMS maior)
-5. Vá em **Authentication** → **Sign-in method**
-6. Ative o método **Telefone** (SMS)
-7. Ative o método **Google** (login social)
-8. Em **Settings** → **Authorized domains**, adicione:
-   - Seu domínio de produção (ex: `qython.ai`)
-   - `localhost` (desenvolvimento)
+**Aviso de segurança na primeira abertura.** Os instaladores ainda não são assinados (a assinatura
+depende de cadastros que o projeto ainda não fez). O Windows (SmartScreen) e o macOS (Gatekeeper)
+vão avisar que o programa não é de um desenvolvedor conhecido. No Windows: *Mais informações* →
+*Executar assim mesmo*. No macOS: clique com o botão direito no app → *Abrir*, ou *Ajustes do
+Sistema* → *Privacidade e Segurança* → *Abrir assim mesmo*.
 
-### Credenciais do Frontend
+**Primeiro uso.** Um assistente mostra a memória e o disco do computador e escolhe a IA:
 
-1. Vá em **Project Settings** → **General**
-2. Em **Your apps**, clique em **Web** (`</>`)
-3. Registre o app como `Qython Web`
-4. Copie as configurações para o `.env`:
+- O padrão é o **Gemma 4 26B-A4B** (cerca de 15 GB de download, uns 17 GB de RAM). Se o computador
+  tiver menos de 32 GB, o assistente avisa com clareza, e você escolhe: baixar mesmo assim ou um
+  modelo menor. **Ele nunca troca de modelo sozinho.** Os modelos pequenos rodam em máquinas mais
+  modestas, mas erram fato clínico com frequência (nos nossos testes, dose de antibiótico pela
+  metade e volume de adrenalina errado).
+- O download é retomável, com o SHA-256 conferido. Junto vêm os modelos da busca da biblioteca, da
+  transcrição de áudio e do OCR (uns 2 GB, além do modelo de IA).
+- Reabra o assistente quando quiser em *Ajuda* → *Escolher a IA*. Se pulou a transcrição de áudio e
+  vídeo (1,6 GB), baixe depois em *Ajuda* → *Baixar a transcrição de áudio e vídeo*.
 
-```env
-VITE_FIREBASE_API_KEY=AIza...
-VITE_FIREBASE_AUTH_DOMAIN=qython-ai.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=qython-ai
-VITE_FIREBASE_STORAGE_BUCKET=qython-ai.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abc123
-VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+Depois crie a primeira conta: ela vira a administradora da instalação, sem captcha, SMS nem
+confirmação por e-mail. Em seguida aparece o termo de uso, que precisa ser aceito.
+
+**Dados.** Ficam na pasta do perfil do usuário (`~/.config/Qython`, `%APPDATA%\Qython` ou
+`~/Library/Application Support/Qython`): o banco, a biblioteca, os logs e os modelos baixados. As
+chaves de criptografia ficam no cofre do sistema.
+
+**Backup.** *Arquivo* → *Fazer backup…* grava o banco, os dados e as chaves num único arquivo
+`.qybackup`, cifrado com a senha que você escolher. **Guarde essa senha em outro lugar:** sem ela o
+backup não abre. *Arquivo* → *Restaurar backup…* confere a senha antes de parar qualquer coisa e
+nunca apaga o que já existia. O banco só restaura no mesmo sistema, na mesma arquitetura e na mesma
+versão maior do PostgreSQL; para trocar de sistema use a exportação por paciente (LGPD).
+
+**Atualização.** Windows e AppImage atualizam sozinhos, em segundo plano, e instalam quando o app é
+fechado. O `.deb` atualiza pelo gerenciador de pacotes. No macOS o app só avisa. Para desligar:
+`QYTHON_NO_UPDATE=1` (checar atualização revela o IP e a versão ao GitHub).
+
+Detalhes técnicos em [`packages/desktop/README.md`](../packages/desktop/README.md).
+
+---
+
+## 2. Servidor com Docker
+
+Você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com 32 GB de RAM. O
+`docker compose` sobe o banco, o índice de busca, o backend, o front, a IA (llama.cpp com o Gemma
+4) e a transcrição.
+
+```bash
+git clone https://github.com/leonardomojoli/qython.git
+cd qython
+cp .env.example .env
 ```
 
-### Credenciais do Backend
+Edite o `.env` e preencha a chave que assina as sessões:
 
-1. Vá em **Project Settings** → **Service accounts**
-2. Clique em **Generate new private key**
-3. Salve o arquivo como `firebase_credentials.json`
-4. Mova para a pasta `config/` do projeto:
-   ```bash
-   mkdir -p config
-   mv firebase_credentials.json config/
-   chmod 600 config/firebase_credentials.json
-   ```
-5. **IMPORTANTE:** Este arquivo está no `.gitignore` - nunca faça commit dele!
-
-### Identity Platform
-
-O projeto usa **Firebase Auth with Identity Platform**, que oferece:
-- **50.000 MAUs grátis** (vs 10K no Firebase Auth básico)
-- **1.000 SMS/dia** (vs 10/dia no plano Spark)
-- **MFA por SMS** disponível
-- **Funções de bloqueio** (custom logic no login/registro)
-- **Registro de auditoria** de atividade do usuário
-- **SLA empresarial**
-
-O upgrade é irreversível mas não requer migração de dados.
-
-### Números de Teste (Desenvolvimento)
-
-Para evitar bloqueios por spam durante desenvolvimento:
-1. Vá em **Authentication** → **Sign-in method** → **Phone**
-2. Em **Phone numbers for testing**, adicione:
-   - `+55 11 99999-9999` → Código: `123456`
-
----
-
-## 2. Google Cloud (OAuth Branding)
-
-**Necessário para:** Nome "Qython" aparecer na tela de login do Google.
-
-### Configuração
-
-1. Acesse o [Google Cloud Console](https://console.cloud.google.com/apis/credentials/consent)
-2. Selecione o projeto do Firebase
-3. **Tela de Permissão OAuth:**
-   - Tipo: Externo
-   - Nome do App: `Qython`
-   - E-mail de suporte: Use um Google Group ou seu e-mail
-   - Domínios autorizados: `qython.ai` (ou domínio de produção atual)
-4. **Credenciais:**
-   - Crie um **ID do cliente OAuth** (Aplicação Web)
-   - Origens autorizadas: `https://qython.ai` (ou domínio de produção atual)
-   - URIs de redirecionamento: Copie do Firebase (`https://qython-ai.firebaseapp.com/__/auth/handler`)
-   - Copie **Client ID** e **Client Secret** para o Firebase Authentication (provedor Google)
-
----
-
-## 3. Resend (E-mails Transacionais)
-
-**Custo:** Gratuito até 3.000 emails/mês (100/dia)
-
-### Configuração
-
-1. Crie conta em [resend.com](https://resend.com/)
-2. Vá em **Domains** → **Add Domain**
-3. Adicione `qython.ai` (ou o domínio de produção atual)
-4. Configure os registros DNS conforme instruído:
-   - TXT (SPF)
-   - TXT (DKIM)
-   - MX (opcional, para receber respostas)
-
-### API Key
-
-1. Vá em **API Keys** → **Create API Key**
-2. Nome: `Qython Backend`
-3. Permission: `Sending access`
-4. Copie a chave (começa com `re_`)
-
-```env
-RESEND_API_KEY=re_xxxxx...
-MAIL_FROM_EMAIL=nao-responda@qython.ai
+```bash
+JWT_SECRET_KEY=$(openssl rand -hex 32)   # gere uma sua, não reutilize
 ```
 
-### Verificação de Domínio
+```bash
+docker compose up -d
+```
 
-Após configurar o DNS, aguarde alguns minutos e clique em **Verify**. O status deve mudar para verde.
+O Qython abre em **http://localhost:8080**. O primeiro `up` demora: a imagem do backend tem uns 3,5
+GB e o modelo de IA, uns 15 GB, baixado na primeira subida do serviço `llm`. Para fixar uma versão,
+use `QYTHON_VERSION=<versão>` no `.env`.
+
+**Primeira conta.** Crie-a logo depois de subir: até ela existir, quem abrir o endereço primeiro
+vira o administrador. Ela não passa por captcha, SMS nem e-mail (essas travas só valem quando o
+serviço de cada uma está configurado, ver [seção 5](#5-servidor-exposto-na-internet-ou-na-rede)).
+Depois aparece o termo de uso. Contas criadas depois entram sem acesso às funções de IA até o
+administrador liberar pelo painel. Sem e-mail configurado, "Esqueci minha senha" não tem como
+mandar o link; redefina pelo terminal:
+
+```bash
+docker compose exec backend python -m backend.scripts.reset_password voce@exemplo.com
+```
+
+**Serviços do compose:** `db` (PostgreSQL), `chroma` (índice vetorial), `backend` (FastAPI), `web`
+(nginx com o front), `llm` (llama.cpp), `whisper` (transcrição). O perfil opcional `ml` sobe também o
+`embedder`, a busca completa da biblioteca (`docker compose --profile ml up -d`, uns 8 GB de RAM a
+mais). Para ingerir `.docx` e `.pptx` a imagem precisa do LibreOffice (uns 500 MB):
+`WITH_LIBREOFFICE=true docker compose build backend`.
+
+**Chaves de criptografia.** Nome, CPF e notas clínicas são cifrados no banco. Se
+`QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK` não estiverem no `.env`, o backend gera as duas na primeira
+vez e as guarda no volume `keys` (`/var/lib/qython/keys.json`). Veja a [seção 6](#6-privacidade-e-chaves-de-criptografia).
+
+**O que guardar em backup:** os volumes `pgdata` (banco), `permanent` e `uploads` (arquivos),
+`chromadata` (índice de busca) e **`keys` (chaves)**. Sem as chaves, o resto não abre.
+
+**Atualizar:**
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+As migrations do banco rodam sozinhas no início do backend.
 
 ---
 
-## 4. ImprovMX (Recebimento de E-mail)
+## 3. IA local
 
-**Custo:** Gratuito (plano básico)
+Um modelo serve a tudo (consulta, chat, material, prova, leitura de imagem): o que o servidor de IA
+carregou. Os papéis `PRIMARY_LLM_MODEL`, `CHAT_LLM_MODEL` e semelhantes valem `local` e não precisam
+ser definidos.
 
-**Necessário para:** Receber e-mails em `suporte@qython.ai` gratuitamente.
+No Docker, o serviço `llm` roda o llama.cpp com o Gemma 4 26B-A4B (`Q4_0`). Variáveis do `.env`:
 
-### Configuração
+```env
+# LLM_HF_REPO=ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0   # padrão (~17 GB de RAM)
+#                                                     # GPU de 24 GB: ggml-org/gemma-4-31B-it-GGUF:Q4_0
+# LLM_THREADS=4
+# LLM_CONTEXT_TOKENS=16384    # o mesmo -c do llama-server
+```
 
-1. Crie conta no [ImprovMX](https://improvmx.com/)
-2. Adicione o domínio `qython.ai` (ou o domínio de produção atual)
-3. Configure o alias `suporte` para encaminhar para seu Gmail pessoal
-4. Configure os registros DNS:
-   - **MX:** Conforme instruido pelo ImprovMX
-   - **SPF (TXT):** Combine Resend + ImprovMX:
-     ```
-     v=spf1 include:amazonses.com include:spf.improvmx.com ~all
-     ```
-
----
-
-## 5. IA local
-
-**Custo:** zero. O Qython roda só com IA local: não há provedor em nuvem nem chave de API a
-configurar. O texto das perguntas, das consultas e dos documentos não sai da máquina.
-
-Quem instala pelo `docker compose` ganha o serviço `llm` (llama.cpp com o Gemma 4 26B-A4B, que
-pede uma máquina de 32 GB de RAM). O app desktop baixa e gerencia o modelo sozinho. Fora disso,
-aponte para o seu próprio servidor compatível com a API da OpenAI (llama-server, Ollama, LM
-Studio, vLLM):
+Para usar o seu próprio servidor compatível com a API da OpenAI (llama-server, Ollama, LM Studio,
+vLLM), aponte para ele:
 
 ```env
 LLM_BASE_URL=http://127.0.0.1:8081/v1   # com o /v1
 LLM_MODEL=gemma-4                       # o Ollama exige o nome exato
-LLM_CONTEXT_TOKENS=16384                # o mesmo -c do llama-server (ou num_ctx do Ollama)
+LLM_CONTEXT_TOKENS=16384                # precisa bater com o -c do llama-server (ou num_ctx do Ollama)
+LLM_API_KEY=                            # só se o servidor pedir
 ```
 
-Um modelo serve a tudo (consulta, chat, material, prova, leitura de imagem): o que o servidor
-carregou. Os papéis `PRIMARY_LLM_MODEL`, `CHAT_LLM_MODEL` e semelhantes valem `local` e não
-precisam ser definidos. O endereço e o modelo também se trocam pela tela **Configurações da IA**
-(administrador), sem reiniciar.
+O administrador também troca o endereço e o modelo pela tela **Configurações da IA**, sem reiniciar.
 
-O que a IA local não faz, e o Qython não oferece: busca na web durante a resposta (o copiloto
-busca no catálogo de medicamentos, na biblioteca e no PubMed *antes* de responder) e geração de
-imagem (mapa mental sai como diagrama, avatar é foto enviada ou avatar pronto).
+Em CPU, uma resposta leva de 30 segundos a alguns minutos. **Nenhum modelo é livre de erro: confira
+toda informação clínica.** Para pergunta clínica, o copiloto busca fontes *antes* de responder (o
+catálogo de medicamentos, a sua biblioteca e o PubMed) e responde a partir delas, citando-as.
 
-OCR de PDF escaneado e foto de documento: RapidOCR (PP-OCRv6, em ONNX), também local. O modelo
-médio vem na imagem Docker (`QYTHON_OCR_MODELS`); `QYTHON_OCR_MODELO=pequeno` força o pequeno.
-
-### NCBI PubMed API Key (referências — opcional, recomendado em produção)
-
-O copiloto valida/enriquece citações via PubMed E-utilities. **Sem** chave o NCBI
-limita a ~3 req/s **compartilhado por IP** — sob carga concorrente as referências
-falham silenciosamente e somem da resposta. **Com** chave: ~10 req/s.
-
-1. Gere em [NCBI Account](https://www.ncbi.nlm.nih.gov/account/) → **Settings → API Key**
-2. Adicione ao `.env`:
-
-```env
-NCBI_API_KEY=...
-```
+**O que a IA local não faz, e o Qython não oferece:** busca na web durante a resposta, geração de
+imagem (o mapa mental sai como diagrama interativo, o avatar é foto enviada ou avatar pronto, os
+slides saem sem imagem) e geração de áudio.
 
 ---
 
-## 6. Stripe (Pagamentos Cartão)
+## 4. Transcrição, busca e OCR
 
-**Custo:** 2.9% + $0.30 por transação
-
-### Configuração
-
-1. Crie conta em [stripe.com](https://stripe.com/)
-2. Vá em **Developers** → **API Keys**
-3. Use as chaves de **Test mode** para desenvolvimento
-
-```env
-STRIPE_API_KEY=sk_test_xxxxx...
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx...
-```
-
-### Webhook
-
-1. Vá em **Developers** → **Webhooks**
-2. Adicione endpoint: `https://qython.ai/api/billing/stripe-webhook`
-3. Selecione evento: `checkout.session.completed`
-4. Copie o **Signing secret** para `STRIPE_WEBHOOK_SECRET`
+- **Transcrição de áudio e vídeo:** `faster-whisper` local (large-v3-turbo), no serviço `whisper`.
+  Não há transcrição em nuvem. Ajustes: `WHISPER_MODEL`, `WHISPER_COMPUTE_TYPE`,
+  `WHISPER_CPU_THREADS` e `WHISPER_LANGUAGE` (vazio = detecta pt, en ou es).
+- **Busca na biblioteca:** o índice vetorial é o ChromaDB (serviço `chroma`). O perfil `ml` acrescenta
+  o embedder multilíngue (`multilingual-e5-base`) e o reranker.
+- **OCR** de PDF escaneado e de foto de documento: RapidOCR com o PP-OCRv6, local. O modelo médio
+  (139 MB, o que menos erra em texto miúdo) vem na imagem Docker e é baixado pelo app desktop; o
+  pequeno está sempre disponível como reserva. `QYTHON_OCR_MODELO=pequeno` força o pequeno em
+  máquina lenta; `QYTHON_OCR_THREADS` limita os núcleos. Só as páginas sem texto passam pelo OCR.
+- **PubMed:** o copiloto consulta o PubMed e envia **só os termos da busca**. Em instalação sem
+  internet, `COPILOT_PUBMED=0` desliga. `NCBI_API_KEY` (opcional, gratuita em
+  <https://www.ncbi.nlm.nih.gov/account/>) sobe o limite de ~3 para ~10 consultas por segundo.
 
 ---
 
-## 7. Cloudflare Turnstile (CAPTCHA)
+## 5. Servidor exposto na internet ou na rede
 
-**Custo:** Gratuito
-
-### Configuração
-
-1. Acesse [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. Vá em **Turnstile** → **Add site**
-3. Nome: `Qython`
-4. Domínios: `qython.ai`, `localhost`
-5. Tipo: `Managed`
+Para uso em rede, defina no `.env` os endereços pelos quais o Qython será acessado e ponha um proxy
+reverso com HTTPS na frente:
 
 ```env
-CLOUDFLARE_SECRET_KEY=0x4AAA...  # Backend
-VITE_CLOUDFLARE_SITE_KEY=0x4BBB...  # Frontend
+WEB_BASE_URL=https://qython.suainstituicao.com.br
+API_BASE_URL=https://qython.suainstituicao.com.br/api
+ALLOWED_ORIGINS=https://qython.suainstituicao.com.br
+ALLOWED_HOSTS=qython.suainstituicao.com.br
 ```
+
+Num servidor aberto, vale ligar as travas de cadastro. **Cada uma só vale quando o serviço dela está
+configurado**; sem nada, um Qython novo cria a primeira conta sem etapa nenhuma:
+
+| Trava | Serviço | Configuração |
+|---|---|---|
+| Confirmação de e-mail e recuperação de senha | [Resend](https://resend.com) | `RESEND_API_KEY`, `MAIL_FROM_EMAIL` |
+| CAPTCHA no cadastro | [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) | `CLOUDFLARE_SECRET_KEY` (backend) e `VITE_CLOUDFLARE_SITE_KEY` (front) |
+| Verificação de telefone por SMS | [Firebase Authentication](https://firebase.google.com/docs/auth) | `config/firebase_credentials.json` (backend) e `VITE_FIREBASE_*` (front) |
+| Verificação do registro profissional (CRM) | Lastreo | `LATREO_API_KEY`, `LATREO_WEBHOOK_SECRET`, `LATREO_BASE_URL` |
+
+As variáveis `VITE_*` são lidas na **construção do front**: com as imagens prontas do GHCR, elas
+precisam entrar numa reconstrução da imagem `web`.
+
+**Google Drive (opcional).** Quem quiser que a biblioteca copie os documentos para o Drive do
+próprio usuário configura um cliente OAuth do Google Cloud: `GOOGLE_OAUTH_CLIENT_ID`,
+`GOOGLE_OAUTH_CLIENT_SECRET` e `GOOGLE_OAUTH_REDIRECT_URI`
+(`https://<seu domínio>/api/connectors/google/callback`). Sem isso, a biblioteca fica no disco da
+instalação.
 
 ---
 
-## LGPD / Privacy (field-level encryption + PII redaction)
+## 6. Privacidade e chaves de criptografia
 
-### Chaves de criptografia (KEKs)
+**O que sai da máquina.** Por padrão, só as buscas do copiloto no PubMed (os termos da busca, não o
+texto do paciente). A cópia de documentos no Google Drive e a verificação profissional pelo Lastreo
+só existem se você as configurar.
 
-A camada LGPD exige duas chaves no `.env`. Geram-se uma única vez por
-ambiente e **não devem ser commitadas nem rotacionadas sem plano de
-re-encriptação** (a perda do `QYTHON_FIELD_KEK` torna ilegíveis as colunas
-encriptadas).
+**Chaves de criptografia (LGPD).** Os campos sensíveis (nome, CPF, telefone, e-mail, notas clínicas)
+são cifrados no banco com duas chaves:
+
+- `QYTHON_FIELD_KEK` (Fernet): cifra as colunas.
+- `QYTHON_TOKEN_KEK`: pseudonimização e busca por hash determinístico.
+
+De onde o backend as lê, nesta ordem: o `.env` (variáveis de ambiente); o arquivo
+`QYTHON_KEYS_FILE` (o `docker compose` o aponta para o volume `keys` e o cria na primeira vez); e o
+app desktop usa o cofre do sistema. Para chaves próprias, num servidor de instituição:
 
 ```bash
-# QYTHON_FIELD_KEK — Fernet, criptografa colunas sensíveis (CPF, clínico)
+# QYTHON_FIELD_KEK
 python3 -c "from cryptography.fernet import Fernet; print('QYTHON_FIELD_KEK=' + Fernet.generate_key().decode())"
-
-# QYTHON_TOKEN_KEK — pseudonimização ML + lookup_hash determinístico
+# QYTHON_TOKEN_KEK
 python3 -c "import os, base64; print('QYTHON_TOKEN_KEK=' + base64.urlsafe_b64encode(os.urandom(32)).decode())"
 ```
 
-```env
-QYTHON_FIELD_KEK=...   # gerado acima
-QYTHON_TOKEN_KEK=...   # gerado acima
-# Apenas dev descartável (gera chaves efêmeras a cada boot — dados não persistem legíveis):
-# QYTHON_ALLOW_EPHEMERAL_KEK=1
-```
+**Gere uma vez, guarde em local seguro e não troque sem um plano de re-cifragem:** a perda da
+`QYTHON_FIELD_KEK` torna ilegíveis os campos cifrados, e não há como recuperá-los. Só para
+desenvolvimento descartável existe `QYTHON_ALLOW_EPHEMERAL_KEK=1`, que gera chaves novas a cada
+início (os dados deixam de abrir depois de reiniciar).
 
-### Dependências de PII (Presidio + spaCy)
+**Trilha de auditoria.** O log de auditoria só aceita inclusão: um gatilho no PostgreSQL recusa
+`UPDATE` e `DELETE`.
 
-`pip install -r requirements.txt` já traz `presidio-analyzer` e
-`presidio-anonymizer`. O modelo spaCy PT-BR precisa ser baixado à parte:
-
-```bash
-python -m spacy download pt_core_news_lg   # ~568 MB
-```
-
-Sem o modelo, o middleware cai no detector regex legado (`pii_detector.py`),
-que não captura nomes próprios — instalar o modelo é recomendado em produção.
-
-### Documentos de consentimento (seed)
-
-Após a migration, publique os documentos de consentimento (T&C, Privacy,
-6 escopos ML). Idempotente:
-
-```bash
-python3 backend/scripts/seed_consent_documents.py
-```
+**Redação de nomes antes da IA.** Não há: a IA roda na máquina, então o texto vai ao modelo como
+está. Trocar o nome do paciente por um marcador só pioraria a nota gerada.
 
 ---
 
-## Checklist de Configuração
+## 7. Solução de problemas
 
-Use esta checklist para garantir que tudo está configurado:
+**A IA demora ou erra por contexto.** Em CPU, de 30 segundos a alguns minutos por resposta. Confira
+`LLM_THREADS` e a RAM livre. `LLM_CONTEXT_TOKENS` precisa bater com o `-c` do llama-server.
 
-### Obrigatórios (Sistema não funciona sem)
-- [ ] `DATABASE_URL` - PostgreSQL
-- [ ] `JWT_SECRET_KEY` - Chave de 32+ caracteres
-- [ ] `LLM_BASE_URL` - Servidor de IA local (o `docker compose` já define)
-- [ ] `QYTHON_FIELD_KEK` - Field-level encryption (LGPD)
-- [ ] `QYTHON_TOKEN_KEK` - Pseudonimização ML (LGPD)
+**"QYTHON_FIELD_KEK is not set" ao salvar um paciente.** Acontecia numa instalação Docker anterior
+a esta documentação, que pedia só a `JWT_SECRET_KEY`. Atualize a imagem (o backend passa a gerar as
+chaves no volume `keys`) ou defina as duas chaves no `.env`.
 
-### Funcionalidades de Segurança
-- [ ] `firebase_credentials.json` - Verificação de telefone
-- [ ] `VITE_FIREBASE_*` - Config do frontend
-- [ ] `RESEND_API_KEY` - Verificação de e-mail
-- [ ] `CLOUDFLARE_SECRET_KEY` - CAPTCHA
-- [ ] `spacy download pt_core_news_lg` - PII detection PT-BR
-- [ ] `seed_consent_documents.py` rodado - Documentos de consentimento
+**O PDF da receita sai sem texto ou o PDF falha.** No servidor Docker, confira o log do backend. No
+app desktop, abra *Ajuda* → *Abrir a pasta de logs* e procure `pdf`.
 
-### Opcionais (Funcionalidades extras)
-- [ ] `STRIPE_API_KEY` - Pagamentos com cartão
-- [ ] `HUGGINGFACE_API_KEY` - Geração de avatares
+**Esqueci a senha, sem e-mail configurado.** `docker compose exec backend python -m
+backend.scripts.reset_password voce@exemplo.com`.
 
----
+**Transcrição não funciona.** O serviço `whisper` precisa estar de pé e o backend precisa de
+`WHISPER_SERVER_URL` (o compose define). Sem ele a transcrição fica indisponível, sem fallback em
+nuvem. No app desktop, o whisper sobe sob demanda quando há um arquivo para transcrever.
 
-## 8. Latreo (Verificação Médica)
+**O download do modelo parou.** No desktop o download é retomável: abra o assistente de novo. No
+Docker, `docker compose logs -f llm`.
 
-Verifica o registro profissional de médicos (CFM + CNES / foto + selfie / ICP-Brasil) via embed. A carteira CRM + selfie vão **direto para o Latreo** — nunca passam pelo backend do Qython. Estudantes continuam no KYC interno (Gemini).
-
-### Pré-requisitos
-
-1. API key criada no dashboard Lastreo (Developer → **API Keys** → Nova API Key). Auth server-to-server via header `X-API-KEY: lk_...`.
-2. Webhook criado no dashboard Lastreo (Webhooks & Push → **Webhooks (HTTP)**) apontando para `https://qython.ai/api/internal/lastreo/webhook`, assinando os eventos `verification.*`. Guarde o signing secret (`whsec_...`).
-
-### Configuração (`.env` do backend)
-
-```bash
-LATREO_BASE_URL=https://lastreo.com
-LATREO_API_KEY=lk_<prefix>_<secret>                  # API key (Developer → API Keys), header X-API-KEY
-LATREO_WEBHOOK_SECRET=whsec_...                      # signing secret do webhook
-LATREO_VERIFY_THEME_COLOR=#bb86fc                    # opcional — cor do embed
-```
-
-Frontend web (opcional, default já aponta pro Latreo):
-
-```bash
-VITE_LATREO_SDK_URL=https://lastreo.com/dashboard/sdk/lastreo.js
-```
-
-### Funcionamento
-
-- **Cadastro**: o médico abre o modal Latreo, declara CRM/UF e envia a mídia ao Latreo. O frontend envia `latreo_session_id` no `POST /auth/register/step1`; o backend confirma o resultado server-side (`GET /verification-sessions/{id}`) e grava `verification_status`/`verification_tier`.
-- **Webhook**: aprovações assíncronas (tier prata revisado por admin) e mudanças futuras chegam em `/api/internal/lastreo/webhook` (HMAC `X-Lastreo-Signature`, mapeado por `latreo_doctor_id`).
-- **Sem a API key**: a verificação Latreo desliga graciosamente — o médico cadastra como `pending` e o banner cobra depois.
-
-### Mobile
-
-Requer `react-native-webview` (já em `package.json`). Após `npm install`, rode `pod install` (iOS) e refaça o build nativo. A permissão de câmera já está declarada (Android/iOS).
-
-O cadastro mobile usa o mesmo Cloudflare Turnstile do web, renderizado dentro de um WebView (`TurnstileModal`). A **site key pública** fica em `packages/mobile/src/config/env.ts` (`CLOUDFLARE_TURNSTILE_SITE_KEY`) e deve ser igual à `VITE_CLOUDFLARE_SITE_KEY` do web. O domínio `qython.ai` precisa estar na lista de domínios permitidos da site key (o WebView carrega o desafio com `baseUrl=https://qython.ai`).
-
----
-
-## Troubleshooting
-
-### Latreo: verificação não inicia (503)
-- Confirme `LATREO_API_KEY` no `.env` (enviada no header `X-API-KEY`)
-
-### Latreo: webhook rejeitado (401)
-- `LATREO_WEBHOOK_SECRET` precisa ser exatamente o signing secret do webhook no dashboard Lastreo
-
-### Firebase: "auth/invalid-api-key"
-- Verifique se as variáveis `VITE_FIREBASE_*` estão corretas
-- Confirme que o domínio está autorizado no Console
-
-### Resend: Emails indo para spam
-- Configure DKIM e SPF no DNS
-- Use um domínio verificado ao invés de `onboarding@resend.dev`
-
-### IA local: respostas lentas ou erro de contexto
-- Em CPU, uma resposta leva de 30 s a alguns minutos; confira `LLM_THREADS` e a RAM livre
-- `LLM_CONTEXT_TOKENS` precisa bater com o `-c` do llama-server
-
-### Stripe: Webhook falha
-- Verifique se o `STRIPE_WEBHOOK_SECRET` está correto
-- Confirme que a URL é HTTPS e acessível publicamente
+**Windows ou macOS avisam que o app não é confiável.** Veja o aviso na [seção 1](#1-app-desktop): os
+instaladores ainda não são assinados.
