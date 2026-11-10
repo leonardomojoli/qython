@@ -24,7 +24,6 @@ from ..models import (
 )
 from ..security import get_current_active_user
 from ..services.pdf_service import render_prescription_pdf
-from ..services.data_collector_service import collect_data
 
 logger = logging.getLogger("qython_logger")
 router = APIRouter()
@@ -146,38 +145,6 @@ async def create_prescription(
 
     logger.info(f"Prescription created: {new_prescription.id} for patient {payload.patient_id} by doctor {current_user.email}")
     
-    # DATA FLYWHEEL: Coletar dados para treinamento
-    try:
-        # Input: lista de medicamentos prescritos
-        meds_list = ", ".join([f"{item.medication} {item.dosage}" for item in payload.items])
-        input_text = f"Prescrição para paciente: {meds_list}"
-        
-        # Output: detalhes completos (posologia, duração)
-        output_lines = []
-        for item in payload.items:
-            line = f"- {item.medication}: {item.dosage}, {item.frequency}, por {item.duration}"
-            if item.instructions:
-                line += f" ({item.instructions})"
-            output_lines.append(line)
-        output_text = "\n".join(output_lines)
-        if payload.notes:
-            output_text += f"\n\nObservações: {payload.notes}"
-        
-        await collect_data(
-            db=db,
-            user_id=current_user.id,
-            source_type="prescription",
-            input_data=input_text,
-            output_data=output_text,
-            meta={
-                "prescription_type": payload.prescription_type,
-                "num_items": len(payload.items),
-                "prescription_id": new_prescription.id
-            },
-            quality=0  # Neutro - pode ser atualizado com feedback
-        )
-    except Exception as e:
-        logger.warning(f"[DATA FLYWHEEL] Falha ao coletar prescrição: {e}")
     
     return new_prescription
 
@@ -261,33 +228,8 @@ async def get_prescription_pdf(
     if not patient:
          raise HTTPException(status_code=404, detail="Patient data associated with prescription not found")
 
-    # 3. Lazy-create share token for QR code. Só no SaaS: o QR leva à página pública
-    # da receita, que numa instalação local estaria num servidor que o paciente não
-    # alcança. Lá a receita vai ao paciente como o próprio PDF.
+    # 3. A receita vai ao paciente como o próprio PDF (sem link público).
     share_token = None
-    if Config.EDITION == "hosted":
-        try:
-            share_result = await db.execute(
-                select(PrescriptionShare).where(
-                    PrescriptionShare.prescription_id == prescription_id,
-                    PrescriptionShare.status == 'active',
-                )
-            )
-            existing_share = share_result.scalar_one_or_none()
-            if existing_share:
-                share_token = existing_share.share_token
-            else:
-                token = uuid.uuid4().hex
-                share = PrescriptionShare(
-                    prescription_id=prescription_id,
-                    share_token=token,
-                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
-                )
-                db.add(share)
-                await db.commit()
-                share_token = token
-        except Exception as e:
-            logger.warning(f"Failed to create share token for QR code: {e}")
 
     # 4. Gerar PDF usando o serviço
     try:
@@ -314,98 +256,8 @@ class SendToPharmacyRequest(BaseModel):
     pharmacy_id: int
 
 
-@router.post("/{prescription_id}/share")
-async def create_share_link(
-    prescription_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Generate a shareable link (UUID token, 30-day expiration) for a prescription."""
-    if Config.EDITION != "hosted":
-        # O link aponta para este servidor; fora do SaaS o paciente não o alcança.
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nesta instalação a receita é compartilhada como PDF.",
-        )
-    # Verify prescription belongs to doctor
-    result = await db.execute(
-        select(Prescription).where(
-            Prescription.id == prescription_id,
-            Prescription.doctor_id == current_user.id,
-        )
-    )
-    prescription = result.scalar_one_or_none()
-    if not prescription:
-        raise HTTPException(status_code=404, detail="Prescription not found")
-
-    # Check for existing active share
-    existing_result = await db.execute(
-        select(PrescriptionShare).where(
-            PrescriptionShare.prescription_id == prescription_id,
-            PrescriptionShare.status == 'active',
-        )
-    )
-    existing = existing_result.scalar_one_or_none()
-    if existing:
-        return {
-            "share_token": existing.share_token,
-            "share_url": f"{Config.WEB_BASE_URL}/receita/{existing.share_token}",
-            "expires_at": existing.expires_at.isoformat(),
-            "already_existed": True,
-        }
-
-    # Create new share
-    token = uuid.uuid4().hex
-    share = PrescriptionShare(
-        prescription_id=prescription_id,
-        share_token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
-    )
-    db.add(share)
-    await db.commit()
-    await db.refresh(share)
-
-    logger.info(f"Share link created for prescription {prescription_id} by {current_user.email}")
-
-    return {
-        "share_token": share.share_token,
-        "share_url": f"{Config.WEB_BASE_URL}/receita/{share.share_token}",
-        "expires_at": share.expires_at.isoformat(),
-        "already_existed": False,
-    }
 
 
-@router.delete("/{prescription_id}/share", status_code=status.HTTP_204_NO_CONTENT)
-async def revoke_share_links(
-    prescription_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Revoke all active share links for a prescription."""
-    # Verify prescription belongs to doctor
-    result = await db.execute(
-        select(Prescription).where(
-            Prescription.id == prescription_id,
-            Prescription.doctor_id == current_user.id,
-        )
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Prescription not found")
-
-    # Revoke all active shares
-    shares_result = await db.execute(
-        select(PrescriptionShare).where(
-            PrescriptionShare.prescription_id == prescription_id,
-            PrescriptionShare.status == 'active',
-        )
-    )
-    shares = shares_result.scalars().all()
-
-    for share in shares:
-        share.status = 'revoked'
-
-    await db.commit()
-    logger.info(f"Revoked {len(shares)} share links for prescription {prescription_id} by {current_user.email}")
 
 
 @router.post("/{prescription_id}/send-to-pharmacy")

@@ -21,7 +21,7 @@ from .config import Config
 from .database import create_tables
 from .routes import (
     auth_routes, consultation_routes, user_routes, copilot_routes,
-    feedback_routes, billing_routes, academic_routes, settings_routes,
+    academic_routes, settings_routes,
     export_routes, admin_routes, patient_routes,
     prescription_routes, document_routes, exam_routes, icd10_routes,
     profile_update_routes, orientation_routes,
@@ -134,7 +134,6 @@ async def lifespan(app: FastAPI):
     # Import scheduler and arena services
     from .services.scheduler import start_scheduler, stop_scheduler
     from .services.arena_service import seed_seasons
-    from .services.server_monitor import start_server_monitor, stop_server_monitor
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
     from .seeds.seed_icd10 import seed_icd10
     from .seeds.copilot_prompts import seed_copilot_prompts
@@ -212,19 +211,10 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     logger.info("Internal scheduler started")
 
-    # Start server monitor for metrics collection and auto-maintenance. Só no SaaS:
-    # numa instalação local, CPU alta é o próprio usuário trabalhando (a IA local
-    # ocupa a CPU de propósito), e o "modo manutenção" travaria o app dele.
-    if Config.EDITION == "hosted":
-        start_server_monitor()
-        logger.info("Server monitor started")
-
     yield
 
     # Cleanup on shutdown
     stop_scheduler()
-    if Config.EDITION == "hosted":
-        stop_server_monitor()
     logger.info("Application shutdown complete")
 
 app = FastAPI(lifespan=lifespan)
@@ -280,8 +270,6 @@ app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication
 app.include_router(consultation_routes.router, prefix="/api/consultations", tags=["Consultations"])
 app.include_router(user_routes.router, prefix="/api/user", tags=["User"])
 app.include_router(copilot_routes.router, prefix="/api/copilot", tags=["Copilot"])
-app.include_router(feedback_routes.router, prefix="/api/feedback", tags=["Feedback"])
-app.include_router(billing_routes.router, prefix="/api/billing", tags=["Billing"])
 app.include_router(academic_routes.router, prefix="/api/academic", tags=["Academic"])
 app.include_router(settings_routes.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(export_routes.router, prefix="/api/export", tags=["Export"])

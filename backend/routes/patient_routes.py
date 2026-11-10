@@ -18,9 +18,6 @@ from ..database import get_db
 from ..models import User, Patient, Consultation
 from ..security import get_current_active_user
 from ..services.llm_services import normalize_clinical_terms, parse_clinical_history, parse_and_extract_from_history, extract_patient_updates
-from ..services.billing_service import debit_dracmas_for_feature
-from ..services.data_collector_service import collect_data
-from ..services.preference_service import collect_preference_pair
 from ..services import audit_service
 
 logger = logging.getLogger("qython_logger")
@@ -123,7 +120,6 @@ class ClinicalHistoryPayload(BaseModel):
 class ClinicalHistoryResponse(BaseModel):
     raw_history: str = Field(..., alias='rawHistory')
     parsed_history: Optional[List[dict]] = Field(None, alias='parsedHistory')
-    training_data_id: Optional[int] = Field(None, alias='trainingDataId')  # match de feedback à prova de balas
 
     class Config:
         populate_by_name = True
@@ -237,12 +233,6 @@ async def create_patient(
     current_user: User = Depends(get_current_active_user)
 ):
     """Register a new patient with AI-normalized clinical terms."""
-    # Cobrar por normalizações (1 dracma cada campo com conteúdo)
-    campos_para_normalizar = [payload.allergies, payload.chronic_conditions, payload.current_medications]
-    for campo in campos_para_normalizar:
-        if campo and len(campo) > 0:
-            await debit_dracmas_for_feature(current_user, "normalize_clinical_terms", db)
-
     # Normalize clinical terms using Gemini Flash Lite
     # This converts "pressão alta" -> "Hipertensão Arterial Sistêmica"
     # and detects negations like "nega" -> None
@@ -252,23 +242,6 @@ async def create_patient(
     normalized_allergies = await normalize_clinical_terms('allergies', payload.allergies)
     normalized_conditions = await normalize_clinical_terms('chronic_conditions', payload.chronic_conditions)
     normalized_medications = await normalize_clinical_terms('current_medications', payload.current_medications)
-
-    # --- DATA FLYWHEEL: Salvar normalizações clínicas ---
-    normalization_pairs = [
-        ('allergies', payload.allergies, normalized_allergies),
-        ('chronic_conditions', payload.chronic_conditions, normalized_conditions),
-        ('current_medications', payload.current_medications, normalized_medications)
-    ]
-    for field_type, raw_terms, normalized_terms in normalization_pairs:
-        if raw_terms and len(raw_terms) > 0:
-            await collect_data(
-                db, current_user.id, "clinical_term_normalization",
-                json.dumps(raw_terms, ensure_ascii=False),
-                json.dumps(normalized_terms, ensure_ascii=False) if normalized_terms else "[]",
-                {"field_type": field_type},
-                quality=0,
-                lang=language_code
-            )
 
     # Auto-capitalize patient name
     formatted_name = _capitalize_name(payload.full_name)
@@ -323,8 +296,6 @@ async def preview_history_import(
     import json
 
     try:
-        # Charge for history parsing (5 dracmas)
-        await debit_dracmas_for_feature(current_user, "parse_clinical_history", db)
 
         language_code = current_user.language_preference or 'pt-BR'
 
@@ -335,19 +306,6 @@ async def preview_history_import(
 
         if not result:
             return {"parsedHistory": None, "extractedFields": None}
-
-        # --- DATA FLYWHEEL ---
-        try:
-            await collect_data(
-                db, current_user.id, "clinical_history_parsing",
-                payload.raw_history,
-                json.dumps(result.get('consultations', []), ensure_ascii=False),
-                {"source": "preview_import", "num_entries": len(result.get('consultations', []))},
-                quality=0,
-                lang=language_code
-            )
-        except Exception:
-            pass  # Data flywheel must not block
 
         await db.commit()
 
@@ -433,12 +391,6 @@ async def update_patient(
     if 'full_name' in update_data and update_data['full_name']:
         update_data['full_name'] = _capitalize_name(update_data['full_name'])
 
-    # Cobrar por normalizações (1 dracma cada campo clínico atualizado)
-    clinical_fields = ['allergies', 'chronic_conditions', 'current_medications']
-    for field in clinical_fields:
-        if field in update_data and update_data[field] is not None and len(update_data[field]) > 0:
-            await debit_dracmas_for_feature(current_user, "normalize_clinical_terms", db)
-
     # Normalize clinical terms if they are being updated
     import json
     language_code = current_user.language_preference or 'pt-BR'
@@ -449,16 +401,6 @@ async def update_patient(
             normalized_terms = await normalize_clinical_terms(field, raw_terms)
             update_data[field] = normalized_terms
 
-            # --- DATA FLYWHEEL: Salvar normalizações clínicas ---
-            if raw_terms and len(raw_terms) > 0:
-                await collect_data(
-                    db, current_user.id, "clinical_term_normalization",
-                    json.dumps(raw_terms, ensure_ascii=False),
-                    json.dumps(normalized_terms, ensure_ascii=False) if normalized_terms else "[]",
-                    {"field_type": field},
-                    quality=0,
-                    lang=language_code
-                )
 
     for field, value in update_data.items():
         setattr(patient, field, value)
@@ -549,7 +491,6 @@ async def extract_updates(
         )
 
     try:
-        await debit_dracmas_for_feature(current_user, "extract_patient_updates", db)
 
         language_code = current_user.language_preference or 'pt-BR'
 
@@ -749,37 +690,6 @@ async def apply_updates(
         await db.commit()
         await db.refresh(patient)
 
-        # --- DATA FLYWHEEL (non-blocking) ---
-        try:
-            await collect_data(
-                db, current_user.id, "patient_info_extraction",
-                json.dumps({"consultation_id": payload.consultation_id, "patient_id": patient_id}, ensure_ascii=False),
-                json.dumps(payload.accepted_changes, ensure_ascii=False),
-                {"num_accepted": len(payload.accepted_changes), "num_rejected": len(payload.rejected_changes)},
-                quality=1,
-                lang=language_code
-            )
-
-            # If there are rejections, collect preference pair for DPO
-            if payload.rejected_changes:
-                await collect_preference_pair(
-                    db=db,
-                    user_id=current_user.id,
-                    prompt=json.dumps({"consultation_id": payload.consultation_id, "patient_id": patient_id}, ensure_ascii=False),
-                    chosen=json.dumps(payload.accepted_changes, ensure_ascii=False),
-                    rejected=json.dumps(payload.rejected_changes, ensure_ascii=False),
-                    source_type="patient_info_extraction_correction",
-                    preference_source='human',
-                    confidence_score=1.0,
-                    metadata={
-                        "consultation_id": payload.consultation_id,
-                        "patient_id": patient_id,
-                    },
-                    language=language_code
-                )
-        except Exception:
-            pass  # Data flywheel must not block
-
         logger.info(f"Applied {len(payload.accepted_changes)} updates to patient {patient_id} "
                      f"(rejected {len(payload.rejected_changes)})")
         return patient
@@ -821,8 +731,6 @@ async def parse_patient_history(
         )
 
     try:
-        # Cobrar pela importação de histórico clínico (5 dracmas)
-        await debit_dracmas_for_feature(current_user, "parse_clinical_history", db)
 
         language_code = current_user.language_preference or 'pt-BR'
 
@@ -830,17 +738,6 @@ async def parse_patient_history(
         parsed_history = await parse_clinical_history(
             payload.raw_history,
             language_code
-        )
-
-        # --- DATA FLYWHEEL: Salvar parsing de histórico clínico ---
-        import json
-        training_data_id = await collect_data(
-            db, current_user.id, "clinical_history_parsing",
-            payload.raw_history,
-            json.dumps(parsed_history, ensure_ascii=False) if parsed_history else "[]",
-            {"patient_id": patient_id, "num_entries": len(parsed_history) if parsed_history else 0},
-            quality=0,
-            lang=language_code
         )
 
         # Save both raw and parsed history to the patient
@@ -856,7 +753,6 @@ async def parse_patient_history(
         return {
             "rawHistory": payload.raw_history,
             "parsedHistory": parsed_history,
-            "trainingDataId": training_data_id
         }
     except Exception as e:
         await db.rollback()

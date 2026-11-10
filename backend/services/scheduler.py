@@ -19,45 +19,8 @@ logger = logging.getLogger("qython_logger")
 scheduler = AsyncIOScheduler()
 
 
-async def scheduled_ranking_update():
-    """
-    Scheduled task to update arena rankings (XP-based).
-    Runs daily at 3:00 AM UTC as a consistency pass.
-    Primary ranking updates happen in real-time on quiz submission.
-    """
-    from ..database import AsyncSessionLocal
-    from .arena_service import update_season_rankings, activate_current_season
-
-    logger.info("Starting scheduled ranking update...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            # First, ensure correct season is active
-            await activate_current_season(db)
-
-            # Then update rankings (full recalculation for consistency)
-            updated_count = await update_season_rankings(db)
-            logger.info(f"Scheduled ranking update complete. Updated {updated_count} rankings.")
-        except Exception as e:
-            logger.error(f"Error in scheduled ranking update: {e}", exc_info=True)
 
 
-async def scheduled_expire_challenges():
-    """
-    Scheduled task to expire old arena challenges.
-    Runs every 6 hours.
-    """
-    from ..database import AsyncSessionLocal
-    from .challenge_service import expire_old_challenges
-
-    logger.info("[ARENA] Expiring old challenges...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            count = await expire_old_challenges(db)
-            logger.info(f"[ARENA] Expired {count} old challenges.")
-        except Exception as e:
-            logger.error(f"[ARENA] Error expiring challenges: {e}", exc_info=True)
 
 
 async def scheduled_season_check():
@@ -120,156 +83,10 @@ async def scheduled_season_check():
             logger.error(f"Error in season check: {e}", exc_info=True)
 
 
-async def scheduled_chat_images_cleanup():
-    """
-    Scheduled task to delete chat images older than 30 days.
-    Runs daily at 4:00 AM UTC.
-    Note: Training dataset images are NOT affected - only visualization images.
-    """
-    import os
-    import time
-    from ..config import Config
-
-    logger.info("[CLEANUP] Starting chat images cleanup...")
-
-    try:
-        chat_images_folder = Config.CHAT_IMAGES_FOLDER
-        if not os.path.exists(chat_images_folder):
-            logger.info("[CLEANUP] Chat images folder does not exist, skipping.")
-            return
-
-        # 30 days in seconds
-        retention_seconds = 30 * 24 * 60 * 60
-        current_time = time.time()
-        deleted_count = 0
-        total_size_freed = 0
-
-        for filename in os.listdir(chat_images_folder):
-            filepath = os.path.join(chat_images_folder, filename)
-            if os.path.isfile(filepath):
-                file_age = current_time - os.path.getmtime(filepath)
-                if file_age > retention_seconds:
-                    file_size = os.path.getsize(filepath)
-                    os.remove(filepath)
-                    deleted_count += 1
-                    total_size_freed += file_size
-
-        size_mb = total_size_freed / (1024 * 1024)
-        logger.info(f"[CLEANUP] Deleted {deleted_count} chat images older than 30 days. Freed {size_mb:.2f} MB.")
-    except Exception as e:
-        logger.error(f"[CLEANUP] Error during chat images cleanup: {e}", exc_info=True)
 
 
-async def scheduled_dracma_expiration():
-    """
-    Scheduled task to process expired dracmas.
-    Runs daily at 2:00 AM UTC.
-
-    - Marks expired dracma batches as 'expired'
-    - Updates user balances accordingly
-    """
-    from ..database import AsyncSessionLocal
-    from . import billing_service
-
-    logger.info("[DRACMA] Starting dracma expiration processing...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            batches_expired, total_expired = await billing_service.process_expired_dracmas(db)
-            logger.info(
-                f"[DRACMA] Expiration complete: {batches_expired} batches, "
-                f"{total_expired:.0f} dracmas expired"
-            )
-        except Exception as e:
-            logger.error(f"[DRACMA] Error processing expirations: {e}", exc_info=True)
 
 
-async def scheduled_dracma_expiration_notifications():
-    """
-    Scheduled task to send expiration warning emails.
-    Runs daily at 10:00 AM UTC (7:00 AM BRT - good time for emails).
-
-    Sends notifications for:
-    - 30 days before expiration
-    - 7 days before expiration
-    - 1 day before expiration
-    """
-    from ..database import AsyncSessionLocal
-    from . import billing_service
-    from .email_service import send_dracma_expiration_email
-    from sqlalchemy.future import select
-    from ..models import User
-
-    logger.info("[DRACMA] Starting expiration notification job...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            total_sent = 0
-
-            # Process each notification threshold
-            for days in [30, 7, 1]:
-                users_to_notify = await billing_service.get_expiring_soon_notifications(db, days)
-
-                for user_data in users_to_notify:
-                    # Get user language preference
-                    result = await db.execute(
-                        select(User).where(User.id == user_data['user_id'])
-                    )
-                    user = result.scalar_one_or_none()
-
-                    if user:
-                        lang = getattr(user, 'language', 'pt') or 'pt'
-                        user_name = user.name or user.email.split('@')[0]
-
-                        # Send email
-                        success = send_dracma_expiration_email(
-                            email=user.email,
-                            user_name=user_name,
-                            amount=user_data['amount_expiring'],
-                            days_until_expiration=days,
-                            lang=lang
-                        )
-
-                        if success:
-                            # Mark notification as sent
-                            await billing_service.mark_notification_sent(
-                                db,
-                                user_data['user_id'],
-                                days
-                            )
-                            total_sent += 1
-                            logger.info(
-                                f"[DRACMA] Sent {days}d expiration email to {user.email} "
-                                f"({user_data['amount_expiring']:.0f} dracmas)"
-                            )
-
-                            # Also send in-app notification
-                            try:
-                                from .notification_service import send_notification, NotificationType
-
-                                dracma_titles = {'pt': 'Dracmas expirando', 'en': 'Dracmas expiring', 'es': 'Dracmas expirando'}
-                                dracma_bodies = {
-                                    'pt': f'{user_data["amount_expiring"]:.0f} dracmas expiram em {days} dias.',
-                                    'en': f'{user_data["amount_expiring"]:.0f} dracmas expire in {days} days.',
-                                    'es': f'{user_data["amount_expiring"]:.0f} dracmas expiran en {days} días.',
-                                }
-                                lang_short = lang.split('-')[0] if '-' in lang else lang
-
-                                await send_notification(
-                                    db, user_data['user_id'], NotificationType.DRACMA_EXPIRING,
-                                    dracma_titles.get(lang_short, dracma_titles['pt']),
-                                    dracma_bodies.get(lang_short, dracma_bodies['pt']),
-                                    data={'route': '/profile'},
-                                    send_push=True,
-                                )
-                            except Exception as ne:
-                                logger.error(f"[NOTIFICATIONS] Failed to send dracma notification: {ne}")
-
-            await db.commit()
-            logger.info(f"[DRACMA] Notification job complete: {total_sent} emails sent")
-
-        except Exception as e:
-            logger.error(f"[DRACMA] Error sending notifications: {e}", exc_info=True)
 
 
 def _resolve_generated_media_path(path_val):
@@ -693,317 +510,16 @@ async def scheduled_avatar_cleanup():
     logger.info(f"[CLEANUP] Avatar cleanup complete. Deleted {total_deleted} orphan files. Freed {size_mb:.2f} MB.")
 
 
-async def scheduled_rlaif_batch():
-    """
-    Scheduled task to run RLAIF AI-as-Judge on unreviewed training data.
-    Runs weekly on Sunday at 2:00 AM UTC.
-    """
-    from ..database import AsyncSessionLocal
-    from .rlaif_service import batch_judge_training_data
-
-    logger.info("[RLAIF] Starting weekly AI judge batch...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            stats = await batch_judge_training_data(db, batch_size=500)
-            logger.info(f"[RLAIF] Weekly batch complete: {stats}")
-        except Exception as e:
-            logger.error(f"[RLAIF] Error in batch judge: {e}", exc_info=True)
 
 
-async def scheduled_self_play():
-    """
-    Scheduled task to generate synthetic preference pairs via self-play.
-    Runs weekly on Sunday at 3:00 AM UTC.
-    """
-    from ..database import AsyncSessionLocal
-    from .rlaif_service import self_play_generate_preferences
-
-    logger.info("[RLAIF] Starting weekly self-play generation...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            stats = await self_play_generate_preferences(db, batch_size=20)
-            logger.info(f"[RLAIF] Self-play complete: {stats}")
-        except Exception as e:
-            logger.error(f"[RLAIF] Error in self-play: {e}", exc_info=True)
 
 
-async def scheduled_quality_snapshot():
-    """
-    Scheduled task to compute and save a quality decay snapshot.
-    Runs weekly on Monday at 1:00 AM UTC (after weekend RLAIF/self-play).
-    Monitors for model collapse indicators before fine-tuning.
-    """
-    from ..database import AsyncSessionLocal
-    from .quality_decay_service import save_quality_snapshot
-
-    logger.info("[QUALITY] Starting weekly quality snapshot...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            result = await save_quality_snapshot(db)
-            logger.info(
-                f"[QUALITY] Snapshot complete: health={result['health_status']}, "
-                f"alerts={len(result['alerts'])}"
-            )
-        except Exception as e:
-            logger.error(f"[QUALITY] Error in quality snapshot: {e}", exc_info=True)
 
 
-async def scheduled_weekly_digest():
-    """
-    Scheduled task to send weekly digest emails to recently active users.
-    Runs every Monday at 8:00 AM UTC (5:00 AM BRT).
-    """
-    from ..database import AsyncSessionLocal
-    from ..models import User, Consultation, QuizAttempt, Transaction
-    from sqlalchemy.future import select
-    from sqlalchemy import func, and_
-    from datetime import datetime, timezone as tz, timedelta
-    from .email_service import send_weekly_digest_email
-    from ..security import create_unsubscribe_token
-    from ..config import Config
-
-    logger.info("[EMAIL] Starting weekly digest job...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            now = datetime.now(tz.utc)
-            thirty_days_ago = now - timedelta(days=30)
-            one_week_ago = now - timedelta(days=7)
-
-            # Get active users who logged in within the last 30 days
-            result = await db.execute(
-                select(User).where(
-                    and_(
-                        User.status == 'active',
-                        User.last_login_at.isnot(None),
-                        User.last_login_at > thirty_days_ago,
-                    )
-                )
-            )
-            users = result.scalars().all()
-
-            total_sent = 0
-            for user in users:
-                # Check email preference
-                prefs = user.notification_preferences or {}
-                if not prefs.get('email_enabled', True):
-                    continue
-
-                # Check email_tracking to avoid duplicate this week
-                tracking = user.email_tracking or {}
-                last_digest = tracking.get('weekly_digest')
-                if last_digest:
-                    try:
-                        last_sent = datetime.fromisoformat(last_digest)
-                        if last_sent > one_week_ago:
-                            continue
-                    except (ValueError, TypeError):
-                        pass
-
-                # Gather stats for this week
-                consult_result = await db.execute(
-                    select(func.count()).select_from(Consultation).where(
-                        and_(Consultation.user_id == user.id, Consultation.created_at > one_week_ago)
-                    )
-                )
-                consultations = consult_result.scalar() or 0
-
-                # Dracmas used this week (sum of negative transaction amounts)
-                dracma_result = await db.execute(
-                    select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-                        and_(
-                            Transaction.user_id == user.id,
-                            Transaction.timestamp > one_week_ago,
-                            Transaction.amount < 0
-                        )
-                    )
-                )
-                dracmas_used = abs(dracma_result.scalar() or 0)
-
-                # Arena score this week
-                arena_result = await db.execute(
-                    select(func.coalesce(func.sum(QuizAttempt.score), 0)).where(
-                        and_(QuizAttempt.user_id == user.id, QuizAttempt.completed_at > one_week_ago)
-                    )
-                )
-                arena_score = arena_result.scalar() or 0
-
-                # Streak days (consecutive days with last_login_at)
-                streak_days = 0
-                if user.last_login_at:
-                    streak_days = min((now - user.last_login_at).days, 7)
-                    streak_days = max(0, 7 - streak_days)
-
-                stats = {
-                    'consultations': consultations,
-                    'dracmas_used': dracmas_used,
-                    'arena_score': arena_score,
-                    'streak_days': streak_days,
-                }
-
-                # Only send if there's some activity
-                if consultations == 0 and dracmas_used == 0 and arena_score == 0:
-                    continue
-
-                lang = (user.language_preference or 'pt-BR').split('-')[0]
-                user_name = user.full_name or user.email.split('@')[0]
-                unsub_url = (
-                    f"{Config.API_BASE_URL}/public/email/unsubscribe"
-                    f"?token={create_unsubscribe_token(user.id)}"
-                )
-
-                success = send_weekly_digest_email(user.email, user_name, stats, lang, unsubscribe_url=unsub_url)
-                if success:
-                    tracking['weekly_digest'] = now.isoformat()
-                    user.email_tracking = tracking
-                    total_sent += 1
-
-            await db.commit()
-            logger.info(f"[EMAIL] Weekly digest complete: {total_sent} emails sent")
-
-        except Exception as e:
-            logger.error(f"[EMAIL] Error in weekly digest: {e}", exc_info=True)
 
 
-async def scheduled_inactivity_check():
-    """
-    Scheduled task to send the 14-day inactivity reminder (sent once per user).
-    Runs daily at 9:00 AM UTC (6:00 AM BRT).
-    The 60-day deactivation warning was removed (empty threat — nothing actually
-    deactivates accounts by inactivity).
-    """
-    from ..database import AsyncSessionLocal
-    from ..models import User
-    from sqlalchemy.future import select
-    from sqlalchemy import and_
-    from datetime import datetime, timezone as tz, timedelta
-    from .email_service import send_inactivity_email
-    from ..security import create_unsubscribe_token
-    from ..config import Config
-
-    logger.info("[EMAIL] Starting inactivity check job...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            now = datetime.now(tz.utc)
-            fourteen_days_ago = now - timedelta(days=14)
-
-            # --- 14-day inactivity emails ---
-            result = await db.execute(
-                select(User).where(
-                    and_(
-                        User.status == 'active',
-                        User.last_login_at.isnot(None),
-                        User.last_login_at < fourteen_days_ago,
-                    )
-                )
-            )
-            inactive_14d_users = result.scalars().all()
-
-            total_inactivity = 0
-
-            for user in inactive_14d_users:
-                prefs = user.notification_preferences or {}
-                if not prefs.get('email_enabled', True):
-                    continue
-
-                tracking = user.email_tracking or {}
-                days_inactive = (now - user.last_login_at).days
-
-                # 14-day inactivity reminder — sent once (deduped via email_tracking).
-                # The 60-day "deactivation" warning was removed (empty threat: nothing
-                # actually deactivates accounts).
-                if not tracking.get('inactivity_14d'):
-                    lang = (user.language_preference or 'pt-BR').split('-')[0]
-                    user_name = user.full_name or user.email.split('@')[0]
-                    unsub_url = (
-                        f"{Config.API_BASE_URL}/public/email/unsubscribe"
-                        f"?token={create_unsubscribe_token(user.id)}"
-                    )
-
-                    success = send_inactivity_email(
-                        user.email, user_name, days_inactive, lang, unsubscribe_url=unsub_url
-                    )
-                    if success:
-                        tracking['inactivity_14d'] = now.isoformat()
-                        user.email_tracking = tracking
-                        total_inactivity += 1
-
-            await db.commit()
-            logger.info(
-                f"[EMAIL] Inactivity check complete: {total_inactivity} inactivity emails sent"
-            )
-
-        except Exception as e:
-            logger.error(f"[EMAIL] Error in inactivity check: {e}", exc_info=True)
 
 
-async def scheduled_welcome_day3():
-    """
-    Scheduled task to send welcome day 3 emails to new users.
-    Runs daily at 10:30 AM UTC (7:30 AM BRT).
-    Targets users created 3-4 days ago.
-    """
-    from ..database import AsyncSessionLocal
-    from ..models import User
-    from sqlalchemy.future import select
-    from sqlalchemy import and_
-    from datetime import datetime, timezone as tz, timedelta
-    from .email_service import send_welcome_day3_email
-    from ..security import create_unsubscribe_token
-    from ..config import Config
-
-    logger.info("[EMAIL] Starting welcome day 3 job...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            now = datetime.now(tz.utc)
-            three_days_ago = now - timedelta(days=3)
-            four_days_ago = now - timedelta(days=4)
-
-            # Users created 3-4 days ago who are active
-            result = await db.execute(
-                select(User).where(
-                    and_(
-                        User.status == 'active',
-                        User.created_at >= four_days_ago,
-                        User.created_at < three_days_ago,
-                    )
-                )
-            )
-            new_users = result.scalars().all()
-
-            total_sent = 0
-            for user in new_users:
-                prefs = user.notification_preferences or {}
-                if not prefs.get('email_enabled', True):
-                    continue
-
-                tracking = user.email_tracking or {}
-                if tracking.get('welcome_day3'):
-                    continue
-
-                lang = (user.language_preference or 'pt-BR').split('-')[0]
-                user_name = user.full_name or user.email.split('@')[0]
-                unsub_url = (
-                    f"{Config.API_BASE_URL}/public/email/unsubscribe"
-                    f"?token={create_unsubscribe_token(user.id)}"
-                )
-
-                success = send_welcome_day3_email(user.email, user_name, lang, unsubscribe_url=unsub_url)
-                if success:
-                    tracking['welcome_day3'] = now.isoformat()
-                    user.email_tracking = tracking
-                    total_sent += 1
-
-            await db.commit()
-            logger.info(f"[EMAIL] Welcome day 3 complete: {total_sent} emails sent")
-
-        except Exception as e:
-            logger.error(f"[EMAIL] Error in welcome day 3: {e}", exc_info=True)
 
 
 async def scheduled_vision_processing():
@@ -1239,117 +755,23 @@ _TLS_WATCHED_HOSTS = ("qython.ai", "www.qython.ai", "qython.app", "qython.com")
 _TLS_ALERT_DAYS = 21
 
 
-def _peek_tls_expiry(host: str, port: int = 443, timeout: float = 10.0):
-    """
-    Abre um handshake TLS e devolve o `notAfter` (UTC) do certificado SERVIDO.
-
-    Lemos o que está no ar, não o arquivo em /etc/letsencrypt/live — que é
-    ilegível para o usuário do backend e, pior, pode estar renovado enquanto o
-    nginx segue servindo o antigo na memória (era o caso até ago/2026, quando
-    não havia deploy hook de reload).
-    """
-    import socket
-    import ssl
-    from datetime import timezone as tz
-
-    from cryptography import x509
-
-    ctx = ssl.create_default_context()
-    # Verificação DESLIGADA de propósito: precisamos conseguir ler um certificado
-    # já vencido para poder alertar sobre ele. Com a verificação normal, o
-    # handshake abortaria exatamente no caso que mais importa.
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    with socket.create_connection((host, port), timeout=timeout) as sock:
-        with ctx.wrap_socket(sock, server_hostname=host) as tls:
-            der = tls.getpeercert(binary_form=True)
-
-    cert = x509.load_der_x509_certificate(der)
-    # cryptography >= 42 expõe o campo já ciente de fuso; abaixo disso é naive UTC.
-    expires = getattr(cert, "not_valid_after_utc", None)
-    if expires is None:
-        expires = cert.not_valid_after.replace(tzinfo=tz.utc)
-    return expires
 
 
-async def scheduled_tls_expiry_check():
-    """
-    Vigia o vencimento dos certificados TLS e alerta os admins por e-mail.
-
-    Existe por causa do incidente de 13/ago/2026: a migração p/ a Hetzner tirou o
-    location do ACME dos vhosts, a validação HTTP-01 passou a cair no SPA, o
-    certbot falhou a cada 12h por um mês sem ninguém ver, e o certificado venceu
-    com o site no ar. O `certbot.service` ficava em estado de falha, mas estado de
-    unidade systemd não chega a ninguém — e-mail chega.
-    """
-    import asyncio
-    from datetime import datetime, timezone as tz
-
-    from ..database import AsyncSessionLocal
-    from .admin_notifications import AdminNotificationService
-
-    logger.info("[TLS] Verificando validade dos certificados...")
-
-    now = datetime.now(tz.utc)
-    findings = []
-
-    for host in _TLS_WATCHED_HOSTS:
-        try:
-            expires = await asyncio.to_thread(_peek_tls_expiry, host)
-            days = (expires - now).days
-            logger.info(f"[TLS] {host}: {days} dia(s) restantes (expira {expires:%Y-%m-%d})")
-
-            if days <= _TLS_ALERT_DAYS:
-                findings.append({
-                    "host": host,
-                    "days": days,
-                    "expires": expires.strftime("%Y-%m-%d %H:%M UTC"),
-                })
-        except Exception as e:
-            # Falha de rede não é vencimento — logamos e seguimos, sem alarme falso.
-            logger.error(f"[TLS] Falha ao checar {host}: {e}")
-
-    if not findings:
-        logger.info("[TLS] Todos os certificados dentro do prazo.")
-        return
-
-    async with AsyncSessionLocal() as db:
-        try:
-            await AdminNotificationService.send_tls_expiry_alert(db, findings)
-        except Exception as e:
-            logger.error(f"[TLS] Falha ao enviar alerta: {e}", exc_info=True)
 
 
 def _daily(hour: int, minute: int = 0):
-    """Gatilho diário. No SaaS, num horário fixo de madrugada, com o servidor sempre
-    ligado. Na instalação local o computador costuma estar desligado de madrugada e um
-    horário fixo nunca dispararia: roda a cada 24 h, começando pouco depois de abrir."""
-    if Config.EDITION == "hosted":
-        return CronTrigger(hour=hour, minute=minute)
+    """Gatilho diário. O computador costuma estar desligado de madrugada e um horário fixo nunca
+    dispararia: roda a cada 24 h, começando pouco depois de abrir."""
     return IntervalTrigger(hours=24, start_date=datetime.now(timezone.utc) + timedelta(minutes=10))
 
 
 def start_scheduler():
     """Start the background scheduler with all jobs.
 
-    Na edição local ficam só os jobs de manutenção. Saem os que dependem do SaaS
-    (ranking nacional, desafios, dracmas, e-mails de campanha, TLS do qython.ai), a
-    retenção de 30 dias das imagens do chat (o disco é do usuário) e o treino
-    RLAIF/self-play, que chamaria o modelo pago com a chave do usuário.
+    Só jobs de manutenção: limpeza de arquivos e notificações, recuperação de documentos
+    travados e a fila de visão. O Qython não tem mais ranking nacional, cobrança, e-mails de
+    campanha nem coleta de dados de treinamento.
     """
-    hosted = Config.EDITION == "hosted"
-
-    if hosted:
-        # Daily ranking update at 3:00 AM UTC
-        scheduler.add_job(
-            scheduled_ranking_update,
-            CronTrigger(hour=3, minute=0),
-            id="daily_ranking_update",
-            name="Daily Arena Ranking Update",
-            replace_existing=True
-        )
-
     # Season check every 6 hours
     scheduler.add_job(
         scheduled_season_check,
@@ -1358,44 +780,6 @@ def start_scheduler():
         name="Season Status Check",
         replace_existing=True
     )
-
-    if hosted:
-        # Expire old arena challenges every 6 hours
-        scheduler.add_job(
-            scheduled_expire_challenges,
-            CronTrigger(hour="*/6", minute=30),
-            id="expire_old_challenges",
-            name="Expire Old Arena Challenges (24h)",
-            replace_existing=True
-        )
-
-        # Chat images cleanup daily at 4:00 AM UTC
-        scheduler.add_job(
-            scheduled_chat_images_cleanup,
-            CronTrigger(hour=4, minute=0),
-            id="chat_images_cleanup",
-            name="Chat Images Cleanup (30 days retention)",
-            replace_existing=True
-        )
-
-    if Config.BILLING_ENABLED:
-        # Dracma expiration processing daily at 2:00 AM UTC
-        scheduler.add_job(
-            scheduled_dracma_expiration,
-            CronTrigger(hour=2, minute=0),
-            id="dracma_expiration",
-            name="Dracma Expiration Processing",
-            replace_existing=True
-        )
-
-        # Dracma expiration notifications daily at 10:00 AM UTC (7:00 AM BRT)
-        scheduler.add_job(
-            scheduled_dracma_expiration_notifications,
-            CronTrigger(hour=10, minute=0),
-            id="dracma_expiration_notifications",
-            name="Dracma Expiration Notifications (30d, 7d, 1d)",
-            replace_existing=True
-        )
 
     # Generated content cleanup (TTL expiration + temp files) daily at 5:00 AM UTC
     scheduler.add_job(
@@ -1415,33 +799,6 @@ def start_scheduler():
         replace_existing=True
     )
 
-    if hosted:
-        # RLAIF AI-as-Judge batch — weekly on Sunday at 2:00 AM UTC
-        scheduler.add_job(
-            scheduled_rlaif_batch,
-            CronTrigger(day_of_week='sun', hour=2, minute=0),
-            id="rlaif_batch",
-            name="RLAIF AI Judge Batch (weekly)",
-            replace_existing=True
-        )
-
-        # Self-play preference generation — weekly on Sunday at 3:00 AM UTC
-        scheduler.add_job(
-            scheduled_self_play,
-            CronTrigger(day_of_week='sun', hour=3, minute=0),
-            id="self_play",
-            name="Self-Play Preference Generation (weekly)",
-            replace_existing=True
-        )
-
-        # Quality decay snapshot — weekly on Monday at 1:00 AM UTC
-        scheduler.add_job(
-            scheduled_quality_snapshot,
-            CronTrigger(day_of_week='mon', hour=1, minute=0),
-            id="quality_snapshot",
-            name="Quality Decay Snapshot (weekly)",
-            replace_existing=True
-        )
 
     # Notification cleanup — daily at 6:00 AM UTC
     from .notification_service import cleanup_old_notifications
@@ -1454,33 +811,6 @@ def start_scheduler():
         replace_existing=True
     )
 
-    if hosted:
-        # Weekly digest email — Monday at 8:00 AM UTC (5:00 AM BRT)
-        scheduler.add_job(
-            scheduled_weekly_digest,
-            CronTrigger(day_of_week='mon', hour=8, minute=0),
-            id="weekly_digest",
-            name="Weekly Digest Email (Monday)",
-            replace_existing=True
-        )
-
-        # Inactivity reminder — daily at 9:00 AM UTC (6:00 AM BRT)
-        scheduler.add_job(
-            scheduled_inactivity_check,
-            CronTrigger(hour=9, minute=0),
-            id="inactivity_check",
-            name="Inactivity Reminder Email (14d)",
-            replace_existing=True
-        )
-
-        # Welcome day 3 email — daily at 10:30 AM UTC (7:30 AM BRT)
-        scheduler.add_job(
-            scheduled_welcome_day3,
-            CronTrigger(hour=10, minute=30),
-            id="welcome_day3",
-            name="Welcome Day 3 Email (new users)",
-            replace_existing=True
-        )
 
     # Stuck document recovery — every 30 minutes
     scheduler.add_job(
@@ -1531,20 +861,9 @@ def start_scheduler():
         replace_existing=True
     )
 
-    if hosted:
-        # Validade dos certificados TLS — diário às 6:17 UTC. Fora da hora cheia de
-        # propósito, para não disputar CPU com os outros jobs diários.
-        scheduler.add_job(
-            scheduled_tls_expiry_check,
-            CronTrigger(hour=6, minute=17),
-            id="tls_expiry_check",
-            name="TLS Expiry Check (alerta admin abaixo de 21 dias)",
-            replace_existing=True
-        )
-
     scheduler.start()
     logger.info(
-        f"Internal scheduler started ({Config.EDITION}) with jobs: "
+        "Internal scheduler started with jobs: "
         + ", ".join(job.id for job in scheduler.get_jobs())
     )
 

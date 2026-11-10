@@ -17,7 +17,6 @@ from werkzeug.utils import secure_filename
 
 from ..database import get_db
 from ..models import User, AvatarHistory, Transaction, Consultation, UserStats, Achievement, Invitation, SeasonRanking, ArenaSeason, AcademicMaterial, AcademicLibrary
-from ..services.billing_service import debit_dracmas_for_feature
 from ..utils import allowed_file_profile, UPLOAD_FOLDER_PROFILE, UPLOAD_FOLDER_DOCTOR_LOGOS
 from ..security import get_current_active_user, get_current_user, verify_password, get_password_hash
 from ..config import Config
@@ -394,13 +393,7 @@ async def get_user_info(
     """
     Retorna as informações do usuário autenticado.
     Permite acesso a usuários 'waitlist' para que possam ver a tela de espera com seus dados.
-    Verifica e credita bônus mensal para estudantes elegíveis.
     """
-    from ..services.billing_service import check_and_credit_monthly_student_bonus
-    
-    # Verificar e creditar bônus mensal se elegível
-    await check_and_credit_monthly_student_bonus(current_user, db)
-
     logger.debug(f"Retornando informações para o usuário: {current_user.email}")
     return await _user_info(db, current_user)
 

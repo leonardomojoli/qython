@@ -43,7 +43,6 @@ class DashboardStats(BaseModel):
     active_users: int
     waitlist_users: int
     total_consultations: int
-    total_revenue: float
     total_medications: int = 0
     total_pharmacies: int = 0
     total_pharmacy_chains: int = 0
@@ -79,9 +78,6 @@ async def get_admin_stats(
     # Contagem de consultas
     total_consultations = await db.scalar(select(func.count(Consultation.id)))
     
-    # Receita total (soma de transações positivas)
-    total_revenue = await db.scalar(select(func.sum(Transaction.amount)).where(Transaction.amount > 0)) or 0.0
-
     # Pharmacy module stats
     total_medications = await db.scalar(select(func.count(Medication.id)).where(Medication.is_active == True)) or 0
     total_pharmacies = await db.scalar(select(func.count(Pharmacy.id)).where(Pharmacy.is_active == True)) or 0
@@ -94,7 +90,6 @@ async def get_admin_stats(
         "active_users": active_users,
         "waitlist_users": waitlist_users,
         "total_consultations": total_consultations,
-        "total_revenue": total_revenue,
         "total_medications": total_medications,
         "total_pharmacies": total_pharmacies,
         "total_pharmacy_chains": total_pharmacy_chains,
@@ -328,32 +323,6 @@ async def send_invite_to_user(
 
 # --- PRIORIDADE 2: MÉTRICAS DE RETENÇÃO E FEEDBACK ---
 
-@router.get("/feedbacks", status_code=status.HTTP_200_OK)
-async def get_recent_feedbacks(
-    limit: int = 20,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """Retorna os feedbacks mais recentes para análise de qualidade."""
-    result = await db.execute(
-        select(Feedback)
-        .options(selectinload(Feedback.user))
-        .order_by(Feedback.created_at.desc())
-        .limit(limit)
-    )
-    feedbacks = result.scalars().all()
-    
-    return [
-        {
-            "id": fb.id,
-            "feedback_type": fb.feedback_type,
-            "feedback_text": fb.feedback_text,
-            "content_type": fb.content_type,
-            "created_at": fb.created_at.isoformat() if fb.created_at else None,
-            "user": {"full_name": fb.user.full_name if fb.user else "Anônimo"}
-        }
-        for fb in feedbacks
-    ]
 
 
 @router.get("/analytics/engagement", status_code=status.HTTP_200_OK)
@@ -649,93 +618,10 @@ async def get_consultations_detail(
     ]
 
 
-@router.get("/details/finance", status_code=status.HTTP_200_OK)
-async def get_finance_detail(
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """Lista as últimas transações com detalhes."""
-    result = await db.execute(
-        select(Transaction)
-        .options(selectinload(Transaction.user))
-        .order_by(Transaction.timestamp.desc())
-        .limit(limit)
-    )
-    transactions = result.scalars().all()
-    
-    # Agregação simples de receita por produto
-    product_revenue = {}
-    for t in transactions:
-        if t.status == 'completed':
-            prod = t.description or "Outros"
-            product_revenue[prod] = product_revenue.get(prod, 0) + t.amount
-
-    return {
-        "transactions": [
-            {
-                "id": t.id,
-                "amount": t.amount,
-                "currency": t.currency,
-                "provider": t.provider,
-                "description": t.description,
-                "status": t.status,
-                "date": t.timestamp.isoformat() if t.timestamp else None,
-                "user_email": t.user.email if t.user else "Deletado",
-                "user_name": t.user.full_name if t.user else "Usuário Deletado"
-            }
-            for t in transactions
-        ],
-        "product_breakdown": product_revenue
-    }
 
 
 # --- PRIORIDADE 5: EXPORTAÇÃO DE LEADS DE MARKETING ---
 
-@router.get("/export/marketing-leads", status_code=status.HTTP_200_OK)
-async def export_marketing_leads(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Gera um CSV com usuários que aceitaram receber marketing.
-    Campos: Nome, Email, Ocupação, País, Data de Cadastro, Status.
-    """
-    # Buscar usuários com consentimento de marketing
-    result = await db.execute(
-        select(User)
-        .where(User.marketing_consent == True)
-        .order_by(User.created_at.desc())
-    )
-    users = result.scalars().all()
-    
-    # Criar CSV em memória
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Cabeçalho
-    writer.writerow(['Nome Completo', 'Email', 'Ocupação', 'País', 'Data Cadastro', 'Status'])
-    
-    # Dados
-    for user in users:
-        writer.writerow([
-            user.full_name,
-            user.email,
-            user.occupation,
-            user.country or 'N/A',
-            user.created_at.strftime("%Y-%m-%d") if user.created_at else 'N/A',
-            user.status
-        ])
-    
-    output.seek(0)
-    
-    # Retornar como arquivo para download
-    response = StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv"
-    )
-    response.headers["Content-Disposition"] = "attachment; filename=qython_marketing_leads.csv"
-    return response
 
 
 # --- PRIORIDADE 6: GESTÃO DE BANIMENTO ---
@@ -800,47 +686,6 @@ async def unban_user(
 
 # --- PRIORIDADE 7: ML DATASET STATISTICS (AGGREGATED ONLY - NO RAW DATA) ---
 
-@router.get("/ml-dataset-stats", status_code=status.HTTP_200_OK)
-async def get_ml_dataset_stats(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Retorna estatísticas agregadas do dataset de treinamento.
-    SEGURANÇA: Nenhum dado bruto de paciente é exposto via API.
-    """
-    
-    # === 1. TRAINING DATA STATS ===
-    total_training = await db.scalar(select(func.count(TrainingData.id))) or 0
-    ready_for_training = await db.scalar(
-        select(func.count(TrainingData.id)).where(TrainingData.ready_for_training == True)
-    ) or 0
-    
-    # By source type
-    source_result = await db.execute(
-        select(TrainingData.source_type, func.count(TrainingData.id))
-        .group_by(TrainingData.source_type)
-    )
-    by_source = {row[0]: row[1] for row in source_result.fetchall()}
-    
-    # By quality score
-    quality_labels = {-2: 'rejected', -1: 'dislike', 0: 'neutral', 1: 'like', 2: 'gold', 3: 'platinum'}
-    quality_result = await db.execute(
-        select(TrainingData.quality_score, func.count(TrainingData.id))
-        .group_by(TrainingData.quality_score)
-    )
-    by_quality_raw = {row[0]: row[1] for row in quality_result.fetchall()}
-    by_quality = {quality_labels.get(k, str(k)): v for k, v in by_quality_raw.items()}
-    
-    return {
-        "training_data": {
-            "total_entries": total_training,
-            "ready_for_training": ready_for_training,
-            "by_source": by_source,
-            "by_quality": by_quality
-        },
-        "_security_note": "Only aggregated statistics are exposed. Raw patient data is kept on server only."
-    }
 
 
 # =============================================================================
@@ -897,8 +742,6 @@ async def update_setting(
 
     # Send notification for critical settings
     critical_settings = [
-        "payment_gateway_stripe_enabled",
-        "payment_gateway_binance_enabled",
         "server_maintenance_level",
         "new_registrations_enabled"
     ]
@@ -946,29 +789,6 @@ async def get_settings_audit_log(
     ]
 
 
-@router.get("/metrics", status_code=status.HTTP_200_OK)
-async def get_server_metrics(
-    hours: int = 24,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """Get server metrics for the last N hours."""
-    from ..services.server_monitor import ServerMonitor
-
-    metrics_history = await ServerMonitor.get_metrics_history(db, hours)
-    latest = await ServerMonitor.get_latest_metrics(db)
-
-    return {
-        "latest": {
-            "cpu_percent": latest.cpu_percent if latest else None,
-            "memory_percent": latest.memory_percent if latest else None,
-            "disk_percent": latest.disk_percent if latest else None,
-            "active_connections": latest.active_connections if latest else None,
-            "timestamp": latest.timestamp.isoformat() if latest and latest.timestamp else None
-        } if latest else None,
-        "history": metrics_history,
-        "count": len(metrics_history)
-    }
 
 
 @router.get("/rate-limits/violations", status_code=status.HTTP_200_OK)
@@ -988,432 +808,32 @@ async def get_rate_limit_violations(
         return {"violations": [], "period_hours": hours, "error": str(e)}
 
 
-@router.post("/maintenance/override", status_code=status.HTTP_200_OK)
-async def override_auto_maintenance(
-    hours: int = 1,
-    request: Request = None,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """Override auto-maintenance for specified hours."""
-    if hours < 1 or hours > 24:
-        raise HTTPException(status_code=400, detail="Hours must be between 1 and 24")
-
-    await SystemSettingsService.set_auto_maintenance_override(
-        db,
-        hours,
-        user_id=admin.id,
-        request=request
-    )
-
-    logger.info(f"Auto-maintenance overridden for {hours} hours by {admin.email}")
-    return {"message": f"Auto-maintenance disabled for {hours} hour(s)"}
 
 
 # =============================================================================
 # DPO PREFERENCE DATA EXPORT
 # =============================================================================
 
-@router.get("/export/dpo/stats", status_code=status.HTTP_200_OK)
-async def get_dpo_stats(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """Get statistics about preference data for DPO training."""
-    from ..services.preference_service import get_preference_stats
-
-    stats = await get_preference_stats(db)
-    return stats
 
 
-@router.get("/export/dpo/jsonl", status_code=status.HTTP_200_OK)
-async def export_dpo_jsonl(
-    source_type: Optional[str] = None,
-    min_confidence: float = 0.0,
-    language: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Export preference pairs in JSONL format for DPO training.
-
-    Compatible with TRL (Transformers Reinforcement Learning) and TorchTune.
-
-    Query params:
-    - source_type: Filter by source (e.g., 'chat_regeneration', 'icd10_correction')
-    - min_confidence: Minimum confidence score (0.0-1.0)
-    - language: Filter by language code (e.g., 'pt-BR', 'en')
-
-    Returns:
-    - JSONL file download with format: {"prompt": "...", "chosen": "...", "rejected": "..."}
-    """
-    from ..services.preference_service import export_dpo_jsonl_validated as do_export
-
-    source_types = [source_type] if source_type else None
-
-    try:
-        output_path, report = await do_export(
-            db=db,
-            exporter_user_id=admin.id,
-            source_types=source_types,
-            min_confidence=min_confidence,
-            language=language,
-        )
-        await db.commit()
-
-        with open(output_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        filename = output_path.split('/')[-1].split('\\')[-1]
-
-        response = StreamingResponse(
-            iter([content]),
-            media_type="application/jsonlines"
-        )
-        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
-        response.headers["X-Qython-Export-Summary"] = json.dumps(report.summary)
-
-        return response
-
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error exporting DPO JSONL: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error exporting DPO data: {str(e)}"
-        )
 
 
-@router.get("/export/dpo/parquet", status_code=status.HTTP_200_OK)
-async def export_dpo_parquet(
-    source_type: Optional[str] = None,
-    min_confidence: float = 0.0,
-    language: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Export preference pairs in Parquet format for DPO training.
-
-    Parquet is more efficient for large datasets and is the preferred format
-    for Hugging Face Datasets.
-
-    Query params:
-    - source_type: Filter by source (e.g., 'chat_regeneration', 'icd10_correction')
-    - min_confidence: Minimum confidence score (0.0-1.0)
-    - language: Filter by language code (e.g., 'pt-BR', 'en')
-
-    Returns:
-    - Parquet file download
-    """
-    from ..services.preference_service import export_dpo_parquet_validated as do_export
-
-    source_types = [source_type] if source_type else None
-
-    try:
-        output_path, report = await do_export(
-            db=db,
-            exporter_user_id=admin.id,
-            source_types=source_types,
-            min_confidence=min_confidence,
-            language=language,
-        )
-        await db.commit()
-
-        with open(output_path, 'rb') as f:
-            content = f.read()
-
-        filename = output_path.split('/')[-1].split('\\')[-1]
-
-        response = StreamingResponse(
-            iter([content]),
-            media_type="application/octet-stream"
-        )
-        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
-        response.headers["X-Qython-Export-Summary"] = json.dumps(report.summary)
-
-        return response
-
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Parquet export requires pandas and pyarrow. Use JSONL export instead."
-        )
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error exporting DPO Parquet: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error exporting DPO data: {str(e)}"
-        )
 
 
 # =============================================================================
 # DRACMA LEDGER MANAGEMENT
 # =============================================================================
 
-@router.post("/dracma/process-expirations", status_code=status.HTTP_200_OK)
-async def process_dracma_expirations(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Processa dracmas expirados, marcando-os como 'expired'.
-    Deve ser chamado manualmente ou por um cron job.
-    """
-    from ..services.billing_service import process_expired_dracmas
-
-    try:
-        num_batches, total_amount = await process_expired_dracmas(db)
-        return {
-            "message": "Expiration processing completed",
-            "batches_expired": num_batches,
-            "total_dracmas_expired": total_amount
-        }
-    except Exception as e:
-        logger.error(f"Error processing dracma expirations: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing expirations: {str(e)}"
-        )
 
 
-@router.post("/dracma/send-expiration-notifications/{days}", status_code=status.HTTP_200_OK)
-async def send_dracma_expiration_notifications(
-    days: int,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Envia notificações de expiração para usuários com dracmas expirando.
-
-    Args:
-        days: Dias até expiração (30, 7, ou 1)
-    """
-    from ..services.billing_service import get_expiring_soon_notifications, mark_notification_sent
-    from ..services.email_service import send_dracma_expiration_email
-
-    if days not in [30, 7, 1]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Days must be 30, 7, or 1"
-        )
-
-    try:
-        notifications = await get_expiring_soon_notifications(db, days)
-        sent_count = 0
-        failed_count = 0
-
-        for notification in notifications:
-            # Extract language from preference
-            lang = notification["language"][:2] if notification["language"] else "pt"
-
-            success = send_dracma_expiration_email(
-                email=notification["email"],
-                user_name=notification["full_name"],
-                amount=notification["total_expiring"],
-                days_until_expiration=days,
-                lang=lang
-            )
-
-            if success:
-                sent_count += 1
-                # Mark batches as notified
-                ledger_ids = [b["ledger_id"] for b in notification["batches"]]
-                await mark_notification_sent(ledger_ids, days, db)
-            else:
-                failed_count += 1
-
-        return {
-            "message": f"Notifications sent for {days}-day expiration warning",
-            "users_notified": sent_count,
-            "failed": failed_count,
-            "total_users": len(notifications)
-        }
-    except Exception as e:
-        logger.error(f"Error sending expiration notifications: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error sending notifications: {str(e)}"
-        )
 
 
-@router.post("/dracma/migrate-user/{user_id}", status_code=status.HTTP_200_OK)
-async def migrate_user_to_ledger(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Migra o saldo de dracmas de um usuário específico para o ledger.
-    """
-    from ..services.billing_service import migrate_user_dracmas_to_ledger
-
-    user = await db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    try:
-        entry = await migrate_user_dracmas_to_ledger(user, db)
-        await db.commit()
-
-        if entry:
-            return {
-                "message": "User migrated to ledger",
-                "user_id": user_id,
-                "amount_migrated": entry.amount,
-                "expires_at": entry.expires_at.isoformat()
-            }
-        else:
-            return {
-                "message": "User has no balance to migrate or already migrated",
-                "user_id": user_id
-            }
-    except Exception as e:
-        logger.error(f"Error migrating user {user_id} to ledger: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error migrating user: {str(e)}"
-        )
 
 
-@router.post("/dracma/migrate-all-users", status_code=status.HTTP_200_OK)
-async def migrate_all_users_to_ledger(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Migra todos os usuários com saldo de dracmas para o ledger.
-    CUIDADO: Este endpoint pode demorar para muitos usuários.
-    """
-    from ..services.billing_service import migrate_user_dracmas_to_ledger
-
-    # Buscar usuários com saldo > 0
-    result = await db.execute(
-        select(User).where(User.dracmas > 0)
-    )
-    users = result.scalars().all()
-
-    migrated_count = 0
-    skipped_count = 0
-    errors = []
-
-    for user in users:
-        try:
-            entry = await migrate_user_dracmas_to_ledger(user, db)
-            if entry:
-                migrated_count += 1
-            else:
-                skipped_count += 1
-        except Exception as e:
-            errors.append({"user_id": user.id, "error": str(e)})
-            logger.error(f"Error migrating user {user.id}: {e}")
-
-    await db.commit()
-
-    return {
-        "message": "Migration completed",
-        "total_users": len(users),
-        "migrated": migrated_count,
-        "skipped": skipped_count,
-        "errors": errors[:10]  # Limitar erros retornados
-    }
 
 
-@router.get("/dracma/user/{user_id}/balance", status_code=status.HTTP_200_OK)
-async def get_user_dracma_balance(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Retorna o breakdown detalhado do saldo de dracmas de um usuário.
-    """
-    from ..services.billing_service import get_user_balance_breakdown
-
-    user = await db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    breakdown = await get_user_balance_breakdown(user, db)
-
-    return {
-        "user_id": user_id,
-        "email": user.email,
-        "legacy_balance": user.dracmas,
-        **breakdown
-    }
 
 
-@router.get("/dracma/expiration-stats", status_code=status.HTTP_200_OK)
-async def get_dracma_expiration_stats(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Retorna estatísticas de expiração de dracmas no sistema.
-    """
-    from ..models import DracmaLedger
-
-    now = datetime.now(timezone.utc)
-    thirty_days = now + timedelta(days=30)
-    seven_days = now + timedelta(days=7)
-    one_day = now + timedelta(days=1)
-
-    # Total ativo
-    total_active = await db.scalar(
-        select(func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'active')
-        .where(DracmaLedger.expires_at > now)
-    ) or 0
-
-    # Expirando em 30 dias
-    expiring_30d = await db.scalar(
-        select(func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'active')
-        .where(DracmaLedger.expires_at <= thirty_days)
-        .where(DracmaLedger.expires_at > now)
-    ) or 0
-
-    # Expirando em 7 dias
-    expiring_7d = await db.scalar(
-        select(func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'active')
-        .where(DracmaLedger.expires_at <= seven_days)
-        .where(DracmaLedger.expires_at > now)
-    ) or 0
-
-    # Expirando em 1 dia
-    expiring_1d = await db.scalar(
-        select(func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'active')
-        .where(DracmaLedger.expires_at <= one_day)
-        .where(DracmaLedger.expires_at > now)
-    ) or 0
-
-    # Total já expirado
-    total_expired = await db.scalar(
-        select(func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'expired')
-    ) or 0
-
-    # Breakdown por fonte
-    result = await db.execute(
-        select(DracmaLedger.source, func.sum(DracmaLedger.remaining))
-        .where(DracmaLedger.status == 'active')
-        .where(DracmaLedger.expires_at > now)
-        .group_by(DracmaLedger.source)
-    )
-    by_source = {row[0]: row[1] for row in result.all()}
-
-    return {
-        "total_active": total_active,
-        "expiring_in_30_days": expiring_30d,
-        "expiring_in_7_days": expiring_7d,
-        "expiring_in_1_day": expiring_1d,
-        "total_expired": total_expired,
-        "by_source": by_source
-    }
 
 
 # =============================================================================
@@ -1463,409 +883,33 @@ async def reindex_library(
 # ML PIPELINE MANAGEMENT
 # =============================================================================
 
-@router.get("/ml/stats", status_code=status.HTTP_200_OK)
-async def get_ml_pipeline_stats(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Comprehensive ML pipeline statistics:
-    - Training data by creation_method, bloom_level, generation_number
-    - PII detection stats
-    - Holdout set size
-    - Preference pairs by source
-    """
-    from ..services.rlaif_service import get_rlaif_stats
-
-    stats = await get_rlaif_stats(db)
-    return stats
 
 
-@router.post("/ml/holdout/build", status_code=status.HTTP_200_OK)
-async def build_holdout_set(
-    target_count: int = 500,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Build/expand the held-out evaluation set from highest-quality entries.
-    Entries marked as holdout are NEVER used for training.
-    """
-    from ..services.rlaif_service import build_evaluation_holdout
-
-    if target_count < 50 or target_count > 5000:
-        raise HTTPException(status_code=400, detail="target_count must be between 50 and 5000")
-
-    result = await build_evaluation_holdout(db, target_count=target_count)
-    return result
 
 
-@router.post("/ml/rlaif/run", status_code=status.HTTP_200_OK)
-async def trigger_rlaif_batch(
-    batch_size: int = 50,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Manually trigger an RLAIF AI-as-Judge batch.
-    Scores unreviewed TrainingData entries with quality_score=0.
-    """
-    from ..services.rlaif_service import batch_judge_training_data
-
-    if batch_size < 1 or batch_size > 200:
-        raise HTTPException(status_code=400, detail="batch_size must be between 1 and 200")
-
-    logger.info(f"Admin {admin.email} triggered RLAIF batch (size={batch_size})")
-    result = await batch_judge_training_data(db, batch_size=batch_size)
-    return result
 
 
-@router.post("/ml/self-play/run", status_code=status.HTTP_200_OK)
-async def trigger_self_play(
-    batch_size: int = 20,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Manually trigger self-play preference pair generation.
-    Generates synthetic DPO pairs from high-quality prompts.
-    """
-    from ..services.rlaif_service import self_play_generate_preferences
-
-    if batch_size < 1 or batch_size > 50:
-        raise HTTPException(status_code=400, detail="batch_size must be between 1 and 50")
-
-    logger.info(f"Admin {admin.email} triggered self-play (size={batch_size})")
-    result = await self_play_generate_preferences(db, batch_size=batch_size)
-    return result
 
 
-@router.get("/export/sft/jsonl", status_code=status.HTTP_200_OK)
-async def export_sft_jsonl(
-    source_type: Optional[str] = None,
-    creation_method: Optional[str] = None,
-    bloom_level: Optional[str] = None,
-    max_generation: int = None,
-    exclude_pii: bool = True,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Export training data in SFT (Supervised Fine-Tuning) JSONL format.
-
-    Format: {"instruction": "...", "output": "...", "metadata": {...}}
-
-    Filters:
-    - source_type: Filter by source type
-    - creation_method: Filter by 'human', 'ai_generated', 'hybrid'
-    - bloom_level: Filter by Bloom's taxonomy level
-    - max_generation: Exclude data from generation > N (prevent model collapse)
-    - exclude_pii: Exclude entries with detected PII (default: True)
-
-    Pre-export validator (LGPD compliance, mandatory):
-      - drops entries whose user revoked consent or was deleted
-      - drops entries whose consent has expired
-      - re-runs PII detection against current patterns
-      - records the export in dataset_export_logs (proof of minimization)
-    """
-    from sqlalchemy import and_
-    from ..services.export_validator_service import (
-        register_export, validate_entries_for_export,
-    )
-
-    query = select(TrainingData).where(
-        and_(
-            TrainingData.ready_for_training == True,
-            TrainingData.is_evaluation_holdout == False,
-            TrainingData.excluded_due_to_revocation == False,
-        )
-    )
-
-    if source_type:
-        query = query.where(TrainingData.source_type == source_type)
-    if creation_method:
-        query = query.where(TrainingData.creation_method == creation_method)
-    if bloom_level:
-        query = query.where(TrainingData.bloom_level == bloom_level)
-    if max_generation is not None:
-        query = query.where(TrainingData.generation_number <= max_generation)
-    if exclude_pii:
-        query = query.where(TrainingData.pii_detected == False)
-
-    # Deprecated source types never enter training exports by default.
-    # chat_off_topic (the old medicine-only refusals) must NOT teach the model to
-    # refuse — the classifier gate that produced them was removed in 2026-05. An
-    # admin can still inspect/pull them by passing source_type explicitly.
-    DEPRECATED_TRAINING_SOURCES = ("chat_off_topic",)
-    if not source_type:
-        query = query.where(
-            TrainingData.source_type.notin_(DEPRECATED_TRAINING_SOURCES)
-        )
-
-    result = await db.execute(query)
-    candidates = list(result.scalars().all())
-
-    # LGPD-mandatory validation step
-    report = await validate_entries_for_export(
-        db, candidates, enforce_pii_recheck=exclude_pii,
-    )
-
-    # Build JSONL content from the validated subset
-    lines = []
-    anon_levels_seen = set()
-    for entry in report.valid:
-        meta = entry.metadata_info or {}
-        anon_levels_seen.add(entry.anonymization_level or "legacy")
-        record = {
-            "instruction": entry.input_data,
-            "output": entry.output_data,
-            "metadata": {
-                "source_type": entry.source_type,
-                "creation_method": entry.creation_method,
-                "generation_number": entry.generation_number,
-                "bloom_level": entry.bloom_level,
-                "quality_score": entry.quality_score,
-                "difficulty_score": entry.difficulty_score,
-                "specialty": meta.get("specialty"),
-                "lang": meta.get("lang", "pt-BR"),
-                "anonymization_level": entry.anonymization_level,
-            }
-        }
-        if entry.references:
-            record["references"] = entry.references
-        lines.append(json.dumps(record, ensure_ascii=False))
-
-    content = "\n".join(lines)
-    content_bytes = content.encode("utf-8")
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"sft_{timestamp}.jsonl"
-
-    # Persist the export log (Art. 12 proof of minimization)
-    level = (
-        "anon" if anon_levels_seen == {"anon"}
-        else "pseudo" if anon_levels_seen == {"pseudo"}
-        else "mixed"
-    )
-    await register_export(
-        db,
-        exporter_user_id=admin.id,
-        export_type="sft_jsonl",
-        dataset_bytes=content_bytes,
-        report=report,
-        anonymization_level=level,
-        metadata={
-            "filters": {
-                "source_type": source_type,
-                "creation_method": creation_method,
-                "bloom_level": bloom_level,
-                "max_generation": max_generation,
-                "exclude_pii": exclude_pii,
-            },
-            "filename": filename,
-        },
-    )
-    await db.commit()
-
-    response = StreamingResponse(
-        iter([content_bytes]),
-        media_type="application/jsonlines"
-    )
-    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
-    response.headers["X-Qython-Export-Summary"] = json.dumps(report.summary)
-    return response
 
 
-@router.post("/ml/pii/rescan", status_code=status.HTTP_200_OK)
-async def rescan_pii(
-    batch_size: int = 500,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Re-scan all training data entries with the current PII detector patterns.
-
-    Use this after adding new country patterns to pii_detector.py so that
-    existing entries get correctly flagged retroactively.
-
-    Processes in batches to avoid memory issues on large datasets.
-    """
-    from ..services.pii_detector import detect_and_summarize
-
-    total_scanned = 0
-    total_flagged = 0
-    total_cleared = 0
-
-    while True:
-        result = await db.execute(
-            select(TrainingData)
-            .order_by(TrainingData.id)
-            .offset(total_scanned)
-            .limit(batch_size)
-        )
-        entries = result.scalars().all()
-
-        if not entries:
-            break
-
-        for entry in entries:
-            pii_result = detect_and_summarize(entry.input_data or "", entry.output_data or "")
-            new_flag = pii_result["pii_detected"]
-
-            if new_flag != entry.pii_detected:
-                entry.pii_detected = new_flag
-                meta = entry.metadata_info or {}
-                if new_flag:
-                    meta["pii_types"] = pii_result["pii_types"]
-                    meta["pii_count"] = pii_result["pii_count"]
-                else:
-                    meta.pop("pii_types", None)
-                    meta.pop("pii_count", None)
-                entry.metadata_info = meta
-
-                if new_flag:
-                    total_flagged += 1
-                else:
-                    total_cleared += 1
-
-        total_scanned += len(entries)
-        await db.commit()
-
-        logger.info(f"[PII RESCAN] Progress: {total_scanned} scanned, {total_flagged} newly flagged, {total_cleared} cleared")
-
-    logger.info(
-        f"[PII RESCAN] Complete by {admin.email}: "
-        f"{total_scanned} scanned, {total_flagged} flagged, {total_cleared} cleared"
-    )
-    return {
-        "total_scanned": total_scanned,
-        "newly_flagged": total_flagged,
-        "cleared": total_cleared,
-    }
 
 
 # =============================================================================
 # QUALITY DECAY DETECTION
 # =============================================================================
 
-@router.post("/ml/quality/snapshot", status_code=status.HTTP_200_OK)
-async def create_quality_snapshot(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Create a quality snapshot of the training data pool.
-    Computes metrics, checks thresholds, and saves to DB.
-    Returns snapshot data, alerts, and health status.
-    """
-    from ..services.quality_decay_service import save_quality_snapshot
-
-    logger.info(f"Admin {admin.email} triggered quality snapshot")
-    result = await save_quality_snapshot(db)
-    return result
 
 
-@router.get("/ml/quality/history", status_code=status.HTTP_200_OK)
-async def get_quality_snapshot_history(
-    limit: int = 12,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Get historical quality snapshots for trend visualization.
-    Default: last 12 snapshots (~3 months of weekly data).
-    """
-    from ..services.quality_decay_service import get_quality_history
-
-    if limit < 1 or limit > 52:
-        raise HTTPException(status_code=400, detail="limit must be between 1 and 52")
-
-    history = await get_quality_history(db, limit=limit)
-    return {"snapshots": history, "count": len(history)}
 
 
-@router.get("/ml/quality/readiness", status_code=status.HTTP_200_OK)
-async def check_training_readiness(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Assess whether the dataset is ready for fine-tuning.
-    Runs all readiness checks and returns pass/fail for each.
-    """
-    from ..services.quality_decay_service import get_training_readiness
-
-    result = await get_training_readiness(db)
-    return result
 
 
 # =============================================================================
 # ITERATIVE REFINEMENT TRACKING
 # =============================================================================
 
-@router.get("/ml/refinements/stats", status_code=status.HTTP_200_OK)
-async def get_refinement_statistics(
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Get statistics about refinement chains: counts by type, step distribution, etc.
-    """
-    from ..services.refinement_tracking_service import get_refinement_stats
-
-    stats = await get_refinement_stats(db)
-    return stats
 
 
-@router.get("/ml/refinements/chain/{training_data_id}", status_code=status.HTTP_200_OK)
-async def get_training_data_refinement_chain(
-    training_data_id: int,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Get the full refinement chain for a specific training data entry.
-    Shows the complete history of refinements (predecessors and successors).
-    """
-    from ..services.refinement_tracking_service import get_refinement_chain
-
-    chain = await get_refinement_chain(db, training_data_id)
-    return {"training_data_id": training_data_id, "chain": chain, "length": len(chain)}
 
 
-@router.get("/export/refinement-pairs/jsonl", status_code=status.HTTP_200_OK)
-async def export_refinement_pairs_jsonl(
-    refinement_type: Optional[str] = None,
-    max_step: Optional[int] = None,
-    limit: int = 1000,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
-):
-    """
-    Export refinement pairs in DPO JSONL format.
-    Each pair: prompt=input, chosen=refined_output, rejected=original_output.
-
-    Filters:
-    - refinement_type: 'self_critique', 'user_edit', 'regeneration', 'rlaif_judge'
-    - max_step: Only include refinements up to this step
-    - limit: Max pairs (default 1000)
-    """
-    from ..services.refinement_tracking_service import export_refinement_pairs
-
-    if limit < 1 or limit > 10000:
-        raise HTTPException(status_code=400, detail="limit must be between 1 and 10000")
-
-    pairs = await export_refinement_pairs(
-        db, refinement_type=refinement_type, max_step=max_step, limit=limit
-    )
-
-    lines = [json.dumps(p, ensure_ascii=False) for p in pairs]
-    content = "\n".join(lines)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"refinement_pairs_{timestamp}.jsonl"
-
-    response = StreamingResponse(
-        iter([content]),
-        media_type="application/jsonlines"
-    )
-    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response

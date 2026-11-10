@@ -17,9 +17,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_db
 from ..models import PatientOrientation, Patient, User
 from ..security import get_current_active_user
-from ..services.billing_service import debit_dracmas_for_feature
 from ..services.pdf_service import render_orientation_pdf
-from ..services.data_collector_service import collect_data
 
 import logging
 import io
@@ -60,7 +58,6 @@ class OrientationResponse(BaseModel):
     ai_prompt: Optional[str] = None
     specialty: Optional[str] = None
     created_at: datetime
-    training_data_id: Optional[int] = None  # id do TrainingData (match de feedback à prova de balas)
 
     class Config:
         from_attributes = True
@@ -146,25 +143,6 @@ async def create_orientation(
 
     logger.info(f"Orientation {orientation.id} created by doctor {current_user.id} (type={data.generation_type})")
 
-    # DATA FLYWHEEL: Coletar dados de orientações baseadas em templates (editadas pelo médico)
-    training_data_id = None
-    try:
-        training_data_id = await collect_data(
-            db=db,
-            user_id=current_user.id,
-            source_type=f"patient_orientation_{data.generation_type}",
-            input_data=data.template_key or data.title,
-            output_data=data.content[:2000],  # Limitar tamanho
-            meta={
-                "orientation_id": orientation.id,
-                "generation_type": data.generation_type,
-                "template_key": data.template_key,
-                "specialty": data.specialty
-            },
-            quality=0
-        )
-    except Exception as e:
-        logger.warning(f"[DATA FLYWHEEL] Falha ao coletar orientação: {e}")
 
     return OrientationResponse(
         id=orientation.id,
@@ -177,7 +155,6 @@ async def create_orientation(
         ai_prompt=orientation.ai_prompt,
         specialty=orientation.specialty,
         created_at=orientation.created_at,
-        training_data_id=training_data_id
     )
 
 
@@ -207,8 +184,6 @@ async def generate_orientation(
                 detail="Paciente não encontrado"
             )
 
-    # Charge dracmas BEFORE generating
-    await debit_dracmas_for_feature(current_user, "generate_orientation", db)
 
     # Generate with AI
     result = await asyncio.to_thread(
@@ -235,25 +210,6 @@ async def generate_orientation(
 
     logger.info(f"AI Orientation {orientation.id} generated for doctor {current_user.id}")
 
-    # DATA FLYWHEEL: Coletar dados de orientações geradas por IA
-    training_data_id = None
-    try:
-        training_data_id = await collect_data(
-            db=db,
-            user_id=current_user.id,
-            source_type="patient_orientation_ai_generated",
-            input_data=data.prompt,
-            output_data=result['content'][:2000],
-            meta={
-                "orientation_id": orientation.id,
-                "specialty": data.specialty,
-                "language": data.language_code,
-                "title": result['title']
-            },
-            quality=1  # AI-generated, higher quality for training
-        )
-    except Exception as e:
-        logger.warning(f"[DATA FLYWHEEL] Falha ao coletar orientação AI: {e}")
 
     return OrientationResponse(
         id=orientation.id,
@@ -266,7 +222,6 @@ async def generate_orientation(
         ai_prompt=orientation.ai_prompt,
         specialty=orientation.specialty,
         created_at=orientation.created_at,
-        training_data_id=training_data_id
     )
 
 
