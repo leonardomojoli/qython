@@ -223,6 +223,21 @@ function downloadWhisper() {
 
 // --- Backup e restauração ---------------------------------------------------------------
 
+// Só a página do próprio app (a janela principal, na origem do backend local) comanda o processo principal.
+// O front mostra conteúdo de terceiros (resumos de documentos, respostas da IA): se uma falha de XSS o
+// fizesse chamar `window.qythonDesktop`, ainda assim só alcançaria o que a janela já pode fazer, e nada
+// vindo de outra origem (uma janela aberta por engano, um iframe) chega aqui.
+function fromAppPage(event) {
+  return !!stack?.running && sameOrigin(event.senderFrame?.url ?? '', stack.webUrl);
+}
+
+function guarded(handler) {
+  return (event, ...args) => {
+    if (!fromAppPage(event)) throw new Error('Origem não permitida.');
+    return handler(event, ...args);
+  };
+}
+
 const prompts = new Map(); // webContents.id -> resolve
 ipcMain.on('passphrase:submit', (e, value) => prompts.get(e.sender.id)?.(typeof value === 'string' ? value : null));
 ipcMain.on('passphrase:cancel', (e) => prompts.get(e.sender.id)?.(null));
@@ -271,6 +286,7 @@ async function whilePaused(status, fn) {
     splash?.close();
     splash = null;
     paused = false;
+    lan?.invalidate(); // a restauração troca as chaves do app, inclusive a que assina o acesso dos aparelhos
     if (mainWindow && stack?.running) {
       mainWindow.loadURL(stack.webUrl).catch(() => {});
       mainWindow.show();
@@ -346,8 +362,8 @@ async function runRestore() {
   }
 }
 
-ipcMain.handle('qython:backup', () => runBackup());
-ipcMain.handle('qython:restore', () => runRestore());
+ipcMain.handle('qython:backup', guarded(() => runBackup()));
+ipcMain.handle('qython:restore', guarded(() => runRestore()));
 
 function wireAi() {
   const push = () => {
@@ -516,33 +532,22 @@ async function boot() {
   ai.resumePending();
 }
 
-// Só a página do próprio app (a janela principal) liga e desliga o acesso do celular.
-function fromAppPage(event) {
-  return !!stack?.running && sameOrigin(event.senderFrame?.url ?? '', stack.webUrl);
-}
+ipcMain.handle('qython:lan-status', guarded(() => lan.status()));
+ipcMain.handle('qython:lan-set-enabled', guarded((_e, value) => lan.setEnabled(value === true)));
 
-ipcMain.handle('qython:lan-status', (event) => {
-  if (!fromAppPage(event)) throw new Error('Origem não permitida.');
-  return lan.status();
-});
-ipcMain.handle('qython:lan-set-enabled', async (event, value) => {
-  if (!fromAppPage(event)) throw new Error('Origem não permitida.');
-  return lan.setEnabled(value === true);
-});
-
-ipcMain.handle('qython:notify', (_e, { title, body }) => {
+ipcMain.handle('qython:notify', guarded((_e, { title, body }) => {
   if (!Notification.isSupported()) return false;
-  const n = new Notification({ title, body, icon: iconFile });
+  const n = new Notification({ title: String(title).slice(0, 200), body: String(body ?? '').slice(0, 1000), icon: iconFile });
   n.on('click', showMain);
   n.show();
   return true;
-});
-ipcMain.handle('qython:open-logs', () => shell.openPath(paths.logs));
-ipcMain.handle('qython:open-ai-setup', () => { openWizard(); });
-ipcMain.handle('qython:app-info', () => ({
+}));
+ipcMain.handle('qython:open-logs', guarded(() => shell.openPath(paths.logs)));
+ipcMain.handle('qython:open-ai-setup', guarded(() => { openWizard(); }));
+ipcMain.handle('qython:app-info', guarded(() => ({
   version: app.getVersion(), platform: process.platform, userData: paths.root, logs: paths.logs,
   secretsProtection: stack?.secrets.protection ?? null,
-}));
+})));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
