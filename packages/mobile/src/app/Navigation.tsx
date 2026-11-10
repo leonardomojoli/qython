@@ -9,6 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import PairingScreen from '../screens/auth/PairingScreen';
 import CopilotScreen from '../screens/copilot/CopilotScreen';
 import AmbulatoryScreen from '../screens/ambulatory/AmbulatoryScreen';
 import PharmacyScreen from '../screens/pharmacy/PharmacyScreen';
@@ -63,6 +64,9 @@ function AuthNavigator({ onLoginSuccess }: { onLoginSuccess: () => void }) {
         name="ForgotPassword"
         component={ForgotPasswordScreen}
       />
+      <AuthStack.Screen name="Pair">
+        {(props) => <PairingScreen {...props} onLoginSuccess={onLoginSuccess} />}
+      </AuthStack.Screen>
     </AuthStack.Navigator>
   );
 }

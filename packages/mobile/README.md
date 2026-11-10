@@ -34,6 +34,35 @@ emulador). O release aceita HTTP porque o servidor costuma estar na rede local
 sem TLS; também aceita certificados instalados pelo usuário, para quem servir
 HTTPS com uma CA própria.
 
+## Pareamento com o computador (QR code)
+
+O caminho recomendado para usar o Qython do computador: na tela de login, **Parear com o computador**.
+No computador, *Perfil → Configurações → Conectar o celular* mostra um QR code; o celular o lê (leitor do
+Google Play Services, sem permissão de câmera) ou aceita endereço e código digitados, caso em que o
+médico confere a impressão digital do certificado com a tela do computador. Contrato completo em
+[`docs/PAREAMENTO.md`](../../docs/PAREAMENTO.md).
+
+O que há de nativo (Android, `android/app/src/main/java/ai/qython/app/`):
+
+- `PinnedTls.kt`: o computador fala HTTPS com certificado autoassinado. Para cada servidor pareado o app
+  guarda `host:porta → impressão digital (SHA-256)` e só aceita EXATAMENTE aquele certificado (inclusive
+  contra um certificado válido de outra autoridade); os demais endereços seguem a validação do sistema.
+  Vale para o fetch/axios, os WebSockets e as imagens do React Native (fábrica de OkHttp em
+  `MainApplication.kt`) e é carregado de um arquivo antes de a primeira requisição sair.
+- `SecureStore.kt`: o acesso da conta e o segredo do aparelho ficam cifrados com uma chave AES-GCM do
+  Android Keystore (antes o JWT ficava em texto no AsyncStorage; um token antigo é movido na primeira leitura).
+- `QythonSecurityModule.kt`: a ponte para tudo isso, `probeFingerprint` (pareamento digitado) e `scanQrCode`.
+
+No JavaScript: `services/pairingProtocol.ts` (QR code, código, impressão digital; puro e testado),
+`services/pairing.ts` (parear, renovar o acesso pelo segredo do aparelho, desparear) e os interceptores de
+`services/api.ts` (um 401 renova o acesso uma vez e repete a chamada; aparelho removido no computador
+encerra a sessão). O teste "online" do NetInfo passou a ser o `/api/health` do servidor configurado, não a
+internet: o computador pode estar numa rede de Wi-Fi sem saída para fora.
+
+Limites atuais: só Android (no iOS o pareamento não tem fixação de certificado nem leitor de QR code); se o
+computador trocar de IP, parear de novo (ou digitar o endereço novo); PDF e anexos passam pela mesma
+pilha de rede do app.
+
 ## Firebase (opcional)
 
 Login com Google e push dependem do Firebase, que não vem no repositório. Sem
