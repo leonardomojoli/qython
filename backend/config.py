@@ -44,6 +44,9 @@ class Config:
         )
     JWT_ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 720))
+    # Acesso de um celular pareado: curto, porque a renovação (pelo segredo do aparelho) é barata e
+    # é ela que se revoga. Um celular revogado perde o acesso em até este tempo.
+    PAIRED_ACCESS_TOKEN_MINUTES = int(os.getenv("PAIRED_ACCESS_TOKEN_MINUTES", 60))
 
     # --- BANCO DE DADOS (CRÍTICO PARA O ALEMBIC) ---
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')

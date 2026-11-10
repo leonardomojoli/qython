@@ -1989,3 +1989,41 @@ class UserCloudConnection(Base):
 
     def __repr__(self):
         return f"<UserCloudConnection {self.id} user={self.user_id} {self.provider} status={self.status}>"
+
+
+class PairingCode(Base):
+    """Código de uso único para parear um celular com a conta de quem o gerou.
+
+    O código aparece na tela do computador (como QR code e como texto), vale poucos minutos e
+    só existe no banco como hash. Quem o digita no celular prova que está olhando a tela do
+    computador do médico; a troca do código pelo segredo do aparelho é o `claim` (ver
+    pairing_service)."""
+    __tablename__ = 'pairing_codes'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    code_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<PairingCode {self.id} user={self.user_id} used={self.used_at is not None}>"
+
+
+class PairedDevice(Base):
+    """Celular pareado. O segredo do aparelho (`token_hash`, só o hash) renova o acesso dele por
+    tokens curtos; revogar a linha (`revoked_at`) corta o aparelho sem mexer na senha do médico."""
+    __tablename__ = 'paired_devices'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    platform = Column(String(20), nullable=True)  # android | ios
+    token_hash = Column(String(64), nullable=False, unique=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self):
+        return f"<PairedDevice {self.id} user={self.user_id} {self.name!r} revoked={self.revoked_at is not None}>"
