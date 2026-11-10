@@ -55,6 +55,16 @@ desliga parado. O modelo baixa junto com a IA; quem pulou a IA baixa por **Ajuda
 transcrição de áudio e vídeo**. Se o modelo ainda não está no disco o serviço responde 503 e o
 documento volta para a fila de retentativa do backend, em vez de falhar de vez.
 
+### Leitura de documentos escaneados (OCR)
+PDFs sem texto e fotos de documentos passam por `backend/services/ocr_service.py`: RapidOCR com o
+PP-OCRv6 em ONNX, sem binário nativo e sem rede. O modelo **pequeno** (31 MB) vem dentro do pacote
+e sempre funciona. O **médio** (139 MB), que erra bem menos em texto miúdo, está no `models.json`
+como modelo de apoio: baixa junto com a IA, com SHA-256 conferido, e o app passa a pasta dele ao
+backend em `QYTHON_OCR_MODELS`. Sem ele o backend usa o pequeno. `QYTHON_OCR_MODELO=pequeno` força
+o pequeno em máquina lenta; `QYTHON_OCR_THREADS` limita os núcleos (padrão: metade, no máximo 4).
+Tempo por página densa em CPU de 4 threads: cerca de 30 s no médio, 8 s no pequeno. O `selftest`
+do executável lê uma imagem gerada na hora e confere que o pacote levou os modelos e o `cv2`.
+
 ### As chaves de criptografia
 
 `QYTHON_FIELD_KEK` cifra CPF, RG e notas clínicas. Se ela mudasse entre duas aberturas, as
@@ -199,8 +209,6 @@ assinatura e o SmartScreen avisa.
 
 ### O que ainda não está nos instaladores
 
-- **OCR (Tesseract).** Não vai no pacote: imagens e PDFs escaneados só viram texto se o Tesseract estiver
-  instalado no computador (o backend o procura no PATH). PDFs com texto não dependem dele.
 - **macOS assinado e notarizado** (precisa de conta Apple).
 
 ## Backup e restauração

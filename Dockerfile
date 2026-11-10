@@ -11,16 +11,29 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Dependências de sistema que o backend invoca como binário:
 #   ffmpeg     — extração/transcodificação de áudio antes da transcrição
-#   tesseract  — OCR de PDF escaneado (por+spa+eng)
+#   (o OCR não precisa de pacote do sistema: o RapidOCR vem em ONNX dentro do requirements.lock)
 #   libmagic   — detecção de tipo de arquivo (python-magic)
 #   poppler    — rasterização de PDF para thumbnail
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
-        tesseract-ocr tesseract-ocr-por tesseract-ocr-spa tesseract-ocr-eng \
         libmagic1 \
         poppler-utils \
         curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Modelos médios do OCR (PP-OCRv6, 139 MB): erram bem menos em texto miúdo de página escaneada
+# que o modelo pequeno que já vem no pacote do rapidocr, que fica como reserva se estes
+# arquivos faltarem. Fixados na versão v3.10.0 do RapidOCR e conferidos por SHA-256.
+ENV QYTHON_OCR_MODELS=/opt/qython/ocr-models
+RUN mkdir -p "$QYTHON_OCR_MODELS" \
+    && base=https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6 \
+    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_det_medium.onnx" "$base/det/PP-OCRv6_det_medium.onnx" \
+    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_rec_medium.onnx" "$base/rec/PP-OCRv6_rec_medium.onnx" \
+    && cd "$QYTHON_OCR_MODELS" \
+    && printf '%s  %s\n' \
+        92078b7355007ccfffcd4c8cd441a3afd4538904d06881b29a155e1e679907c2 PP-OCRv6_det_medium.onnx \
+        eef444829dbbe18d7fea59a3f6eb75647518d2b3a9568d27c92e42940204894b PP-OCRv6_rec_medium.onnx \
+        | sha256sum -c -
 
 # LibreOffice converte .docx/.pptx para PDF antes da extração de texto.
 # São ~500 MB, e só a ingestão de arquivos Office depende disso — por isso é opcional.
