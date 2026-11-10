@@ -158,7 +158,7 @@ def whisper(args: argparse.Namespace) -> int:
 def _probe_pdf_libs() -> str:
     """No pacote do macOS: o erro REAL do dlopen de cada biblioteca do Pango, por caminho absoluto.
     O WeasyPrint só relata o último nome que tentou; aqui aparece qual dependência não carregou."""
-    import ctypes
+    import _ctypes  # o ctypes.CDLL do PyInstaller troca o erro do dlopen por uma mensagem genérica
     import glob
 
     base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
@@ -166,7 +166,7 @@ def _probe_pdf_libs() -> str:
     out = [f"DYLD_FALLBACK={os.environ.get('DYLD_FALLBACK_LIBRARY_PATH')}", f"libgobject em: {found}"]
     for path in found[:2]:
         try:
-            ctypes.CDLL(path)
+            _ctypes.dlopen(path)
             out.append(f"{path}: carregou")
         except OSError as exc:
             out.append(f"{path}: {exc}")
