@@ -71,6 +71,12 @@ export async function smokeLan({ lan, stack, token, step, ownerEmail = OWNER_EMA
   assert(login.status === 403, `o login por senha não pode passar pela rede local (devolveu ${login.status})`);
   const noToken = await call2('GET', '/api/user/info');
   assert(noToken.status === 401, `sem acesso a API deveria dar 401, deu ${noToken.status}`);
+  // A porta só aceita o acesso de um aparelho pareado: nem um Bearer inventado (que alcançaria as rotas do
+  // backend sem login) nem o acesso do login por senha da janela do computador.
+  const forged = await call2('GET', '/api/user/info', { token: 'inventado.por.alguem' });
+  assert(forged.status === 401, `um Bearer inventado deveria dar 401, deu ${forged.status}`);
+  const passwordLogin = await call2('GET', '/api/user/info', { token });
+  assert(passwordLogin.status === 401, `o acesso do login por senha não vale na rede local (deu ${passwordLogin.status})`);
 
   step('rede local: a impressão digital errada derruba a conexão');
   let refused = false;
