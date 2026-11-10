@@ -86,6 +86,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
 # --timeout 600: geração de material e transcrição são longas e passariam
 # do timeout padrão de 30s do gunicorn.
 CMD ["gunicorn", \
+     "-c", "backend/gunicorn_conf.py", \
      "--workers", "2", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
