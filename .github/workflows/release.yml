@@ -184,6 +184,19 @@ jobs:
           print('ocr:', o.modelo_em_uso(), repr(texto))
           assert o.modelo_em_uso() == 'medio' and 'amoxicilina' in texto.lower() and 'pressão' in texto.lower()"
 
+          # Criptografia dos campos (nome, CPF, notas): sem QYTHON_FIELD_KEK no .env, o backend gera
+          # as chaves e as guarda no volume. Cifra num processo e abre noutro: prova que as chaves
+          # persistem no arquivo e que processos diferentes (workers, exec) usam as mesmas.
+          cifrado=$(docker compose exec -T backend python -c "
+          from backend.services import encryption_service as e
+          print(e.encrypt_value('Maria da Silva').decode())")
+          docker compose exec -T backend test -s /var/lib/qython/keys.json
+          claro=$(docker compose exec -T backend python -c "
+          from backend.services import encryption_service as e
+          print(e.decrypt_value(b'$cifrado'))")
+          [ "$claro" = "Maria da Silva" ] || { echo "::error::as chaves de criptografia não persistem entre processos"; exit 1; }
+          echo "criptografia dos campos: ok (chaves geradas no volume)"
+
       - name: Logs em caso de falha
         if: failure()
         run: docker compose logs --tail=150 || true

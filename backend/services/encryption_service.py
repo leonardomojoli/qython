@@ -15,6 +15,11 @@ Two KEKs are supported:
 - QYTHON_TOKEN_KEK: deterministic tokenization for ML pseudonymization (same
   input -> same token, scoped per user, never plain on disk)
 
+Where the keys come from, in order: the env vars above; then the file named by
+QYTHON_KEYS_FILE (the docker compose sets it to a volume), which is created with fresh keys on
+first use. The desktop app keeps its own keys in the system keychain and passes them by env.
+Without any of them the first write of a patient fails with a clear message.
+
 Rotation: a future migration may add KEK versioning (encrypted_field_v1, v2).
 For now we assume one active key at a time.
 """
@@ -24,6 +29,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 from typing import Optional
@@ -37,12 +43,62 @@ _field_cipher: Optional[Fernet] = None
 _token_kek: Optional[bytes] = None
 
 
+def _read_keys_file(path: str) -> Optional[dict]:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except ValueError as exc:
+        raise RuntimeError(
+            f"O arquivo de chaves {path} está ilegível ({exc}). Restaure o backup dele: sem as "
+            "chaves, os campos cifrados do banco não abrem."
+        ) from exc
+
+
+def _create_keys_file(path: str) -> dict:
+    """Gera as duas chaves e grava em `path` (0600). Vários processos (os workers do gunicorn)
+    podem chegar aqui ao mesmo tempo: o os.link é atômico e só um cria o arquivo; os outros leem
+    o dele, então todos ficam com as MESMAS chaves."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    keys = {
+        "QYTHON_FIELD_KEK": Fernet.generate_key().decode(),
+        "QYTHON_TOKEN_KEK": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+    }
+    tmp = f"{path}.{os.getpid()}.{os.urandom(4).hex()}.tmp"  # único por tentativa (até threads do mesmo processo)
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(keys, f)
+        try:
+            os.link(tmp, path)
+            logger.warning(
+                "Chaves de criptografia geradas em %s. Faça backup dele junto com o banco: sem "
+                "as chaves, os campos cifrados (nome, CPF, notas) não abrem.", path)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(tmp)
+    return _read_keys_file(path) or keys
+
+
+def _key_from_file(name: str) -> Optional[str]:
+    """A chave `name` do arquivo QYTHON_KEYS_FILE (criado na primeira vez), ou None sem arquivo."""
+    path = os.getenv("QYTHON_KEYS_FILE", "").strip()
+    if not path:
+        return None
+    data = _read_keys_file(path)
+    if data is None:
+        data = _create_keys_file(path)
+    return data.get(name)
+
+
 def _load_field_cipher() -> Fernet:
     global _field_cipher
     if _field_cipher is not None:
         return _field_cipher
 
-    raw = os.getenv("QYTHON_FIELD_KEK")
+    raw = os.getenv("QYTHON_FIELD_KEK") or _key_from_file("QYTHON_FIELD_KEK")
     if not raw:
         # Dev/test fallback. Logs loudly so production cannot accidentally rely on it.
         if os.getenv("QYTHON_ALLOW_EPHEMERAL_KEK") == "1":
@@ -77,7 +133,7 @@ def _load_token_kek() -> bytes:
     if _token_kek is not None:
         return _token_kek
 
-    raw = os.getenv("QYTHON_TOKEN_KEK")
+    raw = os.getenv("QYTHON_TOKEN_KEK") or _key_from_file("QYTHON_TOKEN_KEK")
     if not raw:
         if os.getenv("QYTHON_ALLOW_EPHEMERAL_KEK") == "1":
             ephemeral = os.urandom(32)
