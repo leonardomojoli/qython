@@ -4,40 +4,19 @@
 //   2. o front é servido na mesma origem da API;
 //   3. a conta do dono nasce sem captcha, SMS nem e-mail, e o termo de uso é aceito;
 //   4. dado cifrado (documento de um paciente) continua legível DEPOIS de reiniciar tudo,
-//      ou seja, as chaves de criptografia sobrevivem a uma nova abertura do app.
+//      ou seja, as chaves de criptografia sobrevivem a uma nova abertura do app;
+//   5. o celular pareia pela porta da rede local (HTTPS com a impressão digital do certificado),
+//      usa a API, é barrado onde deve e perde o acesso na hora quando o aparelho é removido.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { backupFlow, restoreFlow } from './backup-flow.js';
+import { assert, call } from './smoke-http.js';
+import { smokeLan } from './smoke-lan.js';
 
 const OWNER = { email: 'dona@clinica-ci.com.br', password: 'Senha123!' };
 
-function assert(cond, message) {
-  if (!cond) throw new Error(`FUMAÇA FALHOU: ${message}`);
-}
-
-async function call(base, method, route, { token, json, form } = {}) {
-  const headers = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  let body;
-  if (json !== undefined) {
-    headers['Content-Type'] = 'application/json';
-    body = JSON.stringify(json);
-  } else if (form) {
-    body = form instanceof FormData ? form : new URLSearchParams(form);
-  }
-  const res = await fetch(`${base}${route}`, { method, headers, body });
-  const text = await res.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data };
-}
-
-export async function runSmoke({ stack, log, window }) {
+export async function runSmoke({ stack, log, window, lan }) {
   const base = stack.webUrl;
   const api = `${base}/api`;
   const step = (m) => log.info(`[fumaça] ${m}`);
@@ -106,6 +85,8 @@ export async function runSmoke({ stack, log, window }) {
     `documento cifrado ilegível após reiniciar: ${JSON.stringify(again.data.document_id)}`);
   const stillAccepted = await call(`${base2}/api`, 'GET', '/user/info', { token });
   assert(stillAccepted.data.terms_pending === false, 'o aceite do termo se perdeu');
+
+  if (lan) await smokeLan({ lan, stack, token, step });
 
   // A IA primeiro: ela confere que o llama-server começa desligado, e o chat da biblioteca (que
   // também usa a IA) o religaria.

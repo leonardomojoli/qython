@@ -16,6 +16,7 @@ import { ModelManager, loadManifest } from './models.js';
 import { startUpdater } from './updater.js';
 import { BackupError, EXTENSION, suggestedName } from './backup.js';
 import { backupFlow, restoreFlow } from './backup-flow.js';
+import { LanAccess } from './lan.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SMOKE = process.argv.includes('--smoke');
@@ -34,6 +35,7 @@ function resourcesDir() {
 }
 
 let stack = null;
+let lan = null;
 let ai = null;
 let settings = null;
 let wizard = null;
@@ -409,6 +411,11 @@ async function shutdown(code = 0) {
   }
   quitting = true;
   try {
+    await lan?.close();
+  } catch (err) {
+    log.error(`Falha ao fechar a porta da rede local: ${err.message}`);
+  }
+  try {
     await stack?.stop();
   } catch (err) {
     log.error(`Falha ao encerrar a pilha: ${err.message}`);
@@ -430,10 +437,11 @@ async function boot() {
   wireAi();
 
   const idleEnv = Number(process.env.QYTHON_LLM_IDLE_SECONDS);
+  const resources = { backend: path.join(resourcesDir(), 'backend'), web: path.join(resourcesDir(), 'web') };
   stack = new Stack({
     chromaIdleSeconds: Number(process.env.QYTHON_CHROMA_IDLE_SECONDS) || undefined,
     models, notReadyReason: () => ai.notReadyReason(),
-    paths, resources: { backend: path.join(resourcesDir(), 'backend'), web: path.join(resourcesDir(), 'web') },
+    paths, resources,
     secrets, settings, logger: log, onStatus: setStatus,
     env: process.env.QYTHON_BACKEND_EXTRA_ENV ? JSON.parse(process.env.QYTHON_BACKEND_EXTRA_ENV) : {},
     makeLlm: (apiKey) => new LocalLlm({
@@ -445,6 +453,8 @@ async function boot() {
       customModelFile: process.env.QYTHON_AI_MODEL_FILE || null,
     }),
   });
+  // Acesso do celular pela rede local: só abre a porta se o médico a ligou (lan.js).
+  lan = new LanAccess({ settings, secrets, resources, backendPort: () => stack?.webPort, logger: log });
   stack.on('failed', (message) => {
     if (quitting) return;
     dialog.showErrorBox('Qython', `${message}\nVeja a pasta de logs para o motivo.`);
@@ -462,6 +472,7 @@ async function boot() {
   if (quitting) return;
 
   hardenSession(stack.webUrl);
+  await lan.apply();
   mainWindow = createMainWindow(stack.webUrl, { visible: !SMOKE });
   if (SMOKE) {
     try {
@@ -470,7 +481,7 @@ async function boot() {
       if (ai.state().error) throw new Error(ai.state().error);
       // A transcrição do CI usa o modelo tiny (75 MB) no lugar do large-v3-turbo (1,6 GB).
       if (process.env.QYTHON_WHISPER_MODEL_ID) await ai.models.install(process.env.QYTHON_WHISPER_MODEL_ID);
-      await runSmoke({ stack, log, window: mainWindow });
+      await runSmoke({ stack, log, window: mainWindow, lan });
       process.stdout.write('SMOKE OK\n');
       await shutdown(0);
     } catch (err) {
@@ -504,6 +515,20 @@ async function boot() {
   }
   ai.resumePending();
 }
+
+// Só a página do próprio app (a janela principal) liga e desliga o acesso do celular.
+function fromAppPage(event) {
+  return !!stack?.running && sameOrigin(event.senderFrame?.url ?? '', stack.webUrl);
+}
+
+ipcMain.handle('qython:lan-status', (event) => {
+  if (!fromAppPage(event)) throw new Error('Origem não permitida.');
+  return lan.status();
+});
+ipcMain.handle('qython:lan-set-enabled', async (event, value) => {
+  if (!fromAppPage(event)) throw new Error('Origem não permitida.');
+  return lan.setEnabled(value === true);
+});
 
 ipcMain.handle('qython:notify', (_e, { title, body }) => {
   if (!Notification.isSupported()) return false;
