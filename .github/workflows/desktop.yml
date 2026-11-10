@@ -39,6 +39,8 @@ on:
       - "tests/backend/test_ocr_service.py"
       - "tests/backend/test_transcription_service.py"
       - "tests/backend/test_encryption_keys.py"
+      - "tests/backend/test_pairing_service.py"
+      - "backend/routes/pairing_routes.py"
       - "package-lock.json"
       - ".github/workflows/desktop.yml"
   push:
@@ -116,6 +118,7 @@ jobs:
           python tests/backend/test_ocr_service.py
           python tests/backend/test_transcription_service.py
           python tests/backend/test_encryption_keys.py
+          python tests/backend/test_pairing_service.py
 
       - name: Front do desktop (sem service worker, fontes locais)
         run: |
