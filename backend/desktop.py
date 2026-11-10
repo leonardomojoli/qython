@@ -173,6 +173,14 @@ def _probe_pdf_libs() -> str:
     return " | ".join(out)
 
 
+def gencert(args: argparse.Namespace) -> int:
+    """Gera o certificado autoassinado da porta da rede local e o imprime como JSON (uma linha)."""
+    from backend.lan_cert import generate_certificate
+
+    print(json.dumps(generate_certificate(days=args.days)), flush=True)
+    return 0
+
+
 def selftest(_args: argparse.Namespace) -> int:
     """Importa os módulos que o app carrega e relata o que faltou. Sem rede nem banco."""
     os.environ.setdefault("JWT_SECRET_KEY", "x" * 40)
@@ -286,6 +294,16 @@ def selftest(_args: argparse.Namespace) -> int:
             raise RuntimeError(f"o OCR não leu a imagem de teste: {texto!r}")
         return f"ok ({texto.count(chr(10)) + 1} linhas lidas)"
 
+    def lan_certificate():
+        # O certificado da porta da rede local (modo `gencert`) usa `cryptography`, que o PyInstaller
+        # precisa levar inteiro (backends nativos incluídos).
+        from backend.lan_cert import generate_certificate
+
+        made = generate_certificate(days=1)
+        if len(made["fingerprint"]) != 64 or "BEGIN CERTIFICATE" not in made["cert_pem"]:
+            raise RuntimeError(f"certificado inesperado: {made['fingerprint']!r}")
+        return f"ok (impressão digital {made['fingerprint'][:12]}…)"
+
     def import_fitz():
         import fitz
 
@@ -315,6 +333,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("whisper", whisper_runtime)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
+    check("lan_cert", lan_certificate)
     check("ocr", ocr_runtime)
     check("pdf", import_pdf)
     check("alembic", alembic_scripts)
@@ -348,6 +367,10 @@ def main(argv: list[str] | None = None) -> int:
     p_whisper.add_argument("--host", default="127.0.0.1")
     p_whisper.add_argument("--port", type=int, required=True)
     p_whisper.set_defaults(fn=whisper)
+
+    p_gencert = sub.add_parser("gencert")
+    p_gencert.add_argument("--days", type=int, default=3650)
+    p_gencert.set_defaults(fn=gencert)
 
     sub.add_parser("selftest").set_defaults(fn=selftest)
 

@@ -13,4 +13,9 @@ contextBridge.exposeInMainWorld('qythonDesktop', {
   /** Backup cifrado dos dados (abre as janelas do sistema para escolher o arquivo e a senha). */
   backup: () => ipcRenderer.invoke('qython:backup'),
   restore: () => ipcRenderer.invoke('qython:restore'),
+  /** Acesso do celular pela rede local (ver lan.js e docs/PAREAMENTO.md). */
+  lan: {
+    status: () => ipcRenderer.invoke('qython:lan-status'),
+    setEnabled: (value) => ipcRenderer.invoke('qython:lan-set-enabled', value === true),
+  },
 });
