@@ -133,7 +133,7 @@ Migração sugerida: revisão Alembic `2026_06_21_arena_custom_exams` (4 tabelas
 Função **standalone** de grounding (nova; hoje grounding só roda embutido no chat). Ex.: `services/academic_services/exam_research_service.py`.
 
 - **Entrada:** nome do concurso/prova + banca (texto do usuário) + amostra do conteúdo das fontes.
-- **Chamada:** Gemini com `types.Tool(google_search=...)` (mesmo padrão de `llm_services`), prompt pedindo: **formato** (nº de alternativas, discursiva, pesos), **estilo** das questões, **temas recorrentes**, e **sinais de provas passadas**. Enriquecer fontes via `reference_service` (mesmo pipeline de citações).
+- **Chamada:** a IA local escreve o dossiê a partir do que o usuário informou (sem busca na web: o Qython roda só com IA local). O dossiê sai marcado como sem fontes (`grounded: false`) e a tela avisa; prompt pedindo: **formato** (nº de alternativas, discursiva, pesos), **estilo** das questões, **temas recorrentes**, e o que o usuário informou sobre provas passadas ("não informado" quando não houver).
 - **Saída → `card.dossier` (JSON):** `{synthesis, format_notes, themes[], sources[], past_exam_examples[], confirmed:false}`.
 - **Human-in-the-loop:** o usuário revê e **confirma/edita** (`confirmed:true`) antes do dossiê guiar a geração. Crítico: pesquisa de concurso específico erra/alucina; a confirmação é a rede de segurança (objetivo do solicitante: "não fazer uma prova que se diferencia do que de fato vai ser cobrado").
 - **Cache:** roda 1× por Card (botão "atualizar pesquisa" re-roda). Custo ~1 chamada grounded (~$0,035), não por geração.

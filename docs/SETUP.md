@@ -8,7 +8,7 @@ Este guia detalha como configurar cada serviço externo necessário para o Qytho
 2. [Google Cloud (OAuth Branding)](#2-google-cloud-oauth-branding)
 3. [Resend (E-mails Transacionais)](#3-resend-e-mails-transacionais)
 4. [ImprovMX (Recebimento de E-mail)](#4-improvmx-recebimento-de-e-mail)
-5. [Google AI / Gemini](#5-google-ai--gemini)
+5. [IA local](#5-ia-local)
 6. [Stripe (Pagamentos Cartão)](#6-stripe-pagamentos-cartão)
 7. [Cloudflare Turnstile (CAPTCHA)](#7-cloudflare-turnstile-captcha)
 8. [Latreo (Verificação Médica)](#8-latreo-verificação-médica)
@@ -157,66 +157,33 @@ Após configurar o DNS, aguarde alguns minutos e clique em **Verify**. O status 
 
 ---
 
-## 5. Google AI / Gemini
+## 5. IA local
 
-**Custo:** Pay-as-you-go (limites generosos no tier gratuito)
+**Custo:** zero. O Qython roda só com IA local: não há provedor em nuvem nem chave de API a
+configurar. O texto das perguntas, das consultas e dos documentos não sai da máquina.
 
-### Configuração da API Key
-
-1. Acesse [Google AI Studio](https://aistudio.google.com/)
-2. Clique em **Get API Key**
-3. Crie ou selecione um projeto
-4. Copie a chave:
-
-```env
-# Chave principal para funções gerais
-GEMINI_API_KEY=AIza...
-
-# Chave separada para KYC (opcional, para monitorar custos separadamente)
-GEMINI_DOCSVERIFICATION_KEY=AIza...
-```
-
-### Modelos Configurados (Março 2026)
+Quem instala pelo `docker compose` ganha o serviço `llm` (llama.cpp com o Gemma 4 26B-A4B, que
+pede uma máquina de 32 GB de RAM). O app desktop baixa e gerencia o modelo sozinho. Fora disso,
+aponte para o seu próprio servidor compatível com a API da OpenAI (llama-server, Ollama, LM
+Studio, vLLM):
 
 ```env
-# Chat médico e funções principais
-PRIMARY_LLM_MODEL=gemini-3.5-flash
-FALLBACK_LLM_MODEL=gemini-3.1-flash-lite
-
-# Tarefas simples (classificação, títulos, ícones)
-SIMPLE_TASK_LLM_MODEL=gemini-2.5-flash-lite
-
-# Juiz do RLAIF / self-play — curadoria do dataset, desacoplado do SIMPLE
-RLAIF_JUDGE_MODEL=gemini-3.1-flash-lite
-
-# Análise de imagens médicas e KYC (visão)
-MEDICAL_IMAGE_ANALYST_MODEL=gemini-3.5-flash
-
-# Geração de imagens (Nano Banana 2)
-IMAGE_GEN_MODEL=gemini-3.1-flash-image
-
-# Mapas mentais — Nano Banana 2 (mesmo do IMAGE_GEN). Pro `gemini-3-pro-image` se precisar de tipografia fina/composição complexa.
-IMAGE_GEN_MODEL_PRO=gemini-3.1-flash-image
-
-# Vision pipeline — descrição de imagens médicas extraídas de PDFs
-VISION_DESCRIPTION_MODEL=gemini-2.5-flash-lite
-
-# Google Search Grounding para referências científicas
-ENABLE_GROUNDING=1
+LLM_BASE_URL=http://127.0.0.1:8081/v1   # com o /v1
+LLM_MODEL=gemma-4                       # o Ollama exige o nome exato
+LLM_CONTEXT_TOKENS=16384                # o mesmo -c do llama-server (ou num_ctx do Ollama)
 ```
 
-### Custos por Modelo
+Um modelo serve a tudo (consulta, chat, material, prova, leitura de imagem): o que o servidor
+carregou. Os papéis `PRIMARY_LLM_MODEL`, `CHAT_LLM_MODEL` e semelhantes valem `local` e não
+precisam ser definidos. O endereço e o modelo também se trocam pela tela **Configurações da IA**
+(administrador), sem reiniciar.
 
-| Modelo | Input | Output | Uso |
-|--------|-------|--------|-----|
-| Gemini 3.5 Flash | $1.50/1M | $9.00/1M | Chat médico, análise de imagens |
-| Gemini 3.1 Flash-Lite | $0.25/1M | $1.50/1M | Fallback |
-| Gemini 2.5 Flash-Lite | $0.10/1M | $0.40/1M | Tarefas simples |
+O que a IA local não faz, e o Qython não oferece: busca na web durante a resposta (o copiloto
+busca no catálogo de medicamentos, na biblioteca e no PubMed *antes* de responder) e geração de
+imagem (mapa mental sai como diagrama, avatar é foto enviada ou avatar pronto).
 
-### Recursos Avançados
-
-- **Thinking Mode:** Habilitado automaticamente para raciocínio profundo
-- **Google Search Grounding:** 1,500 queries/dia grátis, depois $35/1000
+OCR de PDF escaneado e foto de documento: RapidOCR (PP-OCRv6, em ONNX), também local. O modelo
+médio vem na imagem Docker (`QYTHON_OCR_MODELS`); `QYTHON_OCR_MODELO=pequeno` força o pequeno.
 
 ### NCBI PubMed API Key (referências — opcional, recomendado em produção)
 
@@ -330,7 +297,7 @@ Use esta checklist para garantir que tudo está configurado:
 ### Obrigatórios (Sistema não funciona sem)
 - [ ] `DATABASE_URL` - PostgreSQL
 - [ ] `JWT_SECRET_KEY` - Chave de 32+ caracteres
-- [ ] `GEMINI_API_KEY` - Para LLM
+- [ ] `LLM_BASE_URL` - Servidor de IA local (o `docker compose` já define)
 - [ ] `QYTHON_FIELD_KEK` - Field-level encryption (LGPD)
 - [ ] `QYTHON_TOKEN_KEK` - Pseudonimização ML (LGPD)
 
@@ -343,7 +310,6 @@ Use esta checklist para garantir que tudo está configurado:
 - [ ] `seed_consent_documents.py` rodado - Documentos de consentimento
 
 ### Opcionais (Funcionalidades extras)
-- [ ] `GEMINI_DOCSVERIFICATION_KEY` - Chave separada para KYC (monitorar custos)
 - [ ] `STRIPE_API_KEY` - Pagamentos com cartão
 - [ ] `HUGGINGFACE_API_KEY` - Geração de avatares
 
@@ -403,9 +369,9 @@ O cadastro mobile usa o mesmo Cloudflare Turnstile do web, renderizado dentro de
 - Configure DKIM e SPF no DNS
 - Use um domínio verificado ao invés de `onboarding@resend.dev`
 
-### Gemini: 429 Rate Limit
-- Verifique os limites do tier gratuito
-- Considere upgrade para tier pago no Google AI Studio
+### IA local: respostas lentas ou erro de contexto
+- Em CPU, uma resposta leva de 30 s a alguns minutos; confira `LLM_THREADS` e a RAM livre
+- `LLM_CONTEXT_TOKENS` precisa bater com o `-c` do llama-server
 
 ### Stripe: Webhook falha
 - Verifique se o `STRIPE_WEBHOOK_SECRET` está correto

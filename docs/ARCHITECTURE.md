@@ -7,7 +7,7 @@
 O Qython utiliza uma estratégia de retenção chamada "Soft Block" para usuários na lista de espera.
 
 1. **Registro:** Usuário cria conta (Google ou Email).
-2. **KYC:** Documentos são enviados e analisados pelo **Gemini 3.5 Flash**.
+2. **KYC (removido):** o KYC interno por IA saiu; a verificação profissional é feita pelo Lastreo.
    - *Aprovado:* Status `verified`.
    - *Dúvida:* Status `manual_review` (Acesso liberado, mas limitado).
    - *Rejeitado:* Status `rejected` (Bloqueio total).
@@ -118,10 +118,10 @@ Pipeline multimodal em duas fases para extrair e descrever imagens médicas de P
 - Registros `DocumentImage` criados com `vision_status='pending'`
 - **Documento marca `processed` normalmente** — extração de imagens nunca bloqueia
 
-**Fase 2 — Processamento agendado (Gemini Flash Lite, gratuito):**
+**Fase 2 — Processamento agendado (modelo multimodal local):**
 - `vision_service.process_pending_vision_batch()` processa imagens em lotes
-- Envia cada imagem para Gemini 2.5 Flash-Lite com prompt médico (classifica MEDICAL vs NON-MEDICAL)
-- Auto-throttle: RPM counter, para se rate-limited (defere para próximo ciclo)
+- Envia cada imagem ao modelo local multimodal (Gemma 4 com mmproj) com prompt médico (classifica MEDICAL vs NON-MEDICAL)
+- Auto-throttle: espaça as chamadas e adia o resto para o próximo ciclo se o servidor de IA estiver ocupado
 - Scheduler: batch grande 1:00 AM UTC (100 imgs) + catch-up cada 4h (25 imgs)
 
 **Integração com RAG e materiais:**
@@ -157,40 +157,29 @@ Os arquivos ORIGINAIS da Biblioteca moram na nuvem do PRÓPRIO usuário (v1 Goog
 
 Detalhe completo e gotchas: cadeia de migrations no `CLAUDE.md` (`2026_07_10_cloud_connections`, `2026_07_11_docs_drive_fields`).
 
-## 3. Stack de IA (Junho 2026)
+## 3. Stack de IA (novembro de 2026)
 
-| Função | Modelo | Configuração | Custo |
-|--------|--------|--------------|-------|
-| **Chat Copiloto / RAG** (alto volume) | **Gemini 3.1 Flash-Lite** (`CHAT_LLM_MODEL`) | `CHAT_THINKING_LEVEL="high"` | $0.25/$1.50 por 1M tokens |
-| **Consultas / Resumos / Relatórios** | Gemini 3.5 Flash (`PRIMARY_LLM_MODEL`) | `thinking_level="HIGH"` | $1.50/$9.00 por 1M tokens |
-| **Análise de Imagens** | Gemini 3.5 Flash (`MEDICAL_IMAGE_ANALYST_MODEL`) | `thinking_level="HIGH"` | $1.50/$9.00 por 1M tokens |
-| **Tarefas Simples** (título/normalização) | Gemini 2.5 Flash-Lite | thinking minimal | $0.10/$0.40 por 1M tokens |
-| **Fallback** | Gemini 3.1 Flash-Lite | `thinking_level="HIGH"` | $0.25/$1.50 por 1M tokens |
-| **Geração de Imagem** | Nano Banana 2 | `gemini-3.1-flash-image` (avatar, stock, mapas) | ~$0.045 por img |
-| **Embeddings (RAG)** | all-MiniLM-L6-v2 / e5-base | Local | Gratuito |
-| **TTS (Podcast/Video)** | Google TTS | API | Por uso |
+O Qython roda **só com IA local**. Não há provedor em nuvem: o texto das perguntas, das consultas e dos
+documentos não sai da máquina (a única saída por padrão é a busca do copiloto no PubMed, que envia só
+os termos da busca).
 
-> **⚠️ Roteamento de custo (Jun/2026):** o chat do copiloto + RAG (alto volume) foram **roteados do 3.5-flash para o `gemini-3.1-flash-lite`** (`CHAT_LLM_MODEL`, ~16-27× mais barato em perguntas de raciocínio). Motivo: o 3.5-flash + thinking HIGH dava **margem NEGATIVA** (~$0.06-0.09/chat — o thinking gera 5.700-7.900 tokens cobrados como output a $9/1M, custo que a tabela de margens do `BILLING_ECONOMICS` ignorava). A/B validou: lite é clinicamente sólido e correto. No modelo barato o thinking HIGH é afordável (~$0.003), então o raciocínio foi mantido. `CHAT_LLM_MODEL` e `CHAT_THINKING_LEVEL` são tunáveis por `.env` sem deploy. Custo real instrumentado no log (`[COST] in/out/think → $`).
+| Função | Como | Observação |
+|--------|------|------------|
+| **Chat, consultas, resumos, materiais, provas, leitura de imagem** | Um modelo só, o que o servidor de IA carregou (padrão: Gemma 4 26B-A4B `Q4_0`, llama.cpp) | O pedido ignora o nome de modelo e usa o `LLM_MODEL`; os papéis `PRIMARY_LLM_MODEL`, `CHAT_LLM_MODEL` etc. valem `local` |
+| **Raciocínio** | `LLM_THINKING` no servidor | O modelo local raciocina antes de responder; em CPU isso custa minutos |
+| **Saída estruturada** | JSON Schema (`response_format`) | O `llm_provider` converte os esquemas do código (`llm_types.Schema`) |
+| **Embeddings e reranker (RAG)** | multilingual-e5-base e mMARCO, em ONNX | Local, sem torch no app desktop |
+| **Transcrição** | faster-whisper (large-v3-turbo) | Local; a Groq é um fallback opcional |
+| **OCR** | RapidOCR com PP-OCRv6 (ONNX) | Local; modelo médio por padrão, pequeno como reserva |
+| **Fontes do copiloto** | Catálogo de medicamentos, biblioteca e PubMed, buscados *antes* de gerar | `COPILOT_LOCAL_SOURCES`, `COPILOT_PUBMED` |
 
-### Gemini 3.5 Flash - Modelo Principal
+O código herdou do SDK do Google os nomes `Schema`, `Type`, `GenerateContentConfig`, `Part` e `Content`.
+O módulo `backend/services/llm_types.py` os oferece sem o SDK, e `backend/services/llm_provider.py`
+traduz cada pedido para `/v1/chat/completions`.
 
-- **Lançamento:** maio/2026 (GA). Substituiu o `gemini-3-flash-preview`.
-- **Performance:** supera o Gemini 3.1 Pro em agentic/coding; ~4× mais rápido que frontier
-- **Context Window:** 1M tokens input, 64K tokens output
-- **Thinking Levels:** `MINIMAL`, `LOW`, `MEDIUM`, `HIGH` (usado no Qython)
-- **Temperatura:** 1.0 recomendada para raciocínio otimizado
-- **Custo:** $1.50/$9.00 por 1M — 3× o antigo 3-flash (ver impacto de margem no BILLING_ECONOMICS)
-
-### Gemini 3.1 Flash-Lite - Fallback
-
-- **Context Window:** 1M tokens input, 64K tokens output
-- **Custo:** $0.25/$1.50 por 1M
-- **Uso:** fallback automático quando o primário falha/timeout
-
-### Recursos Avançados
-
-- **Google Search Grounding:** Busca em tempo real para referências científicas (1,500 queries/dia grátis)
-- **Thinking Mode:** Raciocínio dinâmico - modelo decide profundidade automaticamente
+**O que a IA local não faz, e o Qython não oferece:** busca na web durante a resposta, geração de
+imagem (o mapa mental sai como diagrama interativo, o avatar é foto enviada ou avatar pronto, os
+slides saem sem imagem) e geração de áudio.
 
 ## 4. Arquitetura de Rotas API
 
@@ -277,14 +266,8 @@ Detalhe completo e gotchas: cadeia de migrations no `CLAUDE.md` (`2026_07_10_clo
                            │
                            ▼
                     ┌──────────────┐
-                    │ Google Gemini│
-                    │  2.5 / 3.0   │
-                    └──────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │Google Search │
-                    │  Grounding   │
+                    │ llama-server │
+                    │  (IA local)  │
                     └──────────────┘
 ```
 

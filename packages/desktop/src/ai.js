@@ -101,7 +101,7 @@ export class AiController extends EventEmitter {
     await this._download(this._whisperIds());
   }
 
-  /** Só os modelos de busca da biblioteca (que valem com qualquer IA, até com o Gemini). */
+  /** Só os modelos de busca da biblioteca (que valem com qualquer IA local). */
   async installSupport() {
     if (this.downloading) return;
     await this._download(this.models.supports().map((m) => m.id));

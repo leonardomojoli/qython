@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import styles from './AvatarGeneratorModal.module.css';
 import { api } from '../../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUpload, faMagicWandSparkles, faClockRotateLeft, faCamera, faSpinner, faCrown } from '@fortawesome/free-solid-svg-icons';
+import { faUpload, faClockRotateLeft, faCamera, faSpinner, faCrown } from '@fortawesome/free-solid-svg-icons';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import UpgradeModal from '../shared/UpgradeModal';
-import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 const AvatarGeneratorModal = ({
   isOpen,
@@ -27,9 +26,6 @@ const AvatarGeneratorModal = ({
   refreshUser // Para atualizar após upload
 }) => {
   const { t } = useTranslation();
-  // Gerar imagem só existe no Gemini; com IA local e sem chave, fica o upload de foto.
-  const { config } = usePublicConfig();
-  const canGenerate = !config?.ai || config.ai.image_generation;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('upload');
   const [isUploading, setIsUploading] = useState(false);
@@ -175,13 +171,6 @@ const AvatarGeneratorModal = ({
             <span>{t('upload') || 'Upload'}</span>
           </button>
           <button
-            className={`${styles.modalTab} ${activeTab === 'generate' ? styles.active : ''}`}
-            onClick={() => setActiveTab('generate')}
-          >
-            <FontAwesomeIcon icon={faMagicWandSparkles} />
-            <span>{t('generateAI') || 'IA'}</span>
-          </button>
-          <button
             className={`${styles.modalTab} ${activeTab === 'history' ? styles.active : ''}`}
             onClick={() => setActiveTab('history')}
           >
@@ -219,53 +208,6 @@ const AvatarGeneratorModal = ({
                 </p>
                 <span className={styles.uploadHint}>JPG, PNG, GIF ou WebP • Máx. 5MB</span>
               </div>
-            </div>
-          )}
-
-          {/* TAB: GENERATE */}
-          {activeTab === 'generate' && (
-            <div className={styles.generateContainer}>
-              <p className={styles.generateHint}>
-                {canGenerate
-                  ? (t('aiAvatarHint') || 'Descreva o avatar que você deseja criar com IA')
-                  : t('needsGeminiImage', 'Gerar imagens exige uma chave do Gemini. Você ainda pode enviar uma foto.')}
-              </p>
-              <div className={styles.promptRow}>
-                <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={t('enterPromptToGenerateAvatar') || 'Ex: médico futurista em estilo cyberpunk'}
-                  className={styles.promptInput}
-                  disabled={isGenerating || !canGenerate}
-                />
-                <button
-                  onClick={handleGenerateAvatar}
-                  className={styles.generateButton}
-                  disabled={isGenerating || !prompt.trim() || !canGenerate}
-                >
-                  {isGenerating ? (
-                    <FontAwesomeIcon icon={faSpinner} spin />
-                  ) : (
-                    <FontAwesomeIcon icon={faMagicWandSparkles} />
-                  )}
-                </button>
-              </div>
-
-              {/* Preview do avatar gerado */}
-              {tempAvatar && (
-                <div className={styles.previewContainer}>
-                  <img src={tempAvatar} alt="Preview" className={styles.previewImage} />
-                  <div className={styles.previewActions}>
-                    <button onClick={handleSaveAvatar} className={styles.saveButton}>
-                      {t('save') || 'Salvar'}
-                    </button>
-                    <button onClick={handleDiscardAvatar} className={styles.discardButton}>
-                      {t('discard') || 'Descartar'}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

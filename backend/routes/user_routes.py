@@ -18,7 +18,6 @@ from werkzeug.utils import secure_filename
 from ..database import get_db
 from ..models import User, AvatarHistory, Transaction, Consultation, UserStats, Achievement, Invitation, SeasonRanking, ArenaSeason, AcademicMaterial, AcademicLibrary
 from ..services.billing_service import debit_dracmas_for_feature
-from ..services.avatar_service import generate_avatar_from_prompt
 from ..utils import allowed_file_profile, UPLOAD_FOLDER_PROFILE, UPLOAD_FOLDER_DOCTOR_LOGOS
 from ..security import get_current_active_user, get_current_user, verify_password, get_password_hash
 from ..config import Config
@@ -115,58 +114,17 @@ class ChangePasswordPayload(BaseModel):
 
 # --- Endpoints ---
 
-@router.post("/generate-avatar-temp", status_code=status.HTTP_200_OK)
+@router.post("/generate-avatar-temp", status_code=status.HTTP_501_NOT_IMPLEMENTED)
 async def generate_avatar_temp(
     payload: AvatarPromptPayload,
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gera um avatar temporário para o usuário autenticado."""
-    try:
-        # Contar avatares já gerados pelo usuário (conta arquivos no disco)
-        user_prefix = f"{current_user.id}_"
-        avatar_files = [f for f in os.listdir(UPLOAD_FOLDER_PROFILE)
-                       if f.startswith(user_prefix) and f.endswith(('_avatar.png', '_avatar.jpg', '_avatar.webp'))]
-        avatar_count = len(avatar_files)
-
-        # Verificar se ainda está no período de onboarding (3 gratuitos)
-        is_free = avatar_count < ONBOARDING_FREE_AVATARS
-
-        if not is_free:
-            # Cobrar dracmas via billing service (lança 402 se insuficiente)
-            await debit_dracmas_for_feature(current_user, "generate_avatar", db)
-            logger.info(f"Avatar pago gerado para {current_user.email}. Saldo: {current_user.dracmas}")
-        else:
-            logger.info(f"Avatar onboarding {avatar_count + 1}/{ONBOARDING_FREE_AVATARS} gratuito para {current_user.email}")
-
-        # Gerar avatar com categoria
-        filename = await asyncio.to_thread(
-            generate_avatar_from_prompt,
-            payload.prompt,
-            current_user,
-            category=payload.category or "default"
-        )
-
-        # NÃO salvar no histórico automaticamente - só quando usuário clicar em "Salvar"
-
-        base_url = Config.WEB_BASE_URL
-        avatar_url = f"{base_url}/{Config.STATIC_URL_PATH_PREFIX.strip('/')}/uploads/profile_pictures/{filename}"
-        logger.info(f"Avatar URL gerada: {avatar_url}")
-
-        return {
-            "message": "Avatar gerado com sucesso",
-            "temp_avatar_url": avatar_url,
-            "filename": filename,
-            "avatars_remaining": max(0, ONBOARDING_FREE_AVATARS - avatar_count - 1),
-            "is_free": avatar_count < ONBOARDING_FREE_AVATARS
-        }
-    except HTTPException as http_exc:
-        await db.rollback()
-        raise http_exc
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Erro ao gerar avatar para {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro na geração de avatar")
+    """Gerar avatar por IA foi removido: o Qython roda só com IA local, que não gera imagem.
+    Fica o envio de uma foto e os avatares prontos (`/avatar-presets`)."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="O Qython roda só com IA local, que não gera imagens. Envie uma foto ou escolha um avatar pronto.",
+    )
 
 @router.post("/save-avatar", status_code=status.HTTP_200_OK)
 async def save_avatar(

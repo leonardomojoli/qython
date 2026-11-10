@@ -2,16 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { useNotification } from '../../contexts/NotificationContext';
 import { api } from '../../api';
-import { FaRobot, FaSpinner, FaSave, FaPlug, FaUndo, FaExclamationTriangle, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaRobot, FaSpinner, FaSave, FaPlug, FaUndo, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import settingsStyles from './AdminSettings.module.css';
 import styles from './AdminAiSettings.module.css';
 
-// Os três jeitos de dar IA ao Qython. O backend só conhece dois provedores ('openai' e 'gemini');
-// "local" é o servidor que o próprio app desktop sobe e gerencia.
+// O Qython roda só com IA local. Dois jeitos de apontar para ela: "local" é o servidor que o
+// próprio app desktop sobe e gerencia; "server" é um servidor compatível com a API da OpenAI
+// que o administrador já mantém (na edição servidor, o do docker compose).
 const MODES = {
     local: { title: 'IA local do Qython', hint: 'O app roda o modelo neste computador. Nada do que você digita sai daqui.' },
-    server: { title: 'Servidor de IA próprio', hint: 'Qualquer servidor compatível com a API da OpenAI: llama.cpp, Ollama, LM Studio, vLLM, OpenRouter.' },
-    gemini: { title: 'Gemini (Google)', hint: 'Respostas melhores e busca na web, com o texto das perguntas indo para o Google.' },
+    server: { title: 'Servidor de IA próprio', hint: 'Um servidor compatível com a API da OpenAI na sua máquina ou na rede da instituição: llama.cpp, Ollama, LM Studio, vLLM.' },
 };
 
 const sourceLabel = { interface: 'definido aqui', ambiente: 'do ambiente', 'padrão': 'padrão' };
@@ -20,8 +20,7 @@ const AdminAiSettings = () => {
     const { addNotification } = useNotification();
     const [state, setState] = useState(null);
     const [mode, setMode] = useState('server');
-    const [form, setForm] = useState({ base_url: '', model: '', context_tokens: '', api_key: '', gemini_api_key: '' });
-    const [acknowledged, setAcknowledged] = useState(false);
+    const [form, setForm] = useState({ base_url: '', model: '', context_tokens: '', api_key: '' });
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState(null);
@@ -30,14 +29,11 @@ const AdminAiSettings = () => {
         try {
             const { data } = await api.get('/admin/ai');
             setState(data);
-            const current = data.provider === 'gemini' ? 'gemini'
-                : (data.managed_local && !data.overridden ? 'local' : 'server');
-            setMode(current);
+            setMode(data.managed_local && !data.overridden ? 'local' : 'server');
             setForm({
                 base_url: data.base_url || '', model: data.model || '',
-                context_tokens: data.context_tokens || '', api_key: '', gemini_api_key: '',
+                context_tokens: data.context_tokens || '', api_key: '',
             });
-            setAcknowledged(data.provider === 'gemini');
         } catch (error) {
             console.error('Erro ao carregar a configuração da IA:', error);
             addNotification('Erro ao carregar a configuração da IA', 'error');
@@ -46,10 +42,9 @@ const AdminAiSettings = () => {
 
     useEffect(() => { load(); }, [load]);
 
-    const modes = useMemo(() => (state?.managed_local ? ['local', 'server', 'gemini'] : ['server', 'gemini']), [state]);
-    const needsAcknowledgement = mode === 'gemini' && !acknowledged;
+    const modes = useMemo(() => (state?.managed_local ? ['local', 'server'] : ['server']), [state]);
     // No modo local o botão só faz sentido para desfazer uma configuração salva aqui.
-    const nothingToRestore = mode === 'local' && !state?.overridden && state?.provider === 'openai';
+    const nothingToRestore = mode === 'local' && !state?.overridden;
 
     const set = (field) => (event) => {
         setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -58,12 +53,7 @@ const AdminAiSettings = () => {
 
     // O que enviar: só o que o usuário tocou ou o que o modo exige. Chave em branco = manter a salva.
     const buildPatch = () => {
-        if (mode === 'gemini') {
-            const patch = { provider: 'gemini' };
-            if (form.gemini_api_key) patch.gemini_api_key = form.gemini_api_key;
-            return patch;
-        }
-        const patch = { provider: 'openai', base_url: form.base_url, model: form.model, context_tokens: form.context_tokens };
+        const patch = { base_url: form.base_url, model: form.model, context_tokens: form.context_tokens };
         if (form.api_key) patch.api_key = form.api_key;
         return patch;
     };
@@ -124,10 +114,10 @@ const AdminAiSettings = () => {
             <div className={settingsStyles.card}>
                 <div className={settingsStyles.cardHeader}>
                     <FaRobot size={24} style={{ color: '#bb86fc' }} />
-                    <h3>Provedor</h3>
+                    <h3>Servidor de IA</h3>
                 </div>
 
-                <div className={styles.modes} role="radiogroup" aria-label="Provedor de IA">
+                <div className={styles.modes} role="radiogroup" aria-label="Servidor de IA">
                     {modes.map((id) => (
                         <label key={id} className={`${styles.mode} ${mode === id ? styles.modeActive : ''}`}>
                             <input
@@ -187,34 +177,6 @@ const AdminAiSettings = () => {
                     </div>
                 )}
 
-                {mode === 'gemini' && (
-                    <div className={styles.panel}>
-                        <div className={styles.field}>
-                            <label htmlFor="ai-gemini">Chave de API do Gemini</label>
-                            <input id="ai-gemini" type="password" value={form.gemini_api_key} onChange={set('gemini_api_key')}
-                                placeholder={state.has_gemini_key ? '•••••••• (salva; deixe em branco para manter)' : 'AIza…'}
-                                autoComplete="new-password" />
-                            <small>Com dado de paciente real, use uma chave paga: no plano gratuito o Google pode usar o conteúdo enviado.</small>
-                        </div>
-                        <div className={`${styles.notice} ${state.pii_engine === 'regex' ? styles.noticeStrong : ''}`}>
-                            <FaExclamationTriangle />
-                            <div>
-                                <strong>O texto das perguntas, incluindo o que vem de pacientes, sai deste computador e vai para o Google.</strong>
-                                {state.pii_engine === 'presidio' ? (
-                                    <span> Antes do envio, nomes e documentos são ocultados (Presidio).</span>
-                                ) : (
-                                    <span> Esta instalação não traz o ocultador de nomes completo: ele usa um detector simples
-                                        (por padrões), que pode deixar passar nomes. Prefira não digitar nomes de pacientes.</span>
-                                )}
-                            </div>
-                        </div>
-                        <label className={styles.check}>
-                            <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
-                            Entendo que o texto vai para o Google.
-                        </label>
-                    </div>
-                )}
-
                 {testResult && (
                     <div className={`${styles.result} ${testResult.ok ? styles.resultOk : styles.resultFail}`} role="status">
                         {testResult.ok ? <FaCheckCircle /> : <FaTimesCircle />}
@@ -239,7 +201,7 @@ const AdminAiSettings = () => {
                         </button>
                     )}
                     <button type="button" className={styles.primary} onClick={save}
-                        disabled={saving || testing || needsAcknowledgement || nothingToRestore}>
+                        disabled={saving || testing || nothingToRestore}>
                         {saving ? <FaSpinner className={settingsStyles.spinner} /> : <FaSave />}
                         {mode === 'local' ? ' Restaurar a IA local' : ' Salvar'}
                     </button>
@@ -252,10 +214,10 @@ const AdminAiSettings = () => {
                     <h3>O que esta IA faz</h3>
                 </div>
                 <ul className={styles.caps}>
-                    <li><strong>Provedor em uso:</strong> {caps.provider === 'gemini' ? 'Gemini' : `servidor compatível${caps.model ? ` (${caps.model})` : ''}`}</li>
-                    <li>{caps.web_search ? '✔' : '✖'} Busca na web nas respostas {caps.web_search ? '' : '(sem Gemini, o copiloto usa o catálogo, a biblioteca e o PubMed)'}</li>
-                    <li>{caps.image_generation ? '✔' : '✖'} Geração de imagens {caps.image_generation ? '' : '(pede a chave do Gemini)'}</li>
+                    <li><strong>Modelo em uso:</strong> {caps.model || 'o que o servidor de IA carregou'}</li>
+                    <li>✔ Respostas do copiloto apoiadas no catálogo de medicamentos, na biblioteca e no PubMed (só os termos da busca saem do computador)</li>
                     <li>{caps.vision ? '✔' : '✖'} Leitura de imagens</li>
+                    <li>✖ Busca na web nas respostas e geração de imagens (a IA local não faz)</li>
                 </ul>
             </div>
         </AdminLayout>

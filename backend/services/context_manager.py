@@ -18,13 +18,11 @@ import tiktoken
 
 from ..models import ChatMessage
 from ..config import Config
-from google import genai
-from google.genai import types
+from . import llm_types as types
 
 logger = logging.getLogger("qython_logger")
 
-# Gemini 2.0 Flash Limits
-GEMINI_MAX_INPUT_TOKENS = 1_000_000
+# Limites padrão; quem chama passa o orçamento da janela do modelo local (llm_provider).
 MAX_CONTEXT_TOKENS = 800_000  # 80% of capacity (safety margin)
 SUMMARIZATION_THRESHOLD = 800_000
 SUMMARY_TARGET_TOKENS = 400_000  # Compress to 50%
@@ -36,7 +34,7 @@ class ContextWindowManager:
     Manages conversation context with intelligent truncation and summarization.
     """
     
-    def __init__(self, client: genai.Client):
+    def __init__(self, client):
         self.client = client
         self.encoding = tiktoken.get_encoding("cl100k_base")  # Same as GPT-4
         

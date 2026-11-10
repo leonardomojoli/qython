@@ -34,7 +34,7 @@ porque o login mora no `localStorage` da origem; trocar de porta deslogaria o m�
 | `llama-server` sob demanda | `src/ondemand.js`, `src/llm.js` | O backend fala sempre com uma porta fixa. No primeiro pedido o app sobe o `llama-server` e espera o `/health`; sem pedido por 15 min, desliga (a RAM só é ocupada enquanto a IA trabalha). Quando o cliente desiste, o pedido ao modelo é cancelado. |
 | Manifesto de modelos | `models.json` | Cada arquivo com tamanho, SHA-256 e a revisão do Hugging Face. O padrão é o Gemma 4 26B-A4B `Q4_0` (a quantização vai explícita: sem ela o llama.cpp baixaria os 50 GB do BF16), mais o `mmproj` para imagens. |
 | Download | `src/downloader.js` | Retomável (Range), progresso, SHA-256 conferido antes de usar; o app fechado no meio retoma de onde parou. |
-| Assistente de primeiro uso | `src/setup/`, `src/ai.js` | Mostra RAM e disco, **avisa com clareza** quando o computador tem menos de 32 GB e deixa o médico escolher: baixar mesmo assim, modelo menor ou Gemini. **Nunca troca de modelo sozinho.** Reabre em Ajuda › Escolher a IA. |
+| Assistente de primeiro uso | `src/setup/`, `src/ai.js` | Mostra RAM e disco, **avisa com clareza** quando o computador tem menos de 32 GB e deixa o médico escolher: baixar mesmo assim ou escolher um modelo menor. **Nunca troca de modelo sozinho.** Reabre em Ajuda › Escolher a IA. |
 | `llama-server` no pacote | `scripts/fetch-llama.mjs` | Build de CPU fixada em `models.json`, com SHA-256, por sistema. |
 | tiktoken offline | `python/prepare_tiktoken.py` | O vocabulário vai no pacote; sem isso o copiloto baixaria um arquivo da internet no primeiro uso. |
 
@@ -85,11 +85,11 @@ backend, nas **mesmas versões** do lock do Docker. Não vão no pacote:
   (ctranslate2) rodam sem eles, em outro processo, sob demanda. Eram ~3 GB.
 - `firebase-admin`: login com Google e SMS são do servidor hospedado (`firebase_service`
   continua funcionando sem ele).
-- `presidio-*`, `spacy`, `pt_core_news_md`: redação de nomes antes de o texto ir ao Gemini.
-  **Sem eles a redação cai no detector por regex**, que deixa nomes passarem
-  (`middleware/pii_redaction.py`). Isso só importa no modo Gemini, e a tela de Configurações
-  da IA (fatia 3) não pode ligar o Gemini sem oferecer o pacote de redação.
-- `opencv-python` (nada importa o `cv2`) e `gunicorn` (não roda no Windows).
+- `presidio-*`, `spacy`, `pt_core_news_md`: redação de nomes antes de o texto ir a um serviço de
+  IA externo. O Qython roda só com IA local, então nada precisa ser redigido e o pacote não vai
+  (a redação só serve à exportação de dados de treino, e cai no detector por regex).
+- `opencv-python` completo (precisaria de libGL; o OCR usa o `opencv-python-headless`) e
+  `gunicorn` (não roda no Windows).
 
 **PDF (receita, atestado, materiais).** O WeasyPrint precisa do Pango/GTK. No Linux vem com o GTK do
 Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no macOS o CI reúne as

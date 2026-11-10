@@ -2,9 +2,9 @@
 """
 PII redaction middleware for outbound LLM calls.
 
-Wraps the most common pattern in the codebase — sending text prompts to
-Gemini / OpenAI / Anthropic / OpenRouter — with a redaction step that strips
-identifying information BEFORE the request leaves our server.
+Strips identifying information from text BEFORE it is exported or stored outside
+the clinical record (training-data export, audit). The Qython AI itself runs locally, so
+LLM calls are NOT redacted: names are kept in the prompt and the notes come out right.
 
 Architecture:
     - Primary engine: Microsoft Presidio (multi-country, ML-augmented)
@@ -28,7 +28,7 @@ Usage:
         country="BR",  # or "auto"
         preserve_tokens=True,
     )
-    response = await gemini.generate_content(safe_text)
+    response = await external_service.send(safe_text)
     final = restore_tokens(response.text, token_map) if token_map else response.text
 """
 

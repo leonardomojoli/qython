@@ -46,7 +46,7 @@ import { hasPlatformAccess } from '../../utils/access';
 
 /**
  * Note: We no longer insert inline citations programmatically.
- * Gemini with Google Search Grounding already includes citation markers in the response text.
+ * Marcadores de citação que já venham no texto da resposta (ex.: [1]) são tratados aqui.
  * We just display the references section at the end with the source links.
  * The source.title from Google contains the domain name (e.g., "pubmed.gov", "nih.gov").
  */
