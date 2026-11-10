@@ -61,7 +61,7 @@ async def public_config(db: AsyncSession) -> dict:
         },
         "google_login": firebase_service.is_firebase_configured(),
         "password_reset_by_email": email_verification_required(),
-        # Provedor de IA e o que ele faz (busca na web, imagem, áudio): o front avisa
-        # nos recursos que dependem do Gemini quando a IA de texto é local.
+        # O que a IA local desta instalação faz (leitura de imagem sim; busca na web e geração
+        # de imagem não): o front esconde ou avisa nos recursos que dependem disso.
         "ai": llm_provider.capabilities(),
     }

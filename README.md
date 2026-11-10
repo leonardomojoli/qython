@@ -32,7 +32,7 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 
 | Módulo | Descrição |
 |---|---|
-| **Copiloto clínico** | Chat médico que responde a partir de fontes, com citações inline numeradas. Com a IA local, busca antes de responder no catálogo de medicamentos, na sua biblioteca e no PubMed; com o Gemini, na busca do Google. Hierarquia de evidência (meta-análise > diretriz > relato de caso). |
+| **Copiloto clínico** | Chat médico que responde a partir de fontes, com citações inline numeradas. Com a IA local, busca antes de responder no catálogo de medicamentos, na sua biblioteca e no PubMed. Hierarquia de evidência (meta-análise > diretriz > relato de caso). |
 | **Biblioteca** | Ingestão de PDF, áudio e vídeo. OCR, transcrição, indexação vetorial. Busca híbrida (embeddings e5 + BM25 + reranking cross-encoder). |
 | **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, questionários, casos clínicos e slides a partir da sua biblioteca. |
 | **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, ranking e gamificação. |
@@ -76,8 +76,8 @@ metade e volume de adrenalina errado — e por isso não são o padrão. Com uma
 24 GB, o Gemma 4 31B é ainda melhor (`LLM_HF_REPO=ggml-org/gemma-4-31B-it-GGUF:Q4_0`).
 Em CPU, uma resposta leva de 30 segundos a alguns minutos. Nenhum modelo é livre de
 erro: confira toda informação clínica.
-Opcionalmente, uma chave do Gemini (`GEMINI_API_KEY` e `LLM_PROVIDER=gemini`) dá
-respostas melhores e busca na web, mas aí o texto de cada pedido vai para o Google.
+O Qython roda só com IA local: não há chave de provedor em nuvem a configurar, e o
+texto das suas perguntas não sai da máquina.
 
 O banco se prepara sozinho — num banco vazio o schema é criado a partir dos modelos, e num banco já existente só as
 migrations pendentes são aplicadas (`backend/bootstrap_db.py` decide, e o
@@ -164,11 +164,6 @@ vale entender antes de configurar:
 - **Criptografia em repouso** (Fernet) nos campos sensíveis de usuário, paciente e
   consulta. As chaves vêm de `QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK`.
 - **Audit log append-only** com trigger no Postgres que rejeita UPDATE e DELETE.
-
-⚠️ **O tier gratuito da API do Gemini permite que o Google use os dados enviados para
-melhorar os produtos deles.** Para qualquer uso com dado de paciente real, use uma
-chave do tier pago, onde isso não se aplica. Para estudo e testes, o tier gratuito
-está ok.
 
 ## Desenvolvimento
 

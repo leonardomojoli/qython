@@ -23,17 +23,16 @@ import logging
 import os
 import json
 from typing import Tuple, Optional, Dict, Any
-from google.genai import types
+from . import llm_types as types
 from ..config import Config
 
 logger = logging.getLogger("qython_logger")
 
 # Usar modelo rápido para critique (custo-efetivo)
-CRITIQUE_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL", "gemini-2.5-flash-lite")
+CRITIQUE_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL", "local")
 
-# O mesmo cliente de texto do resto do backend (Gemini ou IA local, ver llm_provider),
-# fora do event loop e com redação de PII. Antes era um genai.Client próprio, nascido
-# na importação.
+# O mesmo cliente de texto do resto do backend (a IA local, ver llm_provider), fora do
+# event loop.
 from .llm_services import _generate_off_loop  # noqa: E402
 
 # === CONSTITUTIONAL PRINCIPLES ===

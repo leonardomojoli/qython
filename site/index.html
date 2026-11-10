@@ -207,12 +207,10 @@
       </ul>
     </div>
     <div class="card leaves">
-      <h3>Sai só se você configurar</h3>
+      <h3>O que sai da máquina</h3>
       <ul>
-        <li>A IA roda na sua máquina (Gemma 4 no llama.cpp): por padrão, nem o texto
-        dos pedidos sai do computador.</li>
-        <li>Com uma chave do Gemini, o texto de cada pedido vai ao Google. Nos fluxos
-        clínicos, nomes e documentos são trocados por marcadores antes do envio.</li>
+        <li>A IA roda na sua máquina (Gemma 4 no llama.cpp): o texto dos pedidos não sai
+        do computador.</li>
         <li>Buscas no PubMed enviam só os termos da busca. Transcrição pelo Groq e
         cópia no Google Drive, só se você ligar.</li>
       </ul>
@@ -258,7 +256,6 @@
   <ul class="req">
     <li><b>Docker</b><span>A stack sobe em um comando, com a IA e a transcrição locais.</span></li>
     <li><b>32 GB de RAM</b><span>A IA padrão é a versão robusta do Gemma 4 (26B), que ocupa uns 17 GB. Os modelos pequenos cabem em máquinas mais modestas, mas erram fato clínico com frequência, então não são o padrão. Com GPU de 24 GB, o Gemma 4 31B é ainda melhor.</span></li>
-    <li><b>Chave Gemini</b><span>Opcional: respostas melhores e busca na web, com o texto indo ao Google. Com dado de paciente real, use uma chave paga: no plano gratuito o Google pode usar o conteúdo enviado.</span></li>
   </ul>
 
   <div class="warn">

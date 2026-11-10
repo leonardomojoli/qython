@@ -6,7 +6,7 @@ import re
 import os
 from .. import llm_services, llm_provider
 from .material_generation_service import _schema_questionario_objetivo
-from google.genai import types
+from .. import llm_types as types
 from types import SimpleNamespace
 from ...models import ArenaExam
 
@@ -41,12 +41,10 @@ def _alternatives_for(guide: str) -> int:
 
 
 def _exam_plan() -> tuple:
-    """(total de questões, questões por chamada). No Gemini, as 100 numa chamada só, como
-    sempre foi. Num modelo local em CPU (~7 tokens/s) 100 questões levariam perto de uma
-    hora e não caberiam na janela: o simulado fica menor (LOCAL_SIMULADO_QUESTIONS, 10) e sai
-    em lotes de 5, cada um com resposta em poucos minutos."""
-    if llm_provider.provider_name() == "gemini":
-        return 100, 100
+    """(total de questões, questões por chamada). Num modelo local em CPU (~7 tokens/s) 100
+    questões levariam perto de uma hora e não caberiam na janela: o simulado tem
+    LOCAL_SIMULADO_QUESTIONS questões (10) e sai em lotes de 5, cada um com resposta em
+    poucos minutos."""
     return max(5, int(os.getenv("LOCAL_SIMULADO_QUESTIONS", "10"))), 5
 
 
@@ -89,7 +87,6 @@ def generate_exam(exam: ArenaExam, user_id: int) -> tuple:
     alternatives = _alternatives_for(guide)
     total, per_call = _exam_plan()
     model_name = llm_services.PRIMARY_LLM_MODEL
-    local = llm_provider.provider_name() != "gemini"
 
     questions: list = []
     usage = None
@@ -99,14 +96,13 @@ def generate_exam(exam: ArenaExam, user_id: int) -> tuple:
         avoid = [str(q.get("pergunta", ""))[:90] for q in questions[-20:]]
         config = types.GenerateContentConfig(
             temperature=0.5,
-            # Teto proporcional no modelo local, para uma amostragem que degenera não
-            # rodar por meia hora (ver material_generation_service).
-            max_output_tokens=450 * n + 600 if local else 32768,
+            # Teto proporcional ao pedido, para uma amostragem que degenera não rodar por meia
+            # hora (ver material_generation_service).
+            max_output_tokens=450 * n + 600,
             response_mime_type="application/json",
         )
-        if local:
-            # Decodificação restrita ao schema: modelos pequenos erram o JSON sem ela.
-            config.response_schema = _schema_questionario_objetivo(False)
+        # Decodificação restrita ao schema: modelos pequenos erram o JSON sem ela.
+        config.response_schema = _schema_questionario_objetivo(False)
         try:
             response = llm_services.client.models.generate_content(
                 model=f'models/{model_name}',

@@ -35,7 +35,7 @@ import re
 import unicodedata
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
-from google.genai import types
+from . import llm_types as types
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -418,7 +418,7 @@ ESPECIALIDADE: {specialty if specialty else "Clínica Geral"}"""
 
 def selection_schema(codes: Sequence[str]) -> types.Schema:
     """Schema da resposta, com enum dos candidatos: o modelo não consegue escrever
-    código que não esteja na lista, no Gemini nem na IA local (json_schema)."""
+    código que não esteja na lista, nem na IA local (json_schema)."""
     return types.Schema(
         type=types.Type.OBJECT,
         required=["diagnosticos"],

@@ -17,9 +17,6 @@ from sqlalchemy.orm import selectinload
 from werkzeug.utils import secure_filename
 from starlette.concurrency import run_in_threadpool
 
-from google import genai
-from google.genai import types
-
 from ..database import get_db, AsyncSessionLocal
 from ..models import User, Transaction, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
 from ..services.billing_service import debit_dracmas_for_feature
@@ -501,12 +498,11 @@ async def _run_material_generation_task(material_id: int, input_data: str, mater
             await db.commit()
 
             # O Produtor não manda quantidade, e o prompt então pede 25 (o modelo chegou a 37,
-            # 23 minutos em CPU). Com IA local o padrão é 10, gerado em lotes.
-            if material_type in _QUESTION_KEYS and llm_provider.provider_name() != "gemini" and not question_count:
+            # 23 minutos em CPU). O padrão é 10, gerado em lotes.
+            if material_type in _QUESTION_KEYS and not question_count:
                 question_count = LOCAL_DEFAULT_QUESTIONS
 
-            if (material_type in _QUESTION_KEYS and llm_provider.provider_name() != "gemini"
-                    and (question_count or 0) > LOCAL_QUESTION_BATCH):
+            if material_type in _QUESTION_KEYS and (question_count or 0) > LOCAL_QUESTION_BATCH:
                 material_content, usage, model_name = await run_in_threadpool(
                     _generate_questions_in_batches, input_data, material_type, user_id, prior_questions or [],
                     question_count, banca_profile, num_alternatives, model_override, fallback_override,
@@ -609,8 +605,7 @@ async def _run_blueprint_generation_task(material_id: int, blocks: list, materia
             combined = []
             input_samples = []
             support_texts = []  # textos-base agregados de todos os blocos
-            if llm_provider.provider_name() != "gemini":
-                blocks = _split_blocks_for_local(blocks, LOCAL_QUESTION_BATCH)
+            blocks = _split_blocks_for_local(blocks, LOCAL_QUESTION_BATCH)
             for blk in blocks:
                 btext = (blk.get('text') or '')
                 try:
@@ -795,8 +790,8 @@ async def process_file(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="source_type inválido.")
 
         # O material precisa caber na janela do modelo junto com as instruções e a
-        # resposta. No Gemini quase nunca encosta; num modelo local, a biblioteca entra
-        # amostrada por janelas, do começo ao fim, em vez de cortada no meio.
+        # resposta. A biblioteca entra amostrada por janelas, do começo ao fim, em vez de
+        # cortada no meio.
         material_budget = _context_char_budget(0.45)
         if input_data and len(input_data) > material_budget:
             original = len(input_data)
@@ -2265,8 +2260,8 @@ async def delete_custom_exam_card(
 
 def _context_char_budget(share: float, cap: Optional[int] = None) -> int:
     """Teto, em caracteres, para texto de biblioteca num prompt: uma fatia da janela de
-    contexto do modelo (llm_provider), sem passar do teto configurado. No Gemini a janela
-    é de 1M e vale o teto; num modelo local, a janela (16k–128k) é que limita."""
+    contexto do modelo (llm_provider), sem passar do teto configurado. A janela do modelo
+    local (16k–128k) é que limita."""
     budget = llm_provider.token_budget(share) * 4
     return min(budget, cap) if cap else budget
 

@@ -15,9 +15,9 @@
 #   firebase-admin   login com Google e SMS do servidor hospedado (traz gRPC e o SDK do
 #                    Google Cloud). O backend sobe sem ele (firebase_service).
 #   presidio-*, spacy, pt_core_news_md
-#                    redação de nomes antes de mandar texto ao Gemini. Só faz falta no
-#                    modo Gemini; sem eles o backend cai no detector por regex
-#                    (middleware/pii_redaction.py).
+#                    redação de nomes antes de mandar texto a um serviço de IA externo. O Qython
+#                    roda só com IA local: não há envio a redigir (a redação sobra para a
+#                    exportação de dados de treino, e cai no detector por regex).
 #   (opencv-python-headless ENTRA: o rapidocr o pede, para o OCR. A versão "cheia", com interface
 #   gráfica, não entra: exigiria libGL no sistema e nada no backend a usa.)
 #   python-magic     precisa da libmagic do sistema, que Windows e macOS não têm; o backend usa
