@@ -171,6 +171,19 @@ jobs:
           docker compose exec -T backend python -c \
             "import chromadb; print('chroma heartbeat:', chromadb.HttpClient(host='chroma', port=8000).heartbeat())"
 
+          # OCR: a imagem traz o modelo médio (QYTHON_OCR_MODELS); lê uma página rasterizada como
+          # o backend faz com PDF escaneado.
+          docker compose exec -T backend python -c "
+          import fitz
+          from PIL import Image
+          from backend.services import ocr_service as o
+          doc = fitz.open(); pg = doc.new_page()
+          pg.insert_text((50, 100), 'Amoxicilina 50 mg/kg/dia, pressão arterial', fontname='helv', fontsize=22)
+          pix = pg.get_pixmap(dpi=200)
+          texto = o.ocr_imagem(Image.frombytes('RGB', [pix.width, pix.height], pix.samples))
+          print('ocr:', o.modelo_em_uso(), repr(texto))
+          assert o.modelo_em_uso() == 'medio' and 'amoxicilina' in texto.lower() and 'pressão' in texto.lower()"
+
       - name: Logs em caso de falha
         if: failure()
         run: docker compose logs --tail=150 || true

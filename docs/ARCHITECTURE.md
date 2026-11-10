@@ -143,7 +143,7 @@ Pipeline multimodal em duas fases para extrair e descrever imagens médicas de P
 O processamento de documentos tenta **extração direta de texto** (PyMuPDF `page.get_text()`) antes de recorrer ao OCR:
 
 1. `extract_text_direct(filepath)` — instantâneo, zero temp files
-2. Se < 100 chars extraídos → PDF escaneado → fallback para OCR (render 300dpi + Tesseract)
+2. Se < 100 chars extraídos → PDF escaneado → fallback para OCR local (`services/ocr_service.py`: RapidOCR com PP-OCRv6 em ONNX, sem binário nem download; lê página com duas colunas na ordem certa; cerca de 5 s por página em CPU)
 3. PDFs digitais (maioria dos livros médicos) processam em **segundos** ao invés de 30+ minutos
 
 ### Biblioteca Drive-first — Conectores de nuvem do usuário (Julho 2026)

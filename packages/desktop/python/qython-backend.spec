@@ -50,8 +50,12 @@ for name in os.listdir(tiktoken_cache):
     datas.append((os.path.join(tiktoken_cache, name), "tiktoken_cache"))
 
 # Pango/GTK para o PDF (WeasyPrint): o Windows e o macOS não têm. O CI as reúne em pdf-libs/<so>
-# (windows.sh, bundle_dylibs.py) e entram na raiz do pacote, onde o carregador as procura. No Linux
-# vêm do sistema (o GTK que o Electron já exige).
+# (windows.sh, bundle_dylibs.py). No Windows entram na raiz do pacote, onde o carregador as procura.
+# No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac): na raiz elas dividiriam o nome com as que
+# outras rodas trazem (o opencv do OCR traz libglib, libpng, libfreetype...). O PyInstaller resolve
+# dependência por nome de arquivo e liga a libgobject do Pango à libglib do opencv; por isso, depois
+# do COLLECT (fim deste arquivo), cada biblioteca da pasta aponta as irmãs por @loader_path.
+# No Linux vêm do sistema (o GTK que o Electron já exige).
 import sys
 _pdf_dir = {"win32": "win", "darwin": "mac"}.get(sys.platform)
 extra_binaries = []
@@ -59,7 +63,7 @@ if _pdf_dir:
     _pdf_libs = os.path.join(SPECPATH, "pdf-libs", _pdf_dir)
     if os.path.isdir(_pdf_libs) and os.listdir(_pdf_libs):
         for name in sorted(os.listdir(_pdf_libs)):
-            extra_binaries.append((os.path.join(_pdf_libs, name), "."))
+            extra_binaries.append((os.path.join(_pdf_libs, name), "pdf-libs/mac" if _pdf_dir == "mac" else "."))
     else:
         print(f"AVISO: {_pdf_libs} vazio; o pacote sai SEM as bibliotecas do PDF (o selftest vai falhar).")
 # Configuração mínima do fontconfig (sem ela o PDF sai sem texto): o entry point aponta FONTCONFIG_FILE para cá.
@@ -74,7 +78,9 @@ hiddenimports = []
 # então a análise estática do PyInstaller não os enxerga.
 # faster_whisper, ctranslate2 e av: o modo `whisper` (transcrição) os importa dentro de função;
 # o faster-whisper tem o VAD (silero_vad_*.onnx) como arquivo de dados.
-for pkg in ("faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
+# rapidocr: os modelos .onnx (PP-OCRv6) e os .yaml de configuração são arquivos de dados do pacote;
+# o cv2 e o shapely trazem bibliotecas nativas.
+for pkg in ("rapidocr", "cv2", "shapely", "pyclipper", "omegaconf", "colorlog", "faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
             "pymupdf4llm", "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
             "cssselect2", "certifi", "email_validator", "slowapi", "limits"):
     try:
@@ -102,7 +108,7 @@ excludes = [
     "tensorflow", "jax",
     # Redação de nomes para o Gemini: instalada à parte.
     "presidio_analyzer", "presidio_anonymizer", "spacy", "thinc", "blis",
-    "firebase_admin", "cv2",
+    "firebase_admin",
     # python-magic precisa da libmagic do sistema (ausente no Windows e no macOS) e o import dele
     # trava o PyInstaller no Windows. A biblioteca usa services/mime_sniff.py no lugar.
     "magic",
@@ -130,3 +136,15 @@ exe = EXE(
     upx=False,
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="qython-backend")
+
+# macOS: deixa as bibliotecas do PDF autocontidas em pdf-libs/mac (pdf-libs/fix_dylibs.py explica):
+# o opencv do OCR traz uma libglib mais antiga, e o PyInstaller liga a libgobject do Pango a ela.
+if sys.platform == "darwin":
+    sys.path.insert(0, os.path.join(SPECPATH, "pdf-libs"))
+    import fix_dylibs
+
+    _libs_dir = os.path.join(DISTPATH, "qython-backend", "_internal", "pdf-libs", "mac")
+    _fixed = fix_dylibs.main(_libs_dir)
+    if not _fixed:
+        print(f"AVISO: nenhuma biblioteca do PDF em {_libs_dir}; o PDF vai falhar no macOS.")
+    print(f"pdf-libs/mac: {_fixed} bibliotecas autocontidas (@loader_path) e reassinadas")

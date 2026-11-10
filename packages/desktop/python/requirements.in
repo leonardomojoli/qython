@@ -14,7 +14,8 @@ tiktoken  # Token counting for context window management
 # Manipulação de Arquivos e Mídia
 PyMuPDF
 python-pptx
-pytesseract
+rapidocr>=3.10  # OCR local (PP-OCRv6 em ONNX; os modelos vêm dentro da roda, nada é baixado)
+onnxruntime
 fpdf2
 WeasyPrint
 Markdown
