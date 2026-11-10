@@ -22,31 +22,21 @@ Markdown
 faster-whisper  # transcrição local self-host (CTranslate2 INT8, large-v3-turbo) — whisper.service
 av<19  # o faster-whisper 1.2.1 chama av.open(metadata_errors=...), removido no av 19 (TypeError ao transcrever)
 
-# RAG v2 (busca na biblioteca: dense e5 + BM25 + RRF + cross-encoder rerank)
+# Busca na biblioteca: dense e5 + BM25 + RRF + cross-encoder rerank.
+# Os vetores e o rerank vêm do serviço de embeddings (backend/embed_onnx.py), em ONNX e sem torch;
+# o backend só o chama por HTTP (EMBED_SERVER_URL).
 rank-bm25  # BM25 esparso (import rank_bm25) p/ recuperação híbrida — vector_db_service
-# ATENCAO: sentence-transformers estava so NESTE comentario, com a observacao
-# de que 'ja esta no venv'. Era verdade no servidor e falso em qualquer outra
-# maquina — o backend nao subia. Declarado de verdade logo abaixo.
-# embedder.service usa sentence-transformers (e5-base + reranker mmarco);
-# os modelos baixam no 1º start. Sem EMBED_SERVER_URL, o RAG cai no MiniLM local (v1).
 
 # Segurança e Autenticação
 python-jose
 bcrypt>=5  # usado direto em security.py; o passlib (abandonado) quebrava com bcrypt>=4.1
-firebase-admin
 cryptography>=50  # Fernet field-level encryption (encryption_service.py). O piso protege a
-# biblioteca que cifra dado de paciente: o presidio-anonymizer 2.2.364 a puxava para a 48.
+# biblioteca que cifra dado de paciente.
 
 # Privacy / LGPD compliance
-# Sem modelo do spaCy o presidio nao carrega e a redacao de PII cai num detector por
-# regex, que deixa nomes passarem. O modelo medio (42 MB) vem junto para toda
-# instalacao redigir nomes desde o primeiro boot; o grande (pt_core_news_lg, ~550 MB)
-# e melhor e tem prioridade quando instalado: python -m spacy download pt_core_news_lg
-presidio-analyzer  # PII detection (multi-country) — local, no SaaS. Na .364 ele exige
-# numpy<2.5; aceito, o detector de PII mais novo vale mais que um minor do numpy.
-presidio-anonymizer  # Inline redaction with consistent placeholders. Fica na .362:
-# a .364 exige cryptography<49, e o piso do cryptography acima vence.
-pt_core_news_md @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_md-3.8.0/pt_core_news_md-3.8.0-py3-none-any.whl
+# A redação de PII (presidio + spaCy) saiu: ela existia para tirar nomes do texto ANTES de mandá-lo a uma
+# IA de nuvem, e o Qython roda só com IA local, então nada sai da máquina. Onde ainda se redige (exportação
+# de dados de treino), pii_detector.py usa um detector por regex.
 
 # Utilitários e Outros
 python-dotenv
@@ -78,28 +68,20 @@ chromadb==1.5.9  # cliente do banco vetorial. TRAVADO junto com a imagem
 # chromadb/chroma:1.5.9 do compose: o cliente fica congelado dentro da imagem do
 # backend, o servidor e baixado a parte, e versoes desencontradas deixam de se
 # entender. Ao subir um, suba o outro.
-firebase-admin  # verificacao do token de login
 langchain-text-splitters  # chunking dos documentos da biblioteca
 numpy
 requests
 starlette  # importado direto, nao so como transitiva do fastapi
-stripe
+stripe  # billing_service/billing_routes ainda o importam no topo; sai junto com o codigo de cobranca
 Werkzeug
 
 # Opcionais: importados dentro de funcao, entao a ausencia degrada o recurso
 # sem derrubar a aplicacao. Descomente conforme o uso.
 # python-docx   # ingestao de .docx e .pptx na biblioteca
 # pandas        # relatorios do servico de preferencias
-# json-repair   # conserto de JSON malformado vindo do modelo
-# torch         # apenas o embed_server (perfil "ml" do compose)
 
 # Importados no codigo e ausentes daqui, encontrados subindo a stack do zero.
 fpdf2  # modulo `fpdf`, usado na geracao de PDF dos materiais
-sentence-transformers>=6  # embeddings locais da biblioteca. O piso importa: sem ele o
-# resolvedor chegou a escolher a 2.2.2 (2022), que nem importa com o huggingface_hub atual.
-transformers>=5  # idem: sem piso o resolvedor desceu ate a 4.17.0, tambem de 2022.
-torch  # explicito para o requirements.lock fixar a build CPU (indice do PyTorch);
-# vindo do PyPI ele arrasta gigabytes de nvidia-* inuteis sem GPU.
 
 # Servidor de producao da imagem Docker (antes era instalado por fora, sem versao).
 gunicorn

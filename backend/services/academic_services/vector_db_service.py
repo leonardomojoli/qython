@@ -4,14 +4,8 @@ import logging
 import os
 import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional
 
-# sentence-transformers arrasta o torch (~2 GB) e o modelo so e carregado sob
-# demanda, em get_embeddings_model. Importar no topo obrigava o processo
-# inteiro a pagar isso no boot — e derrubava a aplicacao onde o pacote nao
-# estivesse instalado, mesmo sem ninguem usar a biblioteca.
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
 from ...config import Config
 from . import embedding_client as ec
 import threading
@@ -20,7 +14,6 @@ logger = logging.getLogger("qython_logger")
 
 # Lazy initialization to avoid worker conflicts
 _client = None
-_embeddings_model: Optional["SentenceTransformer"] = None
 _lock = threading.Lock()
 
 def get_chroma_client():
@@ -47,48 +40,29 @@ def get_chroma_client():
                 logger.info("ChromaDB client initialized successfully.")
     return _client
 
-def get_embeddings_model() -> "SentenceTransformer":
-    """Get or create embeddings model (lazy initialization, thread-safe)."""
-    global _embeddings_model
-    if _embeddings_model is None:
-        with _lock:
-            if _embeddings_model is None:  # Double-check locking
-                logger.info("Loading sentence transformer model 'all-MiniLM-L6-v2'...")
-                try:
-                    from sentence_transformers import SentenceTransformer
-                    _embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
-                    logger.info("Sentence transformer model loaded successfully.")
-                except Exception as e:
-                    logger.error(f"Failed to load SentenceTransformer model: {e}", exc_info=True)
-                    raise e
-    return _embeddings_model
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# RAG v2 helpers (e5 + híbrido + rerank). Ativado por EMBED_SERVER_URL (embedding_client).
-# Sem ele, tudo cai no caminho legado: MiniLM local, coleção library_{id}, dense puro top-k.
+# Busca da biblioteca: e5 (denso) + BM25 (esparso) fundidos por RRF, com rerank. Os vetores vêm do
+# serviço de embeddings (embed_onnx.py, em ONNX, sem torch), cujo endereço é EMBED_SERVER_URL.
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _collection_name(library_id: int) -> str:
-    """v2: library_{id}_e5 (cosseno, e5). Legado: library_{id}. Coexistem p/ cutover/rollback."""
-    if ec.is_v2_enabled():
-        return f"library_{library_id}_{ec.EMBED_NAMESPACE}"
-    return f"library_{library_id}"
+    """library_{id}_e5: coleção de cosseno com vetores e5."""
+    return f"library_{library_id}_{ec.EMBED_NAMESPACE}"
 
 
 def _get_or_create_collection(client, library_id: int):
-    name = _collection_name(library_id)
-    if ec.is_v2_enabled():
-        # e5 é normalizado => espaço cosseno (HNSW). O default do Chroma é L2.
-        return client.get_or_create_collection(name=name, metadata={"hnsw:space": "cosine"})
-    return client.get_or_create_collection(name=name)
+    # e5 é normalizado => espaço cosseno (HNSW). O default do Chroma é L2.
+    return client.get_or_create_collection(name=_collection_name(library_id), metadata={"hnsw:space": "cosine"})
 
 
 def _embed(texts, kind: str):
-    """v2 → serviço e5 (prefixo query:/passage: + normalização server-side). Legado → MiniLM."""
-    if ec.is_v2_enabled():
-        return ec.embed_texts(list(texts), kind)
-    return get_embeddings_model().encode(list(texts)).tolist()
+    """Vetores e5 do serviço de embeddings (prefixo query:/passage: e normalização no servidor)."""
+    if not ec.is_v2_enabled():
+        raise RuntimeError(
+            "O serviço de busca da biblioteca não está configurado: defina EMBED_SERVER_URL "
+            "(no Docker, o serviço 'embedder'; no app desktop, o assistente da IA baixa o modelo)."
+        )
+    return ec.embed_texts(list(texts), kind)
 
 
 def _normalize_token_text(s: str) -> str:
@@ -116,14 +90,12 @@ def process_and_store_document(document_text: str, library_id: int, document_id:
     """
     Chunka, embeda e indexa um documento no ChromaDB.
 
-    v2 (EMBED_SERVER_URL): coleção cosseno library_{id}_e5, embeddings e5 e — quando `pages`
-    ([(page_number, text), ...]) é dado — chunk por página com cabeçalho de contexto
-    (título + página) prefixado, habilitando citação e melhor recuperação. Legado: igual a
-    antes (MiniLM, library_{id}, chunk do texto inteiro, sem contexto/página).
+    Coleção cosseno library_{id}_e5 com embeddings e5 e — quando `pages` ([(page_number, text), ...])
+    é dado — chunk por página com cabeçalho de contexto (título + página) prefixado, o que
+    habilita a citação e melhora a recuperação.
     """
     collection_name = _collection_name(library_id)
     client = get_chroma_client()
-    v2 = ec.is_v2_enabled()
 
     try:
         collection = _get_or_create_collection(client, library_id)
@@ -147,19 +119,19 @@ def process_and_store_document(document_text: str, library_id: int, document_id:
         except Exception as e_del:
             logger.warning(f"Não foi possível limpar chunks antigos do documento ID {document_id}: {e_del}")
 
-        chunk_size = int(os.getenv("RAG_CHUNK_SIZE", "1200")) if v2 else 1000
+        chunk_size = int(os.getenv("RAG_CHUNK_SIZE", "1200"))
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=200, length_function=len,
         )
 
-        # Segmentos: por página (v2 com pages) ou texto inteiro (legado / sem pages).
-        segments = pages if (v2 and pages) else [(None, document_text)]
+        # Segmentos: por página (quando há `pages`) ou o texto inteiro.
+        segments = pages if pages else [(None, document_text)]
         chunk_texts, chunk_metas = [], []
         for page_no, seg_text in segments:
             if not seg_text or not seg_text.strip():
                 continue
             for piece in text_splitter.split_text(seg_text):
-                if v2 and (doc_title or page_no):
+                if doc_title or page_no:
                     header = doc_title or ""
                     if page_no:
                         header = (f"{header} — p.{page_no}").strip(" —")
@@ -199,9 +171,8 @@ def query_library(query_text: str, library_id: int, n_results: int = 5, with_met
     """
     Busca os chunks mais relevantes de uma biblioteca.
 
-    v2 (EMBED_SERVER_URL): denso (e5/cosseno) + BM25 esparso fundidos por RRF e depois
-    re-ranqueados por cross-encoder → top-n. Acerta termo/sigla médica (BM25) e semântica
-    (e5) ao mesmo tempo. Legado: dense puro top-n (MiniLM), exatamente como antes.
+    Denso (e5/cosseno) + BM25 esparso fundidos por RRF e depois re-ranqueados por cross-encoder
+    → top-n. Acerta termo/sigla médica (BM25) e semântica (e5) ao mesmo tempo.
 
     with_metadata=True devolve pares (texto, metadados do chunk: document_id, page,
     doc_title), para quem precisa dizer de onde o trecho veio.
@@ -218,22 +189,7 @@ def query_library(query_text: str, library_id: int, n_results: int = 5, with_met
         logger.warning(f"Erro ao abrir a coleção '{collection_name}': {e}")
         return []
 
-    # ── Caminho legado (dense puro) ──
-    if not ec.is_v2_enabled():
-        try:
-            query_embedding = get_embeddings_model().encode(query_text).tolist()
-            results = collection.query(query_embeddings=[query_embedding], n_results=n_results)
-            relevant_chunks = results.get('documents', [[]])[0]
-            logger.info(f"Busca na coleção '{collection_name}' retornou {len(relevant_chunks)} chunks.")
-            if with_metadata:
-                metas = (results.get('metadatas') or [[]])[0] or [{}] * len(relevant_chunks)
-                return list(zip(relevant_chunks, metas))
-            return relevant_chunks
-        except Exception as e:
-            logger.warning(f"Erro ao consultar a coleção '{collection_name}': {e}")
-            return []
-
-    # ── Caminho v2 (híbrido + rerank) ──
+    # ── Híbrido + rerank ──
     try:
         retrieve_k = max(ec.RAG_RETRIEVE_K, n_results)
         q_emb = _embed([query_text], "query")[0]

@@ -1,8 +1,9 @@
 # qython/backend/scripts/reindex_to_v2.py
 """
 Migração one-time RAG v1 → v2: popula as coleções `library_{id}_e5` (e5 / cosseno / híbrido /
-rerank) a partir das bibliotecas existentes. NÃO toca nas coleções legadas `library_{id}`
-(rollback = só desligar EMBED_SERVER_URL).
+rerank) a partir das bibliotecas de uma instalação antiga, que indexava com um modelo menor
+(coleções `library_{id}`). Não apaga as coleções antigas (a exclusão de uma biblioteca remove as duas).
+O Docker e o app desktop atuais já indexam em e5; isto só serve a quem vem de uma versão anterior.
 
 Estratégia por documento (apenas status='processed'):
   • PDF/PPTX com arquivo na origem  -> REPROCESSA (extrai por página) → ganha metadata de
@@ -11,11 +12,11 @@ Estratégia por documento (apenas status='processed'):
     e5 (rápido, NÃO re-transcreve; ganha modelo + cosseno + híbrido + rerank).
 
 Pré-requisitos:
-  • embedder.service no ar e EMBED_SERVER_URL setado no ambiente (senão escreveria na coleção
-    legada — o script aborta se o v2 não estiver ativo).
+  • o serviço de embeddings no ar e EMBED_SERVER_URL setado no ambiente (o script aborta se não estiver).
 
-Uso (no servidor, venv ativo, a partir de /opt/qython):
-  EMBED_SERVER_URL=http://127.0.0.1:8003 python3 backend/scripts/reindex_to_v2.py
+Uso:
+  docker compose exec backend python -m backend.scripts.reindex_to_v2
+  (fora do Docker: EMBED_SERVER_URL=http://127.0.0.1:8003 python -m backend.scripts.reindex_to_v2)
   ... [--library-id N]      só uma biblioteca
   ... [--reembed-only]      nunca reprocessa PDF (só re-embeda chunks legados; mais rápido)
 """

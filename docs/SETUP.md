@@ -112,9 +112,8 @@ docker compose exec backend python -m backend.scripts.reset_password voce@exempl
 ```
 
 **Serviços do compose:** `db` (PostgreSQL), `chroma` (índice vetorial), `backend` (FastAPI), `web`
-(nginx com o front), `llm` (llama.cpp), `whisper` (transcrição). O perfil opcional `ml` sobe também o
-`embedder`, a busca completa da biblioteca (`docker compose --profile ml up -d`, uns 8 GB de RAM a
-mais). Para ingerir `.docx` e `.pptx` a imagem precisa do LibreOffice (uns 500 MB):
+(nginx com o front), `llm` (llama.cpp), `whisper` (transcrição) e `embedder` (a busca da biblioteca, em
+ONNX, com os modelos já dentro da imagem; uns 1 GB de RAM). Para ingerir `.docx` e `.pptx` a imagem precisa do LibreOffice (uns 500 MB):
 `WITH_LIBREOFFICE=true docker compose build backend`.
 
 **Chaves de criptografia.** Nome, CPF e notas clínicas são cifrados no banco. Se
@@ -176,8 +175,10 @@ slides saem sem imagem) e geração de áudio.
 - **Transcrição de áudio e vídeo:** `faster-whisper` local (large-v3-turbo), no serviço `whisper`.
   Não há transcrição em nuvem. Ajustes: `WHISPER_MODEL`, `WHISPER_COMPUTE_TYPE`,
   `WHISPER_CPU_THREADS` e `WHISPER_LANGUAGE` (vazio = detecta pt, en ou es).
-- **Busca na biblioteca:** o índice vetorial é o ChromaDB (serviço `chroma`). O perfil `ml` acrescenta
-  o embedder multilíngue (`multilingual-e5-base`) e o reranker.
+- **Busca na biblioteca:** o índice vetorial é o ChromaDB (serviço `chroma`) e os vetores vêm do serviço
+  `embedder` (`multilingual-e5-base` + reranker, em ONNX e sem torch, modelos dentro da imagem). Vindo
+  de uma versão anterior, que buscava com um modelo menor, reindexe as bibliotecas uma vez:
+  `docker compose exec backend python -m backend.scripts.reindex_to_v2`.
 - **OCR** de PDF escaneado e de foto de documento: RapidOCR com o PP-OCRv6, local. O modelo médio
   (139 MB, o que menos erra em texto miúdo) vem na imagem Docker e é baixado pelo app desktop; o
   pequeno está sempre disponível como reserva. `QYTHON_OCR_MODELO=pequeno` força o pequeno em

@@ -36,6 +36,18 @@ RUN mkdir -p "$QYTHON_OCR_MODELS" \
         eef444829dbbe18d7fea59a3f6eb75647518d2b3a9568d27c92e42940204894b PP-OCRv6_rec_medium.onnx \
         | sha256sum -c -
 
+# Modelos da busca da biblioteca em ONNX (multilingual-e5-base int8 + reranker mmarco int8, ~410 MB), no
+# lugar do torch (+3 GB). O serviço `embedder` do compose roda backend/embed_onnx.py sobre eles. Os
+# arquivos, as revisões e os SHA-256 vêm do manifesto do app desktop, a fonte única, e o script confere
+# cada hash. Fica antes do `pip install` para a camada não refazer quando o lock muda.
+ENV EMBED_MODEL_DIR=/opt/qython/embed-models/e5-base-int8 \
+    RERANK_MODEL_DIR=/opt/qython/embed-models/rerank-mmarco-int8
+COPY scripts/fetch_models.py /tmp/fetch_models.py
+COPY packages/desktop/models.json /tmp/models.json
+RUN python /tmp/fetch_models.py --manifest /tmp/models.json --out /opt/qython/embed-models \
+        e5-base-int8 rerank-mmarco-int8 \
+    && rm /tmp/fetch_models.py /tmp/models.json
+
 # LibreOffice converte .docx/.pptx para PDF antes da extração de texto.
 # São ~500 MB, e só a ingestão de arquivos Office depende disso — por isso é opcional.
 # Ative com:  docker compose build --build-arg WITH_LIBREOFFICE=true
@@ -52,7 +64,7 @@ WORKDIR /app
 # Instala do requirements.lock (versões exatas, transitivos incluídos), nunca do
 # requirements.txt: sem o lock, cada build pegava o que estivesse mais novo no
 # PyPI e uma atualização do SQLAlchemy derrubou o boot sem mudança no código.
-# O lock já traz o índice CPU do PyTorch (torch "+cpu", sem nvidia-*).
+# Sem torch: os embeddings e o rerank rodam em ONNX (ver acima).
 # Para regenerar: scripts/lock_requirements.sh
 COPY requirements.lock .
 RUN pip install --upgrade pip && pip install -r requirements.lock
