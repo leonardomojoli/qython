@@ -17,6 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { updateTrainingDataPreference } from '../../services/auth';
+import { getPairing } from '../../services/pairing';
 import { uploadDoctorLogo, deleteDoctorLogo } from '../../services/profile';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -66,10 +67,17 @@ export default function SettingsTab({ onLogout }: Props) {
     i18n.changeLanguage(langCode);
   };
 
+  const pairing = getPairing();
+
   const handleLogout = () => {
     Alert.alert(
       t('logout', 'Sair'),
-      t('logoutConfirm', 'Tem certeza que deseja sair?'),
+      pairing
+        ? t(
+            'logoutPairedConfirm',
+            'Sair deste celular esquece o computador pareado; para entrar de novo é preciso parear outra vez. Para cortar o acesso de vez, remova o celular em Perfil → Configurações → Conectar o celular, no computador.',
+          )
+        : t('logoutConfirm', 'Tem certeza que deseja sair?'),
       [
         { text: t('cancel', 'Cancelar'), style: 'cancel' },
         {
@@ -298,6 +306,20 @@ export default function SettingsTab({ onLogout }: Props) {
           <Text style={[styles.chevron, { color: theme.textMuted }]}>{'›'}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Computador pareado (o celular fala direto com ele pela rede local) */}
+      {pairing && (
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.cardRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardLabel, { color: theme.text }]}>
+                {t('pairedComputer', 'Computador pareado')}
+              </Text>
+              <Text style={[typography.caption, { color: theme.textMuted }]}>{pairing.address}</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Legal */}
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>

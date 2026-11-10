@@ -1,18 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@qython/shared';
 import api from './api';
+import { clearAuthTokens, getAuthToken, setAuthToken } from './tokenStore';
+import { isPaired, unpair } from './pairing';
 
-export async function getAuthToken(): Promise<string | null> {
-  return AsyncStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-export async function setAuthToken(token: string): Promise<void> {
-  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
-}
-
-export async function clearAuthTokens(): Promise<void> {
-  await AsyncStorage.removeMany([AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY]);
-}
+// O acesso da conta fica em tokenStore.ts (cofre do Android); reexportado para quem já importa daqui.
+export { clearAuthTokens, getAuthToken, setAuthToken };
 
 export interface LoginResponse {
   access_token: string;
@@ -134,24 +125,30 @@ export async function logout(): Promise<void> {
   } catch {
     // Firebase may not be configured
   }
+  // Sair de um celular pareado esquece o computador neste aparelho (para entrar de novo, pareia de novo).
+  if (isPaired()) {
+    await unpair();
+  }
   await clearAuthTokens();
 }
 
-export async function checkSessionValidity(): Promise<boolean> {
+/** true = o servidor confirmou a sessão; false = recusou; null = sem rede para saber. */
+export async function checkSessionValidity(): Promise<boolean | null> {
   try {
     const response = await api.get('/user/info');
     return response.status === 200;
-  } catch {
-    return false;
+  } catch (error: any) {
+    return error?.response ? false : null;
   }
 }
 
 export async function isAuthenticated(): Promise<boolean> {
   const token = await getAuthToken();
-  if (!token) {
+  if (!token && !isPaired()) {
     return false;
   }
-  return checkSessionValidity();
+  // Sem rede (o computador longe, fora do Wi-Fi) o app abre com os dados guardados, no modo offline.
+  return (await checkSessionValidity()) !== false;
 }
 
 export async function updateProfile(data: {
