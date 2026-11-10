@@ -172,8 +172,6 @@ class Config:
     PDF_FONT_PATH = os.getenv('PDF_FONT_PATH', os.path.join(PROJECT_ROOT, 'fonts', 'DejaVuSans.ttf'))
     ENABLE_ANALYTICS = os.getenv("ENABLE_ANALYTICS", "0").lower() in ("1", "true")
 
-    OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-
     # --- Latreo (verificação profissional de médicos via embed) ---
     # Latreo é provedor de identidade médica (CFM+CNES / foto+selfie / ICP-Brasil).
     # A biometria (carteira CRM + selfie) vai direto pro Latreo pelo embed — nunca

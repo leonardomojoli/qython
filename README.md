@@ -100,16 +100,15 @@ docker compose exec backend python -m backend.scripts.reset_password voce@exempl
 
 ### Modelos locais (opcional)
 
-Por padrão a transcrição usa a API do Groq e a busca usa embeddings locais leves.
-Para rodar tudo self-hosted, sem enviar áudio a terceiros:
+A transcrição de áudio e vídeo roda no `faster-whisper` local (nada vai a terceiros) e a
+busca usa embeddings locais leves. Para o embedder completo da busca:
 
 ```bash
 docker compose --profile ml up -d
 ```
 
-Isso sobe `faster-whisper` (large-v3-turbo, INT8) e o serviço de embeddings
-(`multilingual-e5-base` + reranker). Baixa alguns GB de modelo no primeiro start
-e pede uns 8 GB de RAM. Sem esse perfil, 4 GB bastam.
+Isso sobe o serviço de embeddings (`multilingual-e5-base` + reranker). Baixa alguns GB
+de modelo no primeiro start e pede uns 8 GB de RAM. Sem esse perfil, 4 GB bastam.
 
 ### Ingestão de arquivos Office
 

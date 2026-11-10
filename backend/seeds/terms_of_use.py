@@ -66,10 +66,9 @@ enviado a nenhum serviço de IA externo. Fora disso, nada sai da máquina por pa
 com duas exceções a conhecer:
   - as buscas em bases públicas, como o PubMed, enviam os termos da busca (não o
     texto do paciente); em instalação sem internet, elas podem ser desligadas;
-  - transcrição de áudio por serviço externo (por exemplo, Groq), cópia de
-    documentos no Google Drive e verificação profissional pelo Lastreo, quando
-    você os configura, enviam o que cada recurso precisa, e ficam sujeitos aos
-    termos de cada serviço.
+  - a cópia de documentos no Google Drive e a verificação profissional pelo
+    Lastreo, quando você os configura, enviam o que cada recurso precisa, e
+    ficam sujeitos aos termos de cada serviço.
 Antes de ligar um serviço externo, avalie se o envio é compatível com as suas
 obrigações de sigilo e de proteção de dados.
 

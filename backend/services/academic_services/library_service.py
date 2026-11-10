@@ -32,7 +32,7 @@ from ...services.cloud_storage import (
 from ...config import Config
 from ...utils import UPLOAD_FOLDER, allowed_file
 from . import file_processing_service, vector_db_service
-from .transcription_service import TranscriptionRateLimitError
+from .transcription_service import TranscriptionTransientError
 
 logger = logging.getLogger("qython_logger")
 
@@ -576,13 +576,13 @@ async def _process_document_task(document_id: int, filepath: str):
             logger.info(f"Tarefa de background: Documento ID {document_id} processado com sucesso.")
             return 'processed'
 
-        except TranscriptionRateLimitError as e:
-            # Rate limit transitório (ex.: Groq Whisper free tier). Não é falha
-            # permanente: devolve para 'pending' (o frontend mostra "processando") e
-            # o job scheduled_document_retry reprocessa quando a cota voltar.
+        except TranscriptionTransientError as e:
+            # Serviço de transcrição fora do ar ou subindo (o whisper local sobe sob demanda). Não é
+            # falha permanente: devolve para 'pending' (o frontend mostra "processando") e o job
+            # scheduled_document_retry reprocessa quando o serviço voltar.
             logger.warning(
-                f"Tarefa de background: Documento ID {document_id} adiado por rate limit "
-                f"de transcrição; será reprocessado pelo job de retentativa. Detalhe: {e}"
+                f"Tarefa de background: Documento ID {document_id} adiado: serviço de "
+                f"transcrição indisponível; será reprocessado pelo job de retentativa. Detalhe: {e}"
             )
             if 'document' in locals() and document:
                 document.status = 'pending'
