@@ -51,8 +51,11 @@ for name in os.listdir(tiktoken_cache):
 
 # Pango/GTK para o PDF (WeasyPrint): o Windows e o macOS não têm. O CI as reúne em pdf-libs/<so>
 # (windows.sh, bundle_dylibs.py). No Windows entram na raiz do pacote, onde o carregador as procura.
-# No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac): na raiz elas dividiriam o nome com as que
-# outras rodas trazem (o opencv do OCR traz libpng, libfreetype...), e uma sobrescreveria a outra.
+# No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac), como ARQUIVOS DE DADOS: na raiz elas dividiriam
+# o nome com as que outras rodas trazem (o opencv do OCR traz libpng, libfreetype...), e como binários
+# o PyInstaller reescreve as dependências delas para @rpath/..., que aponta para a raiz do pacote e
+# não acha mais as irmãs. O bundle_dylibs.py já deixou cada dependência como @loader_path/<irmã>;
+# como dados, os arquivos vão intactos e o DYLD_FALLBACK_LIBRARY_PATH aponta para a pasta.
 # No Linux vêm do sistema (o GTK que o Electron já exige).
 import sys
 _pdf_dir = {"win32": "win", "darwin": "mac"}.get(sys.platform)
@@ -61,7 +64,10 @@ if _pdf_dir:
     _pdf_libs = os.path.join(SPECPATH, "pdf-libs", _pdf_dir)
     if os.path.isdir(_pdf_libs) and os.listdir(_pdf_libs):
         for name in sorted(os.listdir(_pdf_libs)):
-            extra_binaries.append((os.path.join(_pdf_libs, name), "pdf-libs/mac" if _pdf_dir == "mac" else "."))
+            if _pdf_dir == "mac":
+                datas.append((os.path.join(_pdf_libs, name), "pdf-libs/mac"))
+            else:
+                extra_binaries.append((os.path.join(_pdf_libs, name), "."))
     else:
         print(f"AVISO: {_pdf_libs} vazio; o pacote sai SEM as bibliotecas do PDF (o selftest vai falhar).")
 # Configuração mínima do fontconfig (sem ela o PDF sai sem texto): o entry point aponta FONTCONFIG_FILE para cá.
