@@ -16,10 +16,11 @@ def _prepare_pdf_libs():
         # O dlopen do macOS só procura nomes soltos (libpango-1.0.dylib) nas pastas de DYLD_*, lidas
         # quando o processo nasce. Então o executável se reinicia uma vez, no lugar, com a pasta do
         # pacote na lista; o PID e os canais de saída são os mesmos.
+        libs = os.path.join(base, "pdf-libs", "mac")
         fallback = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
-        if base not in fallback.split(os.pathsep):
+        if libs not in fallback.split(os.pathsep):
             os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = os.pathsep.join(
-                [base] + ([fallback] if fallback else ["/usr/local/lib", "/usr/lib"]))
+                [libs] + ([fallback] if fallback else ["/usr/local/lib", "/usr/lib"]))
             os.execv(sys.executable, [sys.executable] + sys.argv[1:])
 
 
