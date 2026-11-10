@@ -163,6 +163,7 @@ jobs:
           # As bibliotecas do PDF estão em pdf-libs/mac: a lista abaixo e o otool mostram o que carrega.
           ls -la dist/qython-backend/_internal/pdf-libs/mac 2>&1 | head -30 || true
           otool -L dist/qython-backend/_internal/pdf-libs/mac/libgobject-2.0.0.dylib 2>&1 | head -20 || true
+          otool -l dist/qython-backend/_internal/pdf-libs/mac/libgobject-2.0.0.dylib 2>&1 | grep -A2 LC_RPATH | head -10 || true
           export DYLD_FALLBACK_LIBRARY_PATH="$PWD/dist/qython-backend/_internal/pdf-libs/mac:/usr/lib"
           lldb --batch -o "process handle SIGSEGV -s true -p true" -o run -o "bt 25" -o "image list" -- ./dist/qython-backend/qython-backend selftest 2>&1 | grep -v "^\s*$" | tail -90 || true
           ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -20 || true
