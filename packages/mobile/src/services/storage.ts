@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
 
   // Settings
   SERVER_URL: 'settings:server_url',
+  PAIRING: 'settings:pairing',
   AUTO_SYNC_ENABLED: 'settings:auto_sync',
   SYNC_FREQUENCY_MINUTES: 'settings:sync_frequency',
 } as const;

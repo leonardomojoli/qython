@@ -302,6 +302,17 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
             </Pressable>
           </Animated.View>
 
+          {/* Pareamento: o caminho recomendado para usar o Qython do computador (HTTPS por QR code) */}
+          <Pressable
+            style={styles.pairLink}
+            onPress={() => navigation.navigate('Pair')}
+            disabled={isLoading}
+            hitSlop={8}>
+            <Text style={[styles.linkAction, { color: theme.primary }]}>
+              {t('pairWithComputer', 'Parear com o computador (QR code)')}
+            </Text>
+          </Pressable>
+
           {/* Google Sign-In needs Firebase, which builds from source don't have */}
           {googleAvailable && (
             <>
@@ -386,6 +397,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: Props) {
 }
 
 const styles = StyleSheet.create({
+  pairLink: { alignItems: 'center', paddingVertical: spacing.md },
   container: {
     flex: 1,
   },
