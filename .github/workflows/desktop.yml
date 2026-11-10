@@ -164,6 +164,20 @@ jobs:
           ls -la dist/qython-backend/_internal/pdf-libs/mac 2>&1 | head -30 || true
           otool -L dist/qython-backend/_internal/pdf-libs/mac/libgobject-2.0.0.dylib 2>&1 | head -20 || true
           otool -l dist/qython-backend/_internal/pdf-libs/mac/libgobject-2.0.0.dylib 2>&1 | grep -A2 LC_RPATH | head -10 || true
+          # O erro REAL do dlopen, de fora do executável (o hook do PyInstaller o esconde lá dentro):
+          # cada cópia da libgobject do pacote, e a assinatura de cada uma.
+          python3 - <<'PY' || true
+          import ctypes, glob, os, subprocess
+          base = os.path.abspath("dist/qython-backend/_internal")
+          for p in sorted(glob.glob(base + "/**/libgobject-2.0*.dylib", recursive=True)):
+              sig = subprocess.run(["codesign", "--verify", "--verbose=2", p], capture_output=True, text=True)
+              print("ASSINATURA", p.replace(base, "_internal"), (sig.stderr or sig.stdout).strip().replace("\n", " | "))
+              try:
+                  ctypes.CDLL(p)
+                  print("CARREGOU  ", p.replace(base, "_internal"))
+              except OSError as e:
+                  print("FALHOU    ", p.replace(base, "_internal"), "->", str(e)[:900])
+          PY
           export DYLD_FALLBACK_LIBRARY_PATH="$PWD/dist/qython-backend/_internal/pdf-libs/mac:/usr/lib"
           lldb --batch -o "process handle SIGSEGV -s true -p true" -o run -o "bt 25" -o "image list" -- ./dist/qython-backend/qython-backend selftest 2>&1 | grep -v "^\s*$" | tail -90 || true
           ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -20 || true
