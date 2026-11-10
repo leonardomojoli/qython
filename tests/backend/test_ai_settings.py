@@ -7,7 +7,7 @@ Rode direto (não há pytest neste repositório):
 Sem banco: o serviço fala com um par get/set de strings, aqui um dicionário. O que importa:
   - a validação recusa o que deixaria a IA inutilizável antes de salvar;
   - as chaves de API ficam cifradas em repouso e NUNCA voltam pela visão da API;
-  - aplicar muda o provedor na hora (ambiente + clientes descartados) e apagar volta ao ambiente;
+  - aplicar muda o servidor de IA na hora (ambiente + clientes descartados) e apagar volta ao ambiente;
   - o teste de conexão conversa de verdade com o servidor.
 """
 import asyncio
@@ -22,7 +22,7 @@ sys.path.insert(0, ROOT)
 os.environ.setdefault('JWT_SECRET_KEY', 'x' * 40)
 os.environ.setdefault('DATABASE_URL', 'postgresql://u:p@127.0.0.1:1/db')
 os.environ['QYTHON_ALLOW_EPHEMERAL_KEK'] = '1'
-for var in ('LLM_PROVIDER', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_API_KEY', 'LLM_CONTEXT_TOKENS', 'GEMINI_API_KEY'):
+for var in ('LLM_BASE_URL', 'LLM_MODEL', 'LLM_API_KEY', 'LLM_CONTEXT_TOKENS'):
     os.environ.pop(var, None)
 
 from backend.services import ai_settings_service as ai  # noqa: E402
@@ -57,55 +57,53 @@ def expect_error(fn, fragment):
 # --- validação ----------------------------------------------------------------------
 
 def test_validacao_recusa_valor_ruim():
-    expect_error(lambda: ai.validate_patch({'provider': 'claude'}), "'openai'")
+    expect_error(lambda: ai.validate_patch({'provider': 'gemini'}), 'desconhecidos')  # não há mais escolha de provedor
+    expect_error(lambda: ai.validate_patch({'gemini_api_key': 'k'}), 'desconhecidos')
     expect_error(lambda: ai.validate_patch({'base_url': 'ftp://x/v1'}), 'http://')
     expect_error(lambda: ai.validate_patch({'base_url': 'http://'}), 'http://')
     expect_error(lambda: ai.validate_patch({'context_tokens': 10}), 'entre 2.048')
     expect_error(lambda: ai.validate_patch({'context_tokens': 'muito'}), 'número')
-    expect_error(lambda: ai.validate_patch({'gemini_api_key': 'abc\ndef'}), 'inválida')
+    expect_error(lambda: ai.validate_patch({'api_key': 'abc\ndef'}), 'inválida')
     expect_error(lambda: ai.validate_patch({'senha': 'x'}), 'desconhecidos')
 
 
 def test_validacao_normaliza():
-    got = ai.validate_patch({'provider': ' OpenAI ', 'base_url': ' http://127.0.0.1:8081/v1/ ', 'model': ' gemma-4 ',
+    got = ai.validate_patch({'base_url': ' http://127.0.0.1:8081/v1/ ', 'model': ' gemma-4 ',
                              'context_tokens': '16384', 'api_key': ' k '})
-    assert got == {'provider': 'openai', 'base_url': 'http://127.0.0.1:8081/v1', 'model': 'gemma-4',
+    assert got == {'base_url': 'http://127.0.0.1:8081/v1', 'model': 'gemma-4',
                    'context_tokens': 16384, 'api_key': 'k'}
     assert ai.validate_patch({'base_url': '', 'context_tokens': ''}) == {'base_url': '', 'context_tokens': ''}
 
 
-def test_combinacao_sem_chave_ou_endereco_e_recusada():
-    expect_error(lambda: ai.check_consistency({'provider': 'gemini'}, {}), 'chave')
-    ai.check_consistency({'provider': 'gemini', 'gemini_api_key': 'k'}, {})
-    ai.check_consistency({'provider': 'gemini'}, {'GEMINI_API_KEY': 'do-ambiente'})
-    expect_error(lambda: ai.check_consistency({'provider': 'openai'}, {}), 'endereço')
-    ai.check_consistency({'provider': 'openai', 'base_url': 'http://x/v1'}, {})
-    ai.check_consistency({'provider': 'openai'}, {'LLM_BASE_URL': 'http://do-ambiente/v1'})
+def test_sem_endereco_do_servidor_e_recusado():
+    expect_error(lambda: ai.check_consistency({}, {}), 'endereço')
+    ai.check_consistency({'base_url': 'http://x/v1'}, {})
+    ai.check_consistency({}, {'LLM_BASE_URL': 'http://do-ambiente/v1'})
 
 
 # --- persistência e segredos ---------------------------------------------------------
 
 def test_chaves_ficam_cifradas_e_nao_vazam_pela_visao():
     store, data = memory_store()
-    run(ai.save(store, {'provider': 'gemini', 'gemini_api_key': 'AIzaSEGREDO-GEMINI'}))
-    run(ai.save(store, {'provider': 'openai', 'base_url': 'http://srv/v1', 'api_key': 'sk-SEGREDO-LOCAL'}))
+    run(ai.save(store, {'base_url': 'http://srv/v1', 'api_key': 'sk-SEGREDO-LOCAL'}))
     raw = json.dumps(data)
     assert 'SEGREDO' not in raw, 'chave em texto no banco'
-    assert 'gemini_api_key' in json.loads(data[ai.KEY_SECRETS]) and 'api_key' in json.loads(data[ai.KEY_SECRETS])
+    assert 'api_key' in json.loads(data[ai.KEY_SECRETS])
     stored = run(ai.load_stored(store))
-    assert stored['gemini_api_key'] == 'AIzaSEGREDO-GEMINI' and stored['api_key'] == 'sk-SEGREDO-LOCAL'
+    assert stored['api_key'] == 'sk-SEGREDO-LOCAL'
     view = json.dumps(ai.view(stored))
     assert 'SEGREDO' not in view, 'chave na visão da API'
-    assert ai.view(stored)['has_api_key'] is True and ai.view(stored)['has_gemini_key'] is True
+    assert ai.view(stored)['has_api_key'] is True
+    assert 'has_gemini_key' not in ai.view(stored) and 'provider' not in ai.view(stored)
     run(ai.clear(store))
 
 
 def test_salvar_so_muda_o_que_foi_enviado_e_vazio_apaga():
     store, _ = memory_store()
-    run(ai.save(store, {'provider': 'openai', 'base_url': 'http://srv/v1', 'model': 'm1', 'api_key': 'k1'}))
+    run(ai.save(store, {'base_url': 'http://srv/v1', 'model': 'm1', 'api_key': 'k1'}))
     run(ai.save(store, {'model': 'm2'}))
     stored = run(ai.load_stored(store))
-    assert stored == {'provider': 'openai', 'base_url': 'http://srv/v1', 'model': 'm2', 'api_key': 'k1'}
+    assert stored == {'base_url': 'http://srv/v1', 'model': 'm2', 'api_key': 'k1'}
     run(ai.save(store, {'api_key': ''}))
     assert 'api_key' not in run(ai.load_stored(store))
     run(ai.clear(store))
@@ -114,29 +112,25 @@ def test_salvar_so_muda_o_que_foi_enviado_e_vazio_apaga():
 def test_nada_e_salvo_quando_a_combinacao_e_recusada():
     store, data = memory_store()
     try:
-        run(ai.save(store, {'provider': 'gemini'}))
+        run(ai.save(store, {'model': 'gemma-4'}))  # sem endereço do servidor, nem salvo nem no ambiente
     except ai.AiSettingsError:
         assert not data, 'não deveria ter gravado nada'
         return
-    raise AssertionError('deveria recusar o Gemini sem chave')
+    raise AssertionError('deveria recusar a configuração sem o endereço do servidor')
 
 
 # --- aplicar ao processo ---------------------------------------------------------------
 
-def test_aplicar_troca_o_provedor_na_hora_e_apagar_volta_ao_ambiente():
+def test_aplicar_troca_o_servidor_na_hora_e_apagar_volta_ao_ambiente():
     store, _ = memory_store()
-    assert llm_provider.provider_name() == 'openai'  # sem chave do Gemini
-    run(ai.save(store, {'provider': 'gemini', 'gemini_api_key': 'k-gemini'}))
-    assert llm_provider.provider_name() == 'gemini'
-    assert os.environ['GEMINI_API_KEY'] == 'k-gemini'
-    assert llm_provider.capabilities()['image_generation'] is True
-    run(ai.save(store, {'provider': 'openai', 'base_url': 'http://127.0.0.1:8081/v1', 'model': 'gemma-4', 'context_tokens': 8192}))
-    assert llm_provider.provider_name() == 'openai'
+    assert llm_provider.provider_name() == 'openai'  # o único caminho: servidor local compatível
+    assert llm_provider.capabilities()['image_generation'] is False and llm_provider.capabilities()['web_search'] is False
+    run(ai.save(store, {'base_url': 'http://127.0.0.1:8081/v1', 'model': 'gemma-4', 'context_tokens': 8192}))
     assert os.environ['LLM_BASE_URL'] == 'http://127.0.0.1:8081/v1'
     assert llm_provider.context_tokens() == 8192
     run(ai.clear(store))
-    assert 'LLM_BASE_URL' not in os.environ and 'GEMINI_API_KEY' not in os.environ
-    assert llm_provider.provider_name() == 'openai'
+    assert 'LLM_BASE_URL' not in os.environ
+    assert llm_provider.context_tokens() == 16384
 
 
 def test_o_ambiente_original_volta_ao_apagar():
@@ -164,10 +158,6 @@ def test_aplicar_descarta_os_clientes_ja_construidos():
     assert len(built) == 2, 'o cliente deveria ser reconstruído com a configuração nova'
 
 
-def test_sem_presidio_o_detector_de_nomes_e_o_regex():
-    assert ai.pii_engine() in ('presidio', 'regex')
-
-
 # --- teste de conexão -------------------------------------------------------------------
 
 class _Handler(BaseHTTPRequestHandler):
@@ -191,16 +181,15 @@ def test_conexao_com_servidor_compativel():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f'http://127.0.0.1:{server.server_port}/v1'
     try:
-        ok = run(ai.test_connection({'provider': 'openai', 'base_url': base, 'api_key': 'boa'}))
+        ok = run(ai.test_connection({'base_url': base, 'api_key': 'boa'}))
         assert ok['ok'] and ok['models'] == ['gemma-4', 'outro'] and ok['latency_ms'] >= 0, ok
-        bad = run(ai.test_connection({'provider': 'openai', 'base_url': base, 'api_key': 'errada'}))
+        bad = run(ai.test_connection({'base_url': base, 'api_key': 'errada'}))
         assert not bad['ok'] and 'recusou a chave' in bad['detail'], bad
     finally:
         server.shutdown()
-    down = run(ai.test_connection({'provider': 'openai', 'base_url': 'http://127.0.0.1:1/v1'}))
+    down = run(ai.test_connection({'base_url': 'http://127.0.0.1:1/v1'}))
     assert not down['ok'] and 'conectar' in down['detail'], down
-    assert not run(ai.test_connection({'provider': 'openai'}))['ok']
-    assert not run(ai.test_connection({'provider': 'gemini'}))['ok']
+    assert not run(ai.test_connection({}))['ok']
 
 
 if __name__ == '__main__':

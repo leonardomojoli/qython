@@ -25,12 +25,10 @@ router = APIRouter()
 class AiSettingsPatch(BaseModel):
     """Só os campos enviados mudam; texto vazio apaga o valor salvo (volta ao ambiente)."""
 
-    provider: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
     context_tokens: Optional[int | str] = None
     api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
 
 
 def _patch_dict(payload: AiSettingsPatch) -> dict:
@@ -58,7 +56,7 @@ async def update_ai_settings(
     await audit_service.log(
         db, action="ai.settings.update", actor_user_id=admin.id, actor_role="admin",
         # Só os nomes dos campos: nunca valores (e as chaves nem aparecem como campo alterado com valor).
-        metadata={"fields": sorted(patch), "provider": stored.get("provider")},
+        metadata={"fields": sorted(patch)},
         request=request, commit=True,
     )
     return ai.view(stored)

@@ -2,8 +2,7 @@
 """
 Fontes para a IA local responder a partir delas, e não de memória.
 
-Com o Gemini, o copiloto pesquisa no Google enquanto responde (grounding). A IA local não
-pesquisa, e fato clínico de memória é o ponto fraco dos modelos locais: numa bateria de
+A IA local não pesquisa na web, e fato clínico de memória é o ponto fraco dos modelos locais: numa bateria de
 out/2026, o Gemma 4 E2B/E4B deu a dose de amoxicilina na OMA pela metade, errou o volume
 de adrenalina na anafilaxia e deixou incompleto o critério de choque séptico do Sepsis-3.
 Os mesmos modelos leem bem um texto que recebem.

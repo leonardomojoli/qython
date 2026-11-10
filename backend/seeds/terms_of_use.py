@@ -20,7 +20,7 @@ from ..services import consent_service
 
 logger = logging.getLogger("qython_logger")
 
-TERMS_VERSION = "local-v1"
+TERMS_VERSION = "local-v2"
 TERMS_LOCALE = "pt-BR"
 TERMS_TITLE = "Termo de Uso do Qython"
 TERMS_BODY = """\
@@ -60,15 +60,16 @@ opera o Qython, é o controlador desses dados nos termos da LGPD (Lei 13.709/201
 cabe a você ter base legal para tratá-los, proteger o acesso ao computador, manter
 cópias de segurança e atender os pedidos dos titulares.
 
-Nada sai da máquina por padrão. Dados saem apenas para os serviços externos que
-você mesmo configurar, e ficam sujeitos aos termos de cada um:
-  - com uma chave de API de inteligência artificial (por exemplo, Google Gemini),
-    o texto da pergunta, da consulta ou do documento processado é enviado ao
-    provedor escolhido;
-  - buscas em bases públicas, como o PubMed, enviam os termos da busca;
+A inteligência artificial do Qython roda no próprio computador (ou no servidor da
+sua instituição): o texto das perguntas, das consultas e dos documentos não é
+enviado a nenhum serviço de IA externo. Fora disso, nada sai da máquina por padrão,
+com duas exceções a conhecer:
+  - as buscas em bases públicas, como o PubMed, enviam os termos da busca (não o
+    texto do paciente); em instalação sem internet, elas podem ser desligadas;
   - transcrição de áudio por serviço externo (por exemplo, Groq), cópia de
     documentos no Google Drive e verificação profissional pelo Lastreo, quando
-    configuradas, enviam o que cada recurso precisa.
+    você os configura, enviam o que cada recurso precisa, e ficam sujeitos aos
+    termos de cada serviço.
 Antes de ligar um serviço externo, avalie se o envio é compatível com as suas
 obrigações de sigilo e de proteção de dados.
 

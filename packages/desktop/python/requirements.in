@@ -8,7 +8,6 @@ psycopg[binary]  # driver SINCRONO (psycopg 3), usado pelas migrations e pelo bo
 pydantic[email]
 email-validator
 python-multipart
-google-genai>=2.33
 tiktoken  # Token counting for context window management
 
 # Manipulação de Arquivos e Mídia

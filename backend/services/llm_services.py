@@ -9,9 +9,7 @@ from typing import List, Dict
 from datetime import timedelta
 import io
 from PIL import Image
-from google import genai
-from google.api_core import exceptions as google_exceptions
-from google.genai import types
+from . import llm_types as types
 import requests
 import pathlib
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,16 +41,10 @@ def sanitize_user_input_for_prompt(text: str, max_length: int = 5000) -> str:
     text = text.replace("---", "___")
     return text.strip()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
-GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
-USE_SERVICE_ACCOUNT = os.getenv("USE_SERVICE_ACCOUNT", "0") == "1"
-
 PRIMARY_LLM_MODEL = Config.PRIMARY_LLM_MODEL
 FALLBACK_LLM_MODEL = Config.FALLBACK_LLM_MODEL
 SIMPLE_TASK_LLM_MODEL = Config.SIMPLE_TASK_LLM_MODEL
-MEDICAL_IMAGE_ANALYST_MODEL = os.getenv("MEDICAL_IMAGE_ANALYST_MODEL")
+MEDICAL_IMAGE_ANALYST_MODEL = Config.MEDICAL_IMAGE_ANALYST_MODEL
 
 
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
@@ -338,138 +330,27 @@ NEURALWEB_CONVENCIONAL_CHAT_PROMPT = current_prompts["neuralweb_chat"]
 CLINICAL_REASONING_AGENT_PROMPT = current_prompts["clinical_reasoning"]
 
 
-# CLIENTE GLOBAL PARA REUTILIZAÇÃO
-# This is the correct way to set a global timeout for all requests.
-http_options = types.HttpOptions(
-    client_args={'timeout': 300.0}
-)
-
-# ── Fallback transparente p/ FREE tier ────────────────────────────────────────────────
-# Resiliência do Gemini PAGO em sobrecarga TRANSITÓRIA (503 UNAVAILABLE "high demand"): re-tenta
-# a MESMA chamada no próprio modelo pago, com backoff curto (o 503 é "tente de novo em instantes").
-# NÃO há mais fallback de chave FREE — o projeto free do Google foi descontinuado/bloqueado
-# (403 "project has been denied access"); tudo roda na chave PAGA. Tunável por env (sem deploy).
-GEMINI_PAID_RETRIES = max(0, int(os.getenv("GEMINI_PAID_RETRIES", "2")))           # re-tentativas extras no 503
-GEMINI_PAID_RETRY_BACKOFF = float(os.getenv("GEMINI_PAID_RETRY_BACKOFF", "0.8"))   # segundos × nº da tentativa
-
-
-def _is_quota_error(exc) -> bool:
-    s = str(exc).lower()
-    return any(k in s for k in ('resource_exhausted', '429', 'prepayment', 'quota', 'exhausted'))
-
-
-def _is_transient_error(exc) -> bool:
-    s = str(exc).lower()
-    return any(k in s for k in ('503', 'unavailable', 'high demand', 'overloaded'))
-
-
-# Preço por 1M tokens (input, output) em USD — thinking conta como OUTPUT. Fonte:
-# BILLING_ECONOMICS.md. Modelos fora da tabela → custo logado como "$? (preço desconhecido)".
-_MODEL_PRICE_PER_1M_USD = {
-    'gemini-3.5-flash': (1.50, 9.00),
-    'gemini-3.1-flash': (0.50, 3.00),        # estimado (não-lite) — confirmar preço GA
-    'gemini-3.1-flash-lite': (0.25, 1.50),
-    'gemini-3-flash-preview': (0.50, 3.00),
-    'gemini-2.5-flash': (0.30, 2.50),
-    'gemini-2.5-flash-lite': (0.10, 0.40),
-}
-
-
+# Custo: a IA roda na máquina, não há preço por token. O log guarda o consumo de tokens (entrada,
+# saída e raciocínio) por chamada, útil para medir quanto cada recurso pesa na janela de contexto.
 def _log_call_cost(label: str, model: str, usage) -> None:
-    """Instrumentação de custo: loga input/output/thinking tokens → USD por chamada, p/ medir a
-    margem REAL por feature (a tabela do BILLING_ECONOMICS ignorava thinking). thinking = output."""
+    """Loga os tokens de entrada, saída e raciocínio de uma chamada."""
     try:
         if not usage:
             return
-        key = (model or '').replace('models/', '')
         inp = getattr(usage, 'prompt_token_count', 0) or 0
         out = getattr(usage, 'candidates_token_count', 0) or 0
         think = getattr(usage, 'thoughts_token_count', 0) or 0
-        price = _MODEL_PRICE_PER_1M_USD.get(key)
-        if price:
-            cost = inp / 1e6 * price[0] + (out + think) / 1e6 * price[1]
-            logger.info(f"[COST] {label} model={key} in={inp} out={out} think={think} → ${cost:.5f}")
-        else:
-            logger.info(f"[COST] {label} model={key} in={inp} out={out} think={think} → $? (preço desconhecido)")
+        logger.info(f"[TOKENS] {label} in={inp} out={out} think={think}")
     except Exception as e:
-        logger.debug(f"[COST] falha ao logar custo: {e}")
-
-
-def _adapt_kwargs_for_model(kwargs: dict, model_full_name: str) -> dict:
-    """Ao trocar de modelo (ex.: fallback p/ free), reconstrói o thinking_config p/ casar com
-    a família do modelo alvo: Gemini 3.x usa thinking_level; 2.5 usa thinking_budget. Sem isso,
-    mandar um thinking_level (gemini-3) p/ um gemini-2.5 dá 400 INVALID_ARGUMENT e mata o
-    fallback inteiro. `_get_thinking_config_for_model` é definido adiante (resolvido em runtime)."""
-    cfg = kwargs.get('config')
-    if cfg is None or getattr(cfg, 'thinking_config', None) is None:
-        return kwargs
-    try:
-        # Preserva a INTENÇÃO ao trocar de família: thinking minimal continua minimal, não
-        # vira HIGH (senão um título pediria raciocínio máximo de novo no fallback free).
-        tc = cfg.thinking_config
-        is_minimal = (getattr(tc, 'thinking_budget', None) == 0) or \
-                     (getattr(tc, 'thinking_level', None) in (types.ThinkingLevel.MINIMAL, types.ThinkingLevel.LOW))
-        adapted = _get_thinking_config_for_model(model_full_name, 'minimal' if is_minimal else 'high')
-        copy_fn = getattr(cfg, 'model_copy', None) or getattr(cfg, 'copy', None)
-        if copy_fn is None:
-            return kwargs
-        return {**kwargs, 'config': copy_fn(update={'thinking_config': adapted})}
-    except Exception:
-        return kwargs
-
-
-class _ResilientModels:
-    """Espelha client.models.*. Em sobrecarga TRANSITÓRIA do PAGO (503 UNAVAILABLE "high demand")
-    re-tenta o próprio modelo pago com backoff curto antes de desistir — o 503 é "tente de novo em
-    instantes" e a chave PAGA é a única (o free foi descontinuado/bloqueado pelo Google). Cota
-    (429) e demais erros (400 etc.) propagam pro caller na hora."""
-    def __init__(self, paid_models):
-        self._paid = paid_models
-
-    def generate_content(self, *args, **kwargs):
-        import time
-        last = None
-        for attempt in range(GEMINI_PAID_RETRIES + 1):
-            try:
-                return self._paid.generate_content(*args, **kwargs)
-            except Exception as exc:
-                last = exc
-                # Só re-tenta em sobrecarga transitória (503/UNAVAILABLE). Cota (429) e erro
-                # "real" (400 etc.) propagam na hora — retry não ajudaria.
-                if attempt < GEMINI_PAID_RETRIES and _is_transient_error(exc) and not _is_quota_error(exc):
-                    backoff = GEMINI_PAID_RETRY_BACKOFF * (attempt + 1)
-                    logger.warning("Gemini PAGO 503 (sobrecarga) — retry %d/%d em %.1fs",
-                                   attempt + 1, GEMINI_PAID_RETRIES, backoff)
-                    time.sleep(backoff)
-                    continue
-                raise
-        raise last  # defensivo (laço sempre retorna ou levanta)
-
-    def __getattr__(self, name):
-        return getattr(self._paid, name)
-
-
-class ResilientGeminiClient:
-    """genai.Client da chave PAGA com retry de sobrecarga transitória (503). Expõe
-    `.models.generate_content` (usado em todo o backend); os demais atributos delegam ao paid."""
-    def __init__(self, paid_client):
-        self._paid = paid_client
-        self.models = _ResilientModels(paid_client.models)
-
-    def __getattr__(self, name):
-        return getattr(self._paid, name)
+        logger.debug(f"[TOKENS] falha ao logar consumo: {e}")
 
 
 def _build_text_client():
-    """Cliente de texto do provedor configurado (llm_provider): o Gemini, com retry de
-    sobrecarga, ou um servidor OpenAI-compatível (IA local) com a mesma interface."""
-    if llm_provider.provider_name() == "openai":
-        built = llm_provider.build_openai_client()
-        logger.info("IA de texto: servidor OpenAI-compatível em %s (modelo %s).",
-                    os.getenv("LLM_BASE_URL"), os.getenv("LLM_MODEL") or "padrão do servidor")
-        return built
-    logger.info("IA de texto: Gemini (timeout 300s) — chave PAGA única + retry no 503 (até %d).", GEMINI_PAID_RETRIES)
-    return ResilientGeminiClient(llm_provider.gemini_client())
+    """Cliente de texto: o servidor local compatível com a API da OpenAI (llama-server)."""
+    built = llm_provider.build_openai_client()
+    logger.info("IA de texto: servidor local em %s (modelo %s).",
+                os.getenv("LLM_BASE_URL"), os.getenv("LLM_MODEL") or "padrão do servidor")
+    return built
 
 
 # Construído no primeiro uso: importar este módulo não exige chave nem servidor no ar.
@@ -477,102 +358,25 @@ client = llm_provider.LazyClient(_build_text_client)
 
 
 # ---------------------------------------------------------------------------
-# LGPD: PII redaction for every outbound Gemini call.
-#
-# `client.models.generate_content(contents=...)` accepts strings, lists of
-# strings, lists of dicts (multimodal messages), or types.Content objects.
-# `_redact_llm_contents` walks the structure and redacts identifying PII in
-# string leaves before they leave the server. Non-string values (images,
-# files, configs) pass through untouched.
+# LGPD: nada sai da máquina. A IA roda localmente, então o texto vai ao modelo como está.
+# Esconder nomes e documentos antes da chamada só empobreceria o resultado (a nota da consulta
+# sairia com marcadores no lugar do paciente). A função continua existindo porque os módulos
+# a chamam em volta de cada pedido; hoje devolve o conteúdo sem mexer.
 # ---------------------------------------------------------------------------
-from ..middleware.pii_redaction import redact_for_llm  # noqa: E402
-
-
 def _redact_llm_contents(value):
-    """Recursively redact PII in any string leaves of an LLM-bound payload.
+    """Devolve `value` intacto (a IA é local; ver o comentário acima)."""
+    return value
 
-    Handles primitive strings, lists, dicts, and SDK Content/Part objects
-    (which expose a `.text` attribute we can rewrite). Non-string fields
-    pass through untouched, so images, files and configs are unaffected.
-    """
-    try:
-        if value is None or isinstance(value, (int, float, bool, bytes)):
-            return value
-        if isinstance(value, str):
-            redacted, _ = redact_for_llm(value, preserve_tokens=False)
-            return redacted
-        if isinstance(value, dict):
-            return {k: _redact_llm_contents(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            cls = type(value)
-            return cls(_redact_llm_contents(item) for item in value)
-        # SDK objects (types.Content / types.Part) — patch .text if present
-        text_attr = getattr(value, "text", None)
-        if isinstance(text_attr, str):
-            try:
-                redacted, _ = redact_for_llm(text_attr, preserve_tokens=False)
-                value.text = redacted
-            except Exception:
-                pass
-        return value
-    except Exception as exc:
-        logger.warning("PII redaction skipped on payload of type %s: %s",
-                       type(value).__name__, exc)
-        return value
 
 async def _generate_off_loop(**kwargs):
-    """client.models.generate_content numa thread, com a redação de PII junto.
+    """client.models.generate_content numa thread.
 
     A geração é síncrona e, com IA local em CPU, leva minutos: no event loop ela
-    travaria o servidor inteiro. A redação também vai para a thread porque o Presidio
-    é CPU pura e, na primeira chamada, ainda carrega o modelo do spaCy (segundos)."""
+    travaria o servidor inteiro."""
     def run():
-        if "contents" in kwargs:
-            kwargs["contents"] = _redact_llm_contents(kwargs["contents"])
         return client.models.generate_content(**kwargs)
     return await asyncio.to_thread(run)
 
-
-# Dicionário para gerenciar caches em memória
-prompt_cache_manager = {}
-ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
-
-def initialize_prompt_cache():
-    if not ENABLE_PROMPT_CACHING:
-        logger.info("O cache de prompts está desabilitado pela configuração de ambiente (ENABLE_PROMPT_CACHING=0).")
-        return
-    if llm_provider.provider_name() != "gemini":
-        logger.info("Cache de prompts é recurso do Gemini; desligado com o provedor %s.", llm_provider.provider_name())
-        return
-
-    logger.info("Iniciando cacheamento de prompts de melhoria...")
-    # Conforme a documentação, o cache é criado com um modelo específico.
-    model_for_caching = Config.PRIMARY_LLM_MODEL
-    
-    for specialty, types_map in PROMPTS.items():
-        for consult_type, prompt_text in types_map.items():
-            cache_name = f"{specialty.lower()}_{consult_type}"
-            try:
-                cached_content = client.caches.create(
-                    model=model_for_caching,
-                    config={
-                        'system_instruction': prompt_text,
-                        'ttl': "3600s"
-                    }
-                )
-                prompt_cache_manager[cache_name] = cached_content
-                logger.info(f"Prompt '{cache_name}' cacheado com sucesso: {cached_content.name}")
-            except Exception as e:
-                error_message = str(e)
-                # Verifica se o erro é o específico de "conteúdo muito pequeno"
-                if "INVALID_ARGUMENT" in error_message and "Cached content is too small" in error_message:
-                    logger.warning(f"Não foi possível cachear o prompt '{cache_name}' pois ele não atende aos requisitos da API (tamanho mínimo). A funcionalidade continuará sem cache para este item. Erro: {error_message}")
-                else:
-                    # Para todos os outros erros, registra como um erro crítico
-                    logger.error(f"Falha inesperada ao tentar cachear o prompt '{cache_name}': {error_message}")
-
-# Chame esta função na inicialização do seu servidor (por exemplo, no main.py ou no início deste módulo)
-initialize_prompt_cache()
 
 # Função para melhorar as anotações de consulta
 def improve_consultation_notes(specialty: str, is_first_consultation: bool, raw_text: str, language_code: str = 'pt-BR') -> str:
@@ -594,137 +398,120 @@ def improve_consultation_notes(specialty: str, is_first_consultation: bool, raw_
     consultation_type = "first" if is_first_consultation else "return"
     logger.debug(f"Tipo de consulta determinado: {consultation_type} para especialidade: {specialty}")
 
-    cached_prompt_name = f"{specialty.lower()}_{consultation_type}"
-    cached_content_ref = prompt_cache_manager.get(cached_prompt_name)
+    
+    # === MULTILINGUAL SUPPORT ===
+    # Comprehensive language instructions that handle few-shot examples properly
+    language_instructions = {
+        'en': (
+            "**CRITICAL LANGUAGE INSTRUCTION:**\n"
+            "1. Write your ENTIRE response in **English (US)**.\n"
+            "2. The instructions and examples below are in Portuguese for reference, but you MUST produce output in English.\n"
+            "3. Apply the same clinical reasoning and transformation patterns shown in the Portuguese examples, but generate English output.\n"
+            "4. Use standard English medical terminology (e.g., 'Chief Complaint' not 'Queixa Principal', 'History of Present Illness' not 'HDA').\n"
+            "5. Maintain the same formatting structure (bold headers, lists, sections) as shown in the examples.\n\n"
+        ),
+        'en-US': (
+            "**CRITICAL LANGUAGE INSTRUCTION:**\n"
+            "1. Write your ENTIRE response in **English (US)**.\n"
+            "2. The instructions and examples below are in Portuguese for reference, but you MUST produce output in English.\n"
+            "3. Apply the same clinical reasoning and transformation patterns shown in the Portuguese examples, but generate English output.\n"
+            "4. Use standard English medical terminology (e.g., 'Chief Complaint' not 'Queixa Principal', 'History of Present Illness' not 'HDA').\n"
+            "5. Maintain the same formatting structure (bold headers, lists, sections) as shown in the examples.\n\n"
+        ),
+        'es': (
+            "**INSTRUCCIÓN CRÍTICA DE IDIOMA:**\n"
+            "1. Escriba TODA su respuesta en **español**.\n"
+            "2. Las instrucciones y ejemplos a continuación están en portugués como referencia, pero DEBE producir la salida en español.\n"
+            "3. Aplique el mismo razonamiento clínico y patrones de transformación mostrados en los ejemplos portugueses, pero genere salida en español.\n"
+            "4. Use terminología médica estándar en español (ej: 'Motivo de Consulta' no 'Queixa Principal', 'Enfermedad Actual' no 'HDA').\n"
+            "5. Mantenga la misma estructura de formato (encabezados en negrita, listas, secciones) mostrada en los ejemplos.\n\n"
+        ),
+        'es-ES': (
+            "**INSTRUCCIÓN CRÍTICA DE IDIOMA:**\n"
+            "1. Escriba TODA su respuesta en **español**.\n"
+            "2. Las instrucciones y ejemplos a continuación están en portugués como referencia, pero DEBE producir la salida en español.\n"
+            "3. Aplique el mismo razonamiento clínico y patrones de transformación mostrados en los ejemplos portugueses, pero genere salida en español.\n"
+            "4. Use terminología médica estándar en español (ej: 'Motivo de Consulta' no 'Queixa Principal', 'Enfermedad Actual' no 'HDA').\n"
+            "5. Mantenga la misma estructura de formato (encabezados en negrita, listas, secciones) mostrada en los ejemplos.\n\n"
+        ),
+        'pt': "",  # Default - prompts are already in Portuguese
+        'pt-BR': ""
+    }
+    language_prefix = language_instructions.get(language_code, "")
+    
+    default_prompt_instructions = (
+        "Você é um médico clínico geral organizando uma consulta médica a partir de anotações brutas ou ditado por voz.\n\n"
+        "## Sua Tarefa\n"
+        "Transforme o texto bruto abaixo em uma consulta médica estruturada e profissional.\n\n"
+        "## REGRA CRÍTICA - NUNCA INVENTE INFORMAÇÕES\n"
+        "- Se os dados do paciente (nome, idade, sexo) foram fornecidos no contexto, use EXATAMENTE esses dados\n"
+        "- Se NÃO foram fornecidos dados do paciente, NÃO mencione idade, sexo ou nome - deixe essas informações em branco\n"
+        "- NUNCA invente dados demográficos como 'paciente feminina de 45 anos' se essa informação não foi fornecida\n"
+        "- É MELHOR omitir uma informação do que inventá-la\n\n"
+        "## REGRA OBRIGATÓRIA - CÓDIGOS CID-10\n"
+        "- SEMPRE inclua o código CID-10 entre parênteses após cada hipótese diagnóstica\n"
+        "- Formato: 'Nome do Diagnóstico (CID-10: X00.0)' ou 'Nome do Diagnóstico (X00.0)'\n"
+        "- Exemplos: Hipertensão Arterial Sistêmica (I10), Diabetes Mellitus Tipo 2 (E11.9)\n\n"
+        "## Regras Obrigatórias\n"
+        "1. EXTRAIA todas as informações relevantes do texto e organize nas seções corretas\n"
+        "2. INFIRA hipóteses diagnósticas baseadas nos sintomas e achados descritos\n"
+        "3. COMPLETE a conduta com exames e orientações pertinentes ao caso\n"
+        "4. USE linguagem médica formal e objetiva\n"
+        "5. NÃO use linguagem sugestiva ('considerar', 'sugerido', 'a avaliar', 'poderia ser')\n"
+        "6. NÃO adicione seções de 'análise crítica', 'sugestões' ou 'comentários'\n"
+        "7. NÃO use asteriscos (*) para formatação - use hífens (-) para listas\n"
+        "8. ESCREVA como se fosse a consulta FINAL, já revisada por um especialista\n"
+        "9. SUBSTITUA termos populares por terminologia médica adequada\n"
+        "10. O texto pode ser um DIÁLOGO médico-paciente gravado - IDENTIFIQUE e extraia as informações clínicas relevantes\n"
+        "11. USE tabelas em formato markdown para apresentar resultados de exames laboratoriais\n"
+        "12. SE houver erros na conduta original (doses incorretas, medicamentos contraindicados, etc), CORRIJA-OS silenciosamente na saída\n"
+        "13. Use os dados do CONTEXTO DO PACIENTE quando fornecidos (alergias, medicamentos, condições crônicas, histórico)\n"
+        "14. CONJUGUE verbos na PRIMEIRA PESSOA DO SINGULAR para AÇÕES DO MÉDICO (ex: 'oriento', 'solicito', 'prescrevo', 'encaminho') - NUNCA use infinitivo ('orientar', 'solicitar') ou voz passiva ('foi orientado'). EXCEÇÃO: posologia de medicamentos é instrução ao paciente, use INFINITIVO (ex: 'tomar 2 comprimidos', 'aplicar 1 vez ao dia') - NUNCA 'tomo', 'aplico' (isso significaria que o médico toma o remédio)\n\n"
+        "## Formato de Saída\n"
+        "Use estas seções (omita se não houver informação relevante):\n\n"
+        "## Queixa Principal\n"
+        "> (Use blockquote com > para destacar a queixa em uma frase objetiva)\n\n"
+        "## História da Doença Atual\n"
+        "**Início:** X dias | **Evolução:** descrição | **Duração:** X\n"
+        "**Características:** Narrativa organizada dos sintomas em linguagem médica formal.\n\n"
+        "## Revisão de Sistemas\n"
+        "(Se mencionada no texto original, use formato estruturado)\n\n"
+        "## Antecedentes\n"
+        "- **Pessoais:** comorbidades, cirurgias prévias\n"
+        "- **Familiares:** histórico relevante\n"
+        "- **Medicamentos em uso:** lista\n"
+        "- **Alergias:** lista ou 'Nega'\n"
+        "- **Hábitos:** tabagismo, etilismo\n\n"
+        "## Exame Físico\n"
+        "(Achados organizados por sistemas, use **negrito** para destaques)\n\n"
+        "## Hipóteses Diagnósticas\n"
+        "1. **Diagnóstico principal (CID-10: X00.0)** - justificativa breve\n"
+        "2. Diagnóstico diferencial (CID-10: Y00.0)\n\n"
+        "## Conduta\n"
+        "- **Exames:** lista de exames solicitados\n"
+        "- **Prescrições:** medicamentos com doses corretas e seguras\n"
+        "- **Orientações:** orientações ao paciente\n"
+        "- **Retorno:** prazo para retorno\n\n"
+        "---\n"
+        "IMPORTANTE: Sua resposta deve começar DIRETAMENTE com o registro clínico organizado, sem qualquer introdução, análise ou menção à tarefa.\n\n"
+        "**TEXTO BRUTO DA CONSULTA:**\n"
+    )
+    prompt_base = PROMPTS.get(specialty, {}).get(consultation_type, default_prompt_instructions)
 
-    config = None
-    contents = None
-
-    if not cached_content_ref:
-        logger.warning(f"Cache para '{cached_prompt_name}' não encontrado. Usando prompt genérico sem cache.")
-        
-        # === MULTILINGUAL SUPPORT ===
-        # Comprehensive language instructions that handle few-shot examples properly
-        language_instructions = {
-            'en': (
-                "**CRITICAL LANGUAGE INSTRUCTION:**\n"
-                "1. Write your ENTIRE response in **English (US)**.\n"
-                "2. The instructions and examples below are in Portuguese for reference, but you MUST produce output in English.\n"
-                "3. Apply the same clinical reasoning and transformation patterns shown in the Portuguese examples, but generate English output.\n"
-                "4. Use standard English medical terminology (e.g., 'Chief Complaint' not 'Queixa Principal', 'History of Present Illness' not 'HDA').\n"
-                "5. Maintain the same formatting structure (bold headers, lists, sections) as shown in the examples.\n\n"
-            ),
-            'en-US': (
-                "**CRITICAL LANGUAGE INSTRUCTION:**\n"
-                "1. Write your ENTIRE response in **English (US)**.\n"
-                "2. The instructions and examples below are in Portuguese for reference, but you MUST produce output in English.\n"
-                "3. Apply the same clinical reasoning and transformation patterns shown in the Portuguese examples, but generate English output.\n"
-                "4. Use standard English medical terminology (e.g., 'Chief Complaint' not 'Queixa Principal', 'History of Present Illness' not 'HDA').\n"
-                "5. Maintain the same formatting structure (bold headers, lists, sections) as shown in the examples.\n\n"
-            ),
-            'es': (
-                "**INSTRUCCIÓN CRÍTICA DE IDIOMA:**\n"
-                "1. Escriba TODA su respuesta en **español**.\n"
-                "2. Las instrucciones y ejemplos a continuación están en portugués como referencia, pero DEBE producir la salida en español.\n"
-                "3. Aplique el mismo razonamiento clínico y patrones de transformación mostrados en los ejemplos portugueses, pero genere salida en español.\n"
-                "4. Use terminología médica estándar en español (ej: 'Motivo de Consulta' no 'Queixa Principal', 'Enfermedad Actual' no 'HDA').\n"
-                "5. Mantenga la misma estructura de formato (encabezados en negrita, listas, secciones) mostrada en los ejemplos.\n\n"
-            ),
-            'es-ES': (
-                "**INSTRUCCIÓN CRÍTICA DE IDIOMA:**\n"
-                "1. Escriba TODA su respuesta en **español**.\n"
-                "2. Las instrucciones y ejemplos a continuación están en portugués como referencia, pero DEBE producir la salida en español.\n"
-                "3. Aplique el mismo razonamiento clínico y patrones de transformación mostrados en los ejemplos portugueses, pero genere salida en español.\n"
-                "4. Use terminología médica estándar en español (ej: 'Motivo de Consulta' no 'Queixa Principal', 'Enfermedad Actual' no 'HDA').\n"
-                "5. Mantenga la misma estructura de formato (encabezados en negrita, listas, secciones) mostrada en los ejemplos.\n\n"
-            ),
-            'pt': "",  # Default - prompts are already in Portuguese
-            'pt-BR': ""
-        }
-        language_prefix = language_instructions.get(language_code, "")
-        
-        default_prompt_instructions = (
-            "Você é um médico clínico geral organizando uma consulta médica a partir de anotações brutas ou ditado por voz.\n\n"
-            "## Sua Tarefa\n"
-            "Transforme o texto bruto abaixo em uma consulta médica estruturada e profissional.\n\n"
-            "## REGRA CRÍTICA - NUNCA INVENTE INFORMAÇÕES\n"
-            "- Se os dados do paciente (nome, idade, sexo) foram fornecidos no contexto, use EXATAMENTE esses dados\n"
-            "- Se NÃO foram fornecidos dados do paciente, NÃO mencione idade, sexo ou nome - deixe essas informações em branco\n"
-            "- NUNCA invente dados demográficos como 'paciente feminina de 45 anos' se essa informação não foi fornecida\n"
-            "- É MELHOR omitir uma informação do que inventá-la\n\n"
-            "## REGRA OBRIGATÓRIA - CÓDIGOS CID-10\n"
-            "- SEMPRE inclua o código CID-10 entre parênteses após cada hipótese diagnóstica\n"
-            "- Formato: 'Nome do Diagnóstico (CID-10: X00.0)' ou 'Nome do Diagnóstico (X00.0)'\n"
-            "- Exemplos: Hipertensão Arterial Sistêmica (I10), Diabetes Mellitus Tipo 2 (E11.9)\n\n"
-            "## Regras Obrigatórias\n"
-            "1. EXTRAIA todas as informações relevantes do texto e organize nas seções corretas\n"
-            "2. INFIRA hipóteses diagnósticas baseadas nos sintomas e achados descritos\n"
-            "3. COMPLETE a conduta com exames e orientações pertinentes ao caso\n"
-            "4. USE linguagem médica formal e objetiva\n"
-            "5. NÃO use linguagem sugestiva ('considerar', 'sugerido', 'a avaliar', 'poderia ser')\n"
-            "6. NÃO adicione seções de 'análise crítica', 'sugestões' ou 'comentários'\n"
-            "7. NÃO use asteriscos (*) para formatação - use hífens (-) para listas\n"
-            "8. ESCREVA como se fosse a consulta FINAL, já revisada por um especialista\n"
-            "9. SUBSTITUA termos populares por terminologia médica adequada\n"
-            "10. O texto pode ser um DIÁLOGO médico-paciente gravado - IDENTIFIQUE e extraia as informações clínicas relevantes\n"
-            "11. USE tabelas em formato markdown para apresentar resultados de exames laboratoriais\n"
-            "12. SE houver erros na conduta original (doses incorretas, medicamentos contraindicados, etc), CORRIJA-OS silenciosamente na saída\n"
-            "13. Use os dados do CONTEXTO DO PACIENTE quando fornecidos (alergias, medicamentos, condições crônicas, histórico)\n"
-            "14. CONJUGUE verbos na PRIMEIRA PESSOA DO SINGULAR para AÇÕES DO MÉDICO (ex: 'oriento', 'solicito', 'prescrevo', 'encaminho') - NUNCA use infinitivo ('orientar', 'solicitar') ou voz passiva ('foi orientado'). EXCEÇÃO: posologia de medicamentos é instrução ao paciente, use INFINITIVO (ex: 'tomar 2 comprimidos', 'aplicar 1 vez ao dia') - NUNCA 'tomo', 'aplico' (isso significaria que o médico toma o remédio)\n\n"
-            "## Formato de Saída\n"
-            "Use estas seções (omita se não houver informação relevante):\n\n"
-            "## Queixa Principal\n"
-            "> (Use blockquote com > para destacar a queixa em uma frase objetiva)\n\n"
-            "## História da Doença Atual\n"
-            "**Início:** X dias | **Evolução:** descrição | **Duração:** X\n"
-            "**Características:** Narrativa organizada dos sintomas em linguagem médica formal.\n\n"
-            "## Revisão de Sistemas\n"
-            "(Se mencionada no texto original, use formato estruturado)\n\n"
-            "## Antecedentes\n"
-            "- **Pessoais:** comorbidades, cirurgias prévias\n"
-            "- **Familiares:** histórico relevante\n"
-            "- **Medicamentos em uso:** lista\n"
-            "- **Alergias:** lista ou 'Nega'\n"
-            "- **Hábitos:** tabagismo, etilismo\n\n"
-            "## Exame Físico\n"
-            "(Achados organizados por sistemas, use **negrito** para destaques)\n\n"
-            "## Hipóteses Diagnósticas\n"
-            "1. **Diagnóstico principal (CID-10: X00.0)** - justificativa breve\n"
-            "2. Diagnóstico diferencial (CID-10: Y00.0)\n\n"
-            "## Conduta\n"
-            "- **Exames:** lista de exames solicitados\n"
-            "- **Prescrições:** medicamentos com doses corretas e seguras\n"
-            "- **Orientações:** orientações ao paciente\n"
-            "- **Retorno:** prazo para retorno\n\n"
-            "---\n"
-            "IMPORTANTE: Sua resposta deve começar DIRETAMENTE com o registro clínico organizado, sem qualquer introdução, análise ou menção à tarefa.\n\n"
-            "**TEXTO BRUTO DA CONSULTA:**\n"
-        )
-        prompt_base = PROMPTS.get(specialty, {}).get(consultation_type, default_prompt_instructions)
-
-        # Prepend language instruction and PATIENT_DATA_RULE to all prompts
-        # This ensures the model NEVER invents patient information
-        if language_prefix:
-            system_instruction = f"{language_prefix}{PATIENT_DATA_RULE}{prompt_base}"
-        else:
-            system_instruction = f"{PATIENT_DATA_RULE}{prompt_base}"
-        
-        # thinking_config será definido por modelo no loop de retry
-        # (gemini-3 usa thinking_level, gemini-2.5 usa thinking_budget)
-        config_params = {
-            "system_instruction": system_instruction,
-            "temperature": 1.0,
-        }
-        contents = raw_text
-        # --- FIM DA CORREÇÃO ---
-
+    # Prepend language instruction and PATIENT_DATA_RULE to all prompts
+    # This ensures the model NEVER invents patient information
+    if language_prefix:
+        system_instruction = f"{language_prefix}{PATIENT_DATA_RULE}{prompt_base}"
     else:
-        logger.info(f"Usando cache: {cached_content_ref.name}")
-        config_params = {
-            "cached_content": cached_content_ref.name,
-            "temperature": 1.0,
-        }
-        contents = raw_text
+        system_instruction = f"{PATIENT_DATA_RULE}{prompt_base}"
+    
+    # thinking_config será definido por modelo no loop de retry
+    config_params = {
+        "system_instruction": system_instruction,
+        "temperature": 1.0,
+    }
+    contents = raw_text
+    # --- FIM DA CORREÇÃO ---
 
     # Build list of models to try (primary + fallback)
     models_to_try = [Config.PRIMARY_LLM_MODEL]
@@ -773,15 +560,6 @@ def improve_consultation_notes(specialty: str, is_first_consultation: bool, raw_
                 if is_fallback:
                     logger.warning(f"[IMPROVE_NOTES] Sucesso com modelo de fallback: {model_to_use}")
                 return response_text.strip(), usage, model_to_use
-
-            except google_exceptions.ResourceExhausted as e:
-                logger.warning(f"[IMPROVE_NOTES] Rate limit (tentativa {attempt + 1}, modelo: {model_to_use}): {str(e)}")
-                last_error = str(e)
-                if attempt < MAX_RETRIES - 1:
-                    backoff = min(INITIAL_BACKOFF * (2 ** attempt), MAX_BACKOFF)
-                    logger.info(f"[IMPROVE_NOTES] Aguardando {backoff}s antes de retry...")
-                    time.sleep(backoff)
-                continue
 
             except Exception as e:
                 error_msg = str(e)
@@ -893,15 +671,6 @@ def generate_case_summary(improved_text: str, language_code: str = 'pt-BR') -> t
                     logger.warning(f"[SUMMARY] Sucesso com modelo de fallback: {model_to_use}")
                 logger.debug(f"Resumo gerado (primeiros 500 chars): {summary[:500]}... Usage: {usage}")
                 return summary, usage, model_to_use
-
-            except google_exceptions.ResourceExhausted as e:
-                logger.warning(f"[SUMMARY] Rate limit (tentativa {attempt + 1}, modelo: {model_to_use}): {str(e)}")
-                last_error = str(e)
-                if attempt < MAX_RETRIES - 1:
-                    backoff = min(INITIAL_BACKOFF * (2 ** attempt), MAX_BACKOFF)
-                    logger.info(f"[SUMMARY] Aguardando {backoff}s antes de retry...")
-                    time.sleep(backoff)
-                continue
 
             except Exception as e:
                 error_msg = str(e)
@@ -1144,40 +913,11 @@ INSTRUÇÕES:
 # Ficou sem uso após a remoção do gate, então foi excluído.
 
 
-def _get_thinking_config_for_model(model_name: str, level: str = 'high') -> types.ThinkingConfig:
-    """
-    Retorna a configuração de thinking apropriada para o modelo, na intensidade pedida.
-    Gemini 3.x (3 Flash, 3.1 Flash-Lite, etc): usa thinking_level (MINIMAL/LOW/MEDIUM/HIGH)
-    Gemini 2.x (2.5 Flash, 2.5 Flash-Lite, etc): usa thinking_budget (número de tokens; 0 = off)
-
-    level='high'     → raciocínio máximo (chat clínico, tarefas complexas).
-    level='minimal'  → praticamente sem thinking (tarefas triviais: título, classificação curta).
-                       Evita que o orçamento de saída seja consumido pelo raciocínio (sintoma:
-                       max_output_tokens pequeno + thinking dinâmico = response.text=None) e
-                       poupa a cota free.
-    """
-    is_gemini_3 = 'gemini-3' in model_name.lower()
-
-    if level == 'minimal':
-        if is_gemini_3:
-            return types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL)
-        return types.ThinkingConfig(thinking_budget=0)
-    if level == 'low':
-        if is_gemini_3:
-            return types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW)
-        return types.ThinkingConfig(thinking_budget=2048)
-    if level == 'medium':
-        if is_gemini_3:
-            return types.ThinkingConfig(thinking_level=types.ThinkingLevel.MEDIUM)
-        return types.ThinkingConfig(thinking_budget=8192)
-
-    if is_gemini_3:
-        # Todos os modelos Gemini 3.x (3 Flash, 3.1 Flash-Lite, etc): thinking_level=HIGH
-        logger.info(f"[THINKING] {model_name}: thinking_level=HIGH")
-        return types.ThinkingConfig(thinking_level=types.ThinkingLevel.HIGH)
-    else:
-        logger.info(f"[THINKING] {model_name}: thinking_budget=24576")
-        return types.ThinkingConfig(thinking_budget=24576)
+def _get_thinking_config_for_model(model_name: str, level: str = 'high'):
+    """O raciocínio do modelo local é decidido no servidor (LLM_THINKING, ver llm_provider): o
+    pedido não leva configuração de raciocínio. Continua existindo porque os chamadores a passam
+    no `config` de cada requisição; devolve None, que o cliente ignora."""
+    return None
 
 
 # Stopwords genéricas p/ o fallback de inline por conteúdo: termos clínicos comuns demais p/
@@ -1383,7 +1123,7 @@ async def _call_llm_with_retry(
 
 
 def _strip_thinking_leak(text: str) -> str:
-    """Remove vazamento do formato interno de thinking/tool-use do Gemini que às vezes cai no
+    """Remove vazamento do formato interno de thinking/tool-use do modelo que às vezes cai no
     TEXTO da resposta (geração DEGRADADA — free/preview sob 429 — em que o modelo "narra" o
     próprio monólogo em vez de mantê-lo nas partes `thought`/`executable_code`). Sintoma:
     `tool_code print(google_search.search(queries=[...]))` + `thought <raciocínio em inglês>`
@@ -1526,7 +1266,7 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # Topic gating removed (2026-05): the medicine-only restriction is now
     # handled (permissively) by the system prompt's ESCOPO section instead of a
     # pre-LLM classifier. The model judges relevance in context, which avoids
-    # false rejections on medicine-adjacent topics and saves a Gemini call per
+    # false rejections on medicine-adjacent topics and saves an LLM call per
     # message. `skip_topic_check` is kept in the signature for compatibility.
 
     # Imagem médica → modelo de visão (3.5-flash); texto → CHAT_LLM_MODEL (barato, alto volume).
@@ -1549,11 +1289,10 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
         result = await db.execute(select(AcademicLibrary).filter(AcademicLibrary.id == library_id))
         library = result.scalars().first()
 
-    # Sem busca na web (IA local), as fontes de pergunta clínica vêm ANTES da resposta e
+    # Sem busca na web (a IA é local), as fontes de pergunta clínica vêm ANTES da resposta e
     # entram numeradas no prompt; com elas, a biblioteca vira trechos numerados também.
-    web_search = llm_provider.capabilities()["web_search"]
     local_sources, clinical_question = [], False
-    if not web_search and Config.COPILOT_LOCAL_SOURCES and message:
+    if Config.COPILOT_LOCAL_SOURCES and message:
         local_sources, clinical_question = await _gather_local_sources(message, history, db, library)
         if local_sources:
             system_key = "clinical_reasoning" if include_clinical_reasoning else "neuralweb_chat"
@@ -1571,7 +1310,7 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     if library and not any(s.kind == 'library' for s in local_sources):
         logger.info(f"Enriquecendo prompt com a biblioteca: '{library.name}'")
         library_text = await asyncio.to_thread(vector_db_service.get_all_text_for_library, library_id)
-        # A biblioteca inteira cabe no contexto do Gemini; num modelo local, não. Quando
+        # A biblioteca inteira nem sempre cabe no contexto do modelo local. Quando
         # passa de metade da janela, entram os trechos mais relevantes para a pergunta,
         # até o limite.
         budget = llm_provider.token_budget(0.5)
@@ -1627,7 +1366,7 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     # marcadores [n]. Sem busca (IA local), o modelo copiava o "[n]" e fingia fontes.
     if local_sources:
         system_prompt_text += _LOCAL_SOURCES_INSTRUCTION
-    elif not web_search:
+    else:
         system_prompt_text += _NO_WEB_SEARCH_INSTRUCTION
         if clinical_question:
             system_prompt_text += _NO_SOURCES_FOUND_INSTRUCTION
@@ -1644,24 +1383,6 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
     lang_instruction = language_instructions.get(language_code, language_instructions.get('pt'))
     system_prompt_text = system_prompt_text + lang_instruction
     logger.info(f"[LANGUAGE] Instrução de idioma adicionada: {language_code}")
-
-    # (b) Nudge de EMBASAMENTO: o lite grounseia menos → poucas referências. Encoraja busca +
-    # citação p/ afirmações FACTUAIS (dose/ajuste/conduta/critério/escore/diretriz), preservando
-    # o reconhecimento de tipo (conversa/planejamento NÃO força busca). Só com grounding ligado.
-    if Config.ENABLE_GROUNDING and web_search:
-        grounding_nudges = {
-            'en': "\n\n**SOURCING:** For factual, verifiable clinical claims — drug doses/adjustments, management, diagnostic criteria, scores, guidelines — use web search to confirm and ground your answer, preferring authoritative sources (drug labels, guidelines, societies, indexed literature). For conversation, planning, or opinion, do NOT force a search. Never fabricate a reference.",
-            'es': "\n\n**FUNDAMENTACIÓN:** Para afirmaciones clínicas factuales y verificables — dosis/ajustes, conducta, criterios diagnósticos, escalas, guías — usa la búsqueda web para confirmar y fundamentar, priorizando fuentes autorizadas (prospecto, guías, sociedades, literatura indexada). En conversación, planificación u opinión, NO fuerces la búsqueda. Nunca inventes una referencia.",
-            'pt': "\n\n**EMBASAMENTO:** Para afirmações clínicas factuais e verificáveis — doses/ajustes, condutas, critérios diagnósticos, escores, diretrizes — pesquise na web para confirmar e fundamentar a resposta, priorizando fontes oficiais (bula, diretriz, sociedade, literatura indexada). Em conversa, planejamento ou opinião, NÃO force busca. Nunca invente referência.",
-        }
-        system_prompt_text = system_prompt_text + grounding_nudges.get(language_code, grounding_nudges['pt'])
-
-    # 6. Define a configuração da geração com Google Search Grounding (opcional)
-    # O Grounding ajuda o modelo a buscar referências científicas em tempo real
-    grounding_tools = None
-    if Config.ENABLE_GROUNDING:
-        grounding_tools = [types.Tool(google_search=types.GoogleSearch())]
-        logger.info("[GROUNDING] Google Search habilitado para esta requisição")
 
     # 7. Define a lista de modelos para tentar (primário + fallback)
     # Para análise de imagens, não usamos fallback (requer modelo específico)
@@ -1688,7 +1409,6 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
         generation_config = types.GenerateContentConfig(
             system_instruction=system_prompt_text,
             max_output_tokens=base_max_tokens,
-            tools=grounding_tools,
             thinking_config=thinking_config
         )
 
@@ -1725,86 +1445,18 @@ async def chat_with_google_ai(message: str, history: List[Dict] = None, context_
 
     # Higieniza a resposta para remover quebras de linha excessivas
     cleaned_response_text = re.sub(r'\n{3,}', '\n\n', raw_response_text)
-    if not web_search:
-        # Marcador copiado da instrução, sem fonte por trás (ver _NO_WEB_SEARCH_INSTRUCTION).
-        cleaned_response_text = re.sub(r'\s*\[n\]', '', cleaned_response_text)
+    # Marcador copiado da instrução, sem fonte por trás (ver _NO_WEB_SEARCH_INSTRUCTION).
+    cleaned_response_text = re.sub(r'\s*\[n\]', '', cleaned_response_text)
 
     # LaTeX inline ("PAM $\geq 65 \text{ mm Hg}$", comum na IA local) vira texto Unicode:
     # nem o web nem o mobile renderizam matemática. Código e valor em $ ficam como estão.
     cleaned_response_text = latex_to_unicode(cleaned_response_text)
 
-    # Extract grounding sources and supports (for inline citations) if available
+    # Sem busca do Google não há grounding: as referências vêm das fontes buscadas antes da
+    # resposta (local_sources) ou do reforço pelo PubMed abaixo.
     grounding_sources = None
     grounding_supports = None
-    grounding_search_queries = []  # buscas que o Gemini fez no grounding → ótima query p/ PubMed
-    if Config.ENABLE_GROUNDING and response.candidates and len(response.candidates) > 0:
-        candidate = response.candidates[0]
-        logger.info(f"[GROUNDING] Checking candidate for grounding_metadata: hasattr={hasattr(candidate, 'grounding_metadata')}")
-        if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
-            grounding = candidate.grounding_metadata
-            logger.info(f"[GROUNDING] grounding_metadata found. Type: {type(grounding).__name__}")
-
-            # Debug: mostrar conteúdo completo do grounding_metadata
-            chunks = grounding.grounding_chunks if hasattr(grounding, 'grounding_chunks') else None
-            supports = grounding.grounding_supports if hasattr(grounding, 'grounding_supports') else None
-            chunks_count = len(chunks) if chunks else 0
-            supports_count = len(supports) if supports else 0
-            logger.info(f"[GROUNDING] grounding_chunks: {chunks_count} items, grounding_supports: {supports_count} items")
-
-            # Se não temos chunks mas o grounding existe, logar warning detalhado
-            if chunks_count == 0:
-                logger.warning(f"[GROUNDING] ⚠️ grounding_metadata presente mas sem chunks! Model: {model_used}")
-                # Log raw representation para debug
-                try:
-                    grounding_dict = {attr: getattr(grounding, attr, None) for attr in dir(grounding) if not attr.startswith('_')}
-                    logger.warning(f"[GROUNDING] Raw grounding attrs: {list(grounding_dict.keys())}")
-                    # Verificar se há retrieval_queries ou search_entry_point
-                    if hasattr(grounding, 'retrieval_queries'):
-                        logger.info(f"[GROUNDING] retrieval_queries: {grounding.retrieval_queries}")
-                    if hasattr(grounding, 'search_entry_point'):
-                        logger.info(f"[GROUNDING] search_entry_point: {grounding.search_entry_point}")
-                except Exception as e:
-                    logger.warning(f"[GROUNDING] Erro ao logar attrs: {e}")
-
-            if hasattr(grounding, 'web_search_queries') and grounding.web_search_queries:
-                logger.info(f"[GROUNDING] Buscas realizadas: {grounding.web_search_queries}")
-                grounding_search_queries = [q for q in grounding.web_search_queries if q]
-
-            # Extract structured sources from grounding_chunks
-            if hasattr(grounding, 'grounding_chunks') and grounding.grounding_chunks:
-                grounding_sources = []
-                for chunk in grounding.grounding_chunks:
-                    if hasattr(chunk, 'web') and chunk.web:
-                        source = {
-                            'uri': chunk.web.uri if hasattr(chunk.web, 'uri') else None,
-                            'title': chunk.web.title if hasattr(chunk.web, 'title') else None
-                        }
-                        # Only add if we have at least a URI
-                        if source['uri']:
-                            grounding_sources.append(source)
-
-                logger.info(f"[GROUNDING] {len(grounding_sources)} fontes estruturadas extraídas")
-
-            # Extract grounding_supports for inline citation mapping
-            if hasattr(grounding, 'grounding_supports') and grounding.grounding_supports:
-                grounding_supports = []
-                for support in grounding.grounding_supports:
-                    seg = getattr(support, 'segment', None)
-                    support_data = {
-                        # O Gemini omite start_index quando o segmento começa em 0 → vem None
-                        # (o atributo existe mas é None). Coerção None→0, senão o ChatResponse
-                        # (start_index: int) estoura ValidationError → 500.
-                        'start_index': getattr(seg, 'start_index', None) or 0,
-                        'end_index': getattr(seg, 'end_index', None) or 0,
-                        # Mesma normalização da resposta: o trecho casa por conteúdo
-                        # com ela em _insert_inline_citations.
-                        'text': latex_to_unicode(getattr(seg, 'text', None)),
-                        'chunk_indices': list(support.grounding_chunk_indices) if hasattr(support, 'grounding_chunk_indices') else []
-                    }
-                    if support_data['chunk_indices']:
-                        grounding_supports.append(support_data)
-
-                logger.info(f"[GROUNDING] {len(grounding_supports)} supports (mapeamentos inline) extraídos")
+    grounding_search_queries = []
 
     # 12. Processar e unificar referências (validação anti-alucinação + enriquecimento)
     if local_sources:
@@ -2078,7 +1730,7 @@ async def _resolve_image_directives(text: str, db, user_id: int, library_id: int
 def _generate_pubmed_query(response_text: str, from_question: bool = False) -> str:
     """Gera uma query FOCADA em INGLÊS p/ o PubMed a partir da resposta clínica — a busca por
     palavra-chave PT da resposta dá recall ~0 (PubMed é indexado em inglês). Modelo leve + retry
-    (ResilientGeminiClient); qualquer falha → '' (sem reforço, sem quebrar o chat).
+    qualquer falha → '' (sem reforço, sem quebrar o chat).
 
     from_question=True: o texto é a PERGUNTA do médico, para buscar antes de responder (IA
     local, ver clinical_sources)."""
@@ -2197,7 +1849,7 @@ def generate_title_from_content(content: str, language_code: str = 'pt', has_ima
         return title if title else fallback
 
     except Exception as e:
-        logger.error(f"Erro ao gerar título com GenAI: {e}", exc_info=True)
+        logger.error(f"Erro ao gerar título: {e}", exc_info=True)
         return fallback
 
 
@@ -2445,7 +2097,7 @@ async def normalize_clinical_terms(
     language_code: str = 'pt-BR'
 ) -> list[str] | None:
     """
-    Normaliza termos clínicos usando Gemini Flash Lite.
+    Normaliza termos clínicos com a IA local.
 
     Funções:
     1. Detecta negações ("nega", "não", "nenhum") e retorna None

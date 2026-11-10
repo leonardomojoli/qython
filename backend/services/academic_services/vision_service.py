@@ -3,7 +3,7 @@
 """
 Vision Pipeline — Phase 2: Scheduled description of extracted document images.
 
-Uses Gemini Flash Lite (free tier: 30 RPM / 1500 RPD) to generate clinical
+Uses the local multimodal model (Gemma 4, via llm_provider) to generate clinical
 descriptions of medical images. Auto-throttles and defers on rate limits.
 """
 
@@ -46,8 +46,8 @@ For MEDICAL images:
 
 async def describe_single_image(image_path: str) -> Optional[str]:
     """Send a single image to the configured AI provider for clinical description.
-    Reading an image works with Gemini and with a local multimodal model (Gemma 4)."""
-    from google.genai import types
+    Needs a multimodal model on the local AI server (Gemma 4 with its mmproj)."""
+    from .. import llm_types as types
     from ..llm_services import client
 
     try:

@@ -102,7 +102,7 @@ excludes = [
     # Pesos do ML que o app não usa (o embedder e o whisper rodam sem torch; ver lock.sh).
     "torch", "torchvision", "torchaudio", "sentence_transformers", "transformers",
     "tensorflow", "jax",
-    # Redação de nomes para o Gemini: instalada à parte.
+    # Redação de nomes (só serviria a uma IA externa; o Qython roda só com IA local).
     "presidio_analyzer", "presidio_anonymizer", "spacy", "thinc", "blis",
     "firebase_admin",
     # python-magic precisa da libmagic do sistema (ausente no Windows e no macOS) e o import dele

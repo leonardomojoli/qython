@@ -1,41 +1,26 @@
 # qython/backend/services/academic_services/exam_research_service.py
-"""Pesquisa standalone da prova/banca (dossiê) — pilar "Meus Concursos".
+"""Dossiê da prova/banca — pilar "Meus Concursos".
 
-DUAS chamadas (busca → redação), porque medido ao vivo (jul/2026): o prompt GRANDE de
-redação estruturada com Google Search grounda só ~1/3 das vezes (a busca vira acessório
-de uma tarefa de escrita e o modelo a pula; com amostra de biblioteca no contexto, 0/2) —
-enquanto um prompt curto cuja ÚNICA tarefa é buscar grounda 4/4.
+O Qython roda só com IA local, que não pesquisa na web. O dossiê é escrito pelo modelo a partir
+do que o usuário informou (nome do concurso, descrição, banca, edital) e de uma amostra da
+biblioteca, e SAI MARCADO como "sem fontes" (`grounded: False`): o usuário o revisa, edita e só
+então o confirma para guiar a geração das provas. Texto do modelo sem fonte não deve passar por
+fato: a tela avisa, e o prompt manda dizer o que NÃO se sabe.
 
-1) BUSCA (grounded, prompt mínimo): coleta notas cruas + FONTES reais do grounding;
-   retry único com diretiva dura se vier sem nenhuma busca.
-2) REDAÇÃO (sem tools): estrutura o dossiê em markdown a partir das notas + contexto.
-
-Saída em markdown — NÃO JSON: schema/JSON estrito também SUPRIME o grounding. O dossiê
-fica cacheado em `card.dossier`; depois de CONFIRMADO, vira "perfil da banca" na geração.
+Saída em markdown. O dossiê fica cacheado em `card.dossier`; depois de CONFIRMADO, vira
+"perfil da banca" na geração.
 
 Ver docs/ARENA_CUSTOM_EXAMS.md (§7 Pesquisa).
 """
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
-from google.genai import types
+from .. import llm_types as types
 
 from ..llm_services import client, _get_thinking_config_for_model, _log_call_cost
-from .. import llm_provider
 from ...config import Config
 
 logger = logging.getLogger("qython_logger")
-
-
-def _search_prompt(exam_name: str, description: Optional[str]) -> str:
-    """Prompt CURTO cuja única tarefa é BUSCAR — assim o grounding dispara de forma
-    confiável (medido: 4/4 vs ~1/3 do prompt de redação). Sem amostra de biblioteca
-    aqui (contexto rico suprime a busca)."""
-    hints = f"\nPistas do usuário (banca, cargo, edital): {description}\n" if description else ""
-    return f"""Pesquise na web sobre esta prova/concurso da área da saúde:
-
-{exam_name}{hints}
-Execute VÁRIAS buscas (banca + cargo, edital, provas anteriores, estilo das questões da banca, relatos de candidatos) e liste em NOTAS CRUAS tudo de relevante que encontrar: formato da prova, nº de questões/alternativas, duração, pesos, temas mais cobrados, estilo de cobrança da banca, edições passadas. Cite de onde veio cada achado. NÃO invente o que não encontrar — anote "não encontrado" e siga."""
 
 
 def _write_prompt(exam_name: str, description: Optional[str], language: str,
@@ -55,7 +40,7 @@ def _write_prompt(exam_name: str, description: Optional[str], language: str,
     notes_header = (
         "NOTAS DA PESQUISA NA WEB (sua fonte primária — baseie o dossiê nelas):"
         if grounded else
-        "NOTAS (a busca na web NÃO retornou fontes; estas notas vêm do conhecimento do modelo — seja conservador):"
+        "NOTAS (o Qython não pesquisa na web: escreva só com o que o usuário informou e com o que você sabe com segurança — seja conservador):"
     )
 
     return f"""Você é um especialista em concursos, residências e provas da área da saúde.
@@ -68,7 +53,7 @@ Prova/concurso: {exam_name}{desc_block}{sample_block}
 \"\"\"
 
 IMPORTANTE:
-- NÃO invente números de edital, datas, pesos ou regras que não estejam nas notas ou no contexto do usuário — escreva "não encontrado" e siga.
+- NÃO invente números de edital, datas, pesos ou regras que não estejam nas notas ou no contexto do usuário — escreva "não informado" e siga.
 - Se as notas divergirem do contexto do usuário, o contexto do usuário (edital em mãos) prevalece.
 - {lang_line}
 
@@ -80,73 +65,13 @@ como a banca cobra: casos clínicos/vinhetas? memorização? interpretação? n�
 ## Temas e assuntos mais cobrados
 liste os tópicos/áreas com maior incidência, do mais para o menos cobrado.
 ## Provas anteriores e referências
-edições passadas e fontes encontradas na pesquisa.
+edições passadas e referências que o usuário informou; escreva "não informado" quando não houver.
 ## Como montar um simulado fiel
 recomendações práticas: proporção de casos clínicos, distribuição de temas, armadilhas típicas da banca.
 ## Exemplos no estilo da banca
 2 a 3 questões CURTAS de exemplo, escritas por você IMITANDO o formato e o estilo típicos desta prova (não precisam ser questões reais literais). Mostre como a banca costuma formular o enunciado e as alternativas.
 
 Seja específico e conciso. Se a prova for pouco documentada, seja honesto sobre o que NÃO se sabe e oriente-se pela área/nível."""
-
-
-def _search_client():
-    """Quem faz a busca. A busca do Google só existe no Gemini; com a IA de texto
-    local, a etapa usa o Gemini se houver chave (o que vai é o nome do concurso, dado
-    público, não de paciente). Sem chave, None: não há busca a fazer."""
-    if llm_provider.provider_name() == "gemini":
-        return client
-    try:
-        return llm_provider.gemini_client()
-    except llm_provider.CapabilityUnavailable:
-        return None
-
-
-def _run_grounded_call(model: str, prompt: str, search_client) -> Dict[str, Any]:
-    """Uma chamada grounded; devolve {synthesis, sources, queries, grounded}."""
-    tools = [types.Tool(google_search=types.GoogleSearch())]
-    cfg = types.GenerateContentConfig(
-        temperature=0.5,
-        max_output_tokens=3072,
-        tools=tools,
-        thinking_config=_get_thinking_config_for_model(model, 'medium'),
-    )
-    response = search_client.models.generate_content(
-        model=f'models/{model}',
-        contents=prompt,
-        config=cfg,
-    )
-
-    synthesis = (getattr(response, 'text', None) or '').strip()
-
-    sources: List[Dict[str, str]] = []
-    queries: List[str] = []
-    seen = set()
-    try:
-        candidates = getattr(response, 'candidates', None) or []
-        if candidates:
-            gm = getattr(candidates[0], 'grounding_metadata', None)
-            if gm:
-                for chunk in (getattr(gm, 'grounding_chunks', None) or []):
-                    web = getattr(chunk, 'web', None)
-                    uri = getattr(web, 'uri', None) if web else None
-                    if uri and uri not in seen:
-                        seen.add(uri)
-                        sources.append({'uri': uri, 'title': (getattr(web, 'title', None) or '')})
-                queries = [q for q in (getattr(gm, 'web_search_queries', None) or []) if q]
-    except Exception as e:  # extração de grounding nunca deve derrubar a pesquisa
-        logger.warning(f"[EXAM_RESEARCH] falha ao extrair grounding: {e}")
-
-    try:
-        _log_call_cost('exam_research', model, getattr(response, 'usage_metadata', None))
-    except Exception:
-        pass
-
-    return {
-        'synthesis': synthesis,
-        'sources': sources,
-        'queries': queries,
-        'grounded': bool(sources or queries),
-    }
 
 
 def _write_dossier(model: str, prompt: str) -> str:
@@ -174,47 +99,25 @@ def research_exam_dossier(
     language: str = 'pt-BR',
     content_sample: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Pesquisa em DUAS etapas (busca grounded → redação sem tools) e devolve o dossiê
-    {synthesis, sources, queries, grounded, model}. Sem `confirmed`/`researched_at`
+    """Escreve o dossiê (sem busca na web) e devolve {synthesis, sources, queries, grounded, model}. Sem `confirmed`/`researched_at`
     (a rota seta). É BLOQUEANTE — chamar via run_in_threadpool."""
-    model = Config.CHAT_LLM_MODEL or 'gemini-3.1-flash-lite'
+    model = Config.CHAT_LLM_MODEL or 'local'
 
-    # Etapa 1 — BUSCA (prompt mínimo, tarefa única). Retry único se vier sem busca.
-    search_client = _search_client()
-    if search_client is None:
-        logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' sem busca na web (IA local sem chave do Gemini)")
-        search = {'synthesis': '', 'sources': [], 'queries': [], 'grounded': False}
-    else:
-        search = _run_grounded_call(model, _search_prompt(exam_name, description), search_client)
-    if search_client is not None and not search['grounded']:
-        logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' busca sem grounding — retry com diretiva dura")
-        retry = _run_grounded_call(
-            model,
-            _search_prompt(exam_name, description)
-            + "\n\nATENÇÃO: sua tentativa anterior NÃO executou NENHUMA busca e respondeu de memória. "
-              "Execute as buscas (Google Search) AGORA e liste apenas o que encontrar nelas.",
-            search_client,
-        )
-        if retry['grounded'] or (not search['synthesis'] and retry['synthesis']):
-            search = retry
-
-    grounded = search['grounded']
-    notes = search['synthesis'] or '(a busca não retornou notas)'
-
-    # Etapa 2 — REDAÇÃO estruturada a partir das notas (+ contexto do usuário).
+    # Sem busca na web: o dossiê sai do que o usuário informou (e da amostra da biblioteca).
+    notes = '(sem busca na web: use só o que o usuário informou)'
     synthesis = _write_dossier(
         model,
-        _write_prompt(exam_name, description, language, content_sample, notes, grounded),
+        _write_prompt(exam_name, description, language, content_sample, notes, False),
     )
     if not synthesis:
-        synthesis = notes  # fallback: melhor as notas cruas do que nada
+        synthesis = notes
 
-    logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' grounded={grounded} sources={len(search['sources'])} queries={len(search['queries'])} dossier_len={len(synthesis)}")
+    logger.info(f"[EXAM_RESEARCH] '{exam_name[:60]}' sem fontes (IA local) dossier_len={len(synthesis)}")
 
     return {
         'synthesis': synthesis,
-        'sources': search['sources'][:12],
-        'queries': search['queries'],
-        'grounded': grounded,
+        'sources': [],
+        'queries': [],
+        'grounded': False,
         'model': model,
     }

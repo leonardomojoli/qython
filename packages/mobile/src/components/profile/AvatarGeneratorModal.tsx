@@ -18,7 +18,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import {
-  generateAvatar,
   saveAvatar,
   uploadProfilePicture,
   getAvatarHistory,
@@ -27,9 +26,8 @@ import {
   deleteAvatarFromHistory,
   type AvatarLimits,
 } from '../../services/avatar';
-import GradientButton from '../shared/GradientButton';
 
-type Tab = 'upload' | 'generate' | 'history';
+type Tab = 'upload' | 'history';
 
 interface Props {
   visible: boolean;
@@ -41,11 +39,8 @@ export default function AvatarGeneratorModal({ visible, onClose, onAvatarChanged
   const { t } = useTranslation();
   const { theme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<Tab>('generate');
-  const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('upload');
   const [isUploading, setIsUploading] = useState(false);
-  const [tempAvatar, setTempAvatar] = useState<{ url: string; filename: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // History state
@@ -84,45 +79,6 @@ export default function AvatarGeneratorModal({ visible, onClose, onAvatarChanged
       fetchHistory();
     }
   }, [visible, fetchHistory]);
-
-  const handleGenerate = async () => {
-    if (!prompt.trim() || prompt.trim().length < 3) {
-      Alert.alert('', t('promptTooShort', 'Descreva o avatar com pelo menos 3 caracteres.'));
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const result = await generateAvatar(prompt.trim());
-      setTempAvatar({ url: result.temp_avatar_url, filename: result.filename });
-    } catch (error: any) {
-      const msg = error.response?.data?.detail || t('errorGeneratingAvatar', 'Erro ao gerar avatar.');
-      Alert.alert('', msg);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSaveGenerated = async () => {
-    if (!tempAvatar) return;
-    setIsSaving(true);
-    try {
-      await saveAvatar(tempAvatar.filename);
-      setTempAvatar(null);
-      setPrompt('');
-      onAvatarChanged();
-      fetchHistory();
-      Alert.alert('', t('avatarSavedSuccess', 'Avatar salvo com sucesso!'));
-    } catch (error: any) {
-      const msg = error.response?.data?.detail || t('errorSavingAvatar', 'Erro ao salvar avatar.');
-      Alert.alert('', msg);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    setTempAvatar(null);
-  };
 
   const handleUpload = (source: 'camera' | 'gallery') => {
     const options = {
@@ -243,7 +199,6 @@ export default function AvatarGeneratorModal({ visible, onClose, onAvatarChanged
         {/* Tabs */}
         <View style={styles.tabRow}>
           {renderTab('upload', t('upload', 'Upload'))}
-          {renderTab('generate', `${t('generateAI', 'IA')} ✨`)}
           {renderTab('history', t('history', 'Historico'))}
         </View>
 
@@ -280,56 +235,6 @@ export default function AvatarGeneratorModal({ visible, onClose, onAvatarChanged
                   <Text style={[styles.loadingText, { color: theme.textMuted }]}>
                     {t('uploading', 'Enviando...')}
                   </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {activeTab === 'generate' && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHint, { color: theme.textSecondary }]}>
-                {t('aiAvatarHint', 'Descreva o avatar que voce deseja criar com IA')}
-              </Text>
-              <TextInput
-                style={[styles.promptInput, { color: theme.text, borderColor: theme.surfaceBorder, backgroundColor: theme.surface }]}
-                value={prompt}
-                onChangeText={setPrompt}
-                placeholder={t('enterPromptToGenerateAvatar', 'Ex: medico futurista em estilo cyberpunk')}
-                placeholderTextColor={theme.textMuted}
-                multiline
-                maxLength={500}
-                editable={!isGenerating}
-              />
-              <View style={styles.generateBtnWrapper}>
-                <GradientButton
-                  label={`${t('generateAvatar', 'Gerar Avatar')} ✨`}
-                  onPress={handleGenerate}
-                  loading={isGenerating}
-                  disabled={!prompt.trim()}
-                />
-              </View>
-
-              {/* Preview */}
-              {tempAvatar && (
-                <View style={styles.previewSection}>
-                  <Image source={{ uri: tempAvatar.url }} style={styles.previewImage} />
-                  <View style={styles.previewActions}>
-                    <TouchableOpacity
-                      style={[styles.previewBtn, styles.discardBtn, { borderColor: theme.surfaceBorder }]}
-                      onPress={handleDiscard}
-                      disabled={isSaving}>
-                      <Text style={[styles.previewBtnText, { color: theme.textMuted }]}>
-                        {t('discard', 'Descartar')}
-                      </Text>
-                    </TouchableOpacity>
-                    <View style={styles.saveBtnWrapper}>
-                      <GradientButton
-                        label={t('save', 'Salvar')}
-                        onPress={handleSaveGenerated}
-                        loading={isSaving}
-                      />
-                    </View>
-                  </View>
                 </View>
               )}
             </View>

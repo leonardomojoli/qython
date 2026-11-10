@@ -6,16 +6,16 @@ Até aqui o provedor, o modelo e as chaves só mudavam editando o `.env` e reini
 elas ficam no banco (tabela `system_settings`) e valem na hora, no app desktop e na edição
 servidor:
 
-  provider        'openai' (qualquer servidor compatível: llama.cpp, Ollama, LM Studio, vLLM,
-                  OpenRouter...) ou 'gemini'
-  base_url        endereço do servidor compatível (com o /v1)
+O Qython roda só com IA local: um servidor compatível com a API da OpenAI (llama.cpp, Ollama,
+LM Studio, vLLM). Não há escolha de provedor.
+
+  base_url        endereço do servidor (com o /v1)
   model           nome do modelo para o servidor
   context_tokens  janela de contexto do modelo
-  api_key         chave do servidor compatível (cifrada em repouso)
-  gemini_api_key  chave do Gemini (cifrada em repouso)
+  api_key         chave do servidor, para os que pedem (cifrada em repouso)
 
-O que está salvo SOBREPÕE o ambiente (`LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_MODEL`,
-`LLM_CONTEXT_TOKENS`, `LLM_API_KEY`, `GEMINI_API_KEY`); apagar volta ao que o ambiente diz.
+O que está salvo SOBREPÕE o ambiente (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_CONTEXT_TOKENS`,
+`LLM_API_KEY`); apagar volta ao que o ambiente diz.
 O resto do backend lê o ambiente a cada chamada (llm_provider), então aplicar é atualizar o
 ambiente e descartar os clientes já construídos.
 
@@ -40,18 +40,15 @@ logger = logging.getLogger("qython_logger")
 KEY_CONFIG = "ai_config"
 KEY_SECRETS = "ai_config_secrets"
 
-PROVIDERS = ("openai", "gemini")
-PLAIN_FIELDS = ("provider", "base_url", "model", "context_tokens")
-SECRET_FIELDS = ("api_key", "gemini_api_key")
+PLAIN_FIELDS = ("base_url", "model", "context_tokens")
+SECRET_FIELDS = ("api_key",)
 
 # Campo da interface → variável de ambiente que o llm_provider lê.
 ENV_VARS = {
-    "provider": "LLM_PROVIDER",
     "base_url": "LLM_BASE_URL",
     "model": "LLM_MODEL",
     "context_tokens": "LLM_CONTEXT_TOKENS",
     "api_key": "LLM_API_KEY",
-    "gemini_api_key": "GEMINI_API_KEY",
 }
 
 _baseline: Optional[dict] = None  # o ambiente como estava antes de qualquer sobreposição
@@ -150,12 +147,6 @@ def validate_patch(patch: dict) -> dict:
     if unknown:
         raise AiSettingsError(f"Campos desconhecidos: {', '.join(sorted(unknown))}")
 
-    if "provider" in patch:
-        provider = (patch["provider"] or "").strip().lower()
-        if provider and provider not in PROVIDERS:
-            raise AiSettingsError("O provedor deve ser 'openai' (servidor compatível) ou 'gemini'.")
-        clean["provider"] = provider
-
     if "base_url" in patch:
         url = (patch["base_url"] or "").strip().rstrip("/")
         if url:
@@ -204,11 +195,8 @@ def merge(stored: dict, clean: dict) -> dict:
 
 def check_consistency(merged: dict, env_baseline: dict) -> None:
     """Combinações que deixariam a IA inutilizável são recusadas na hora, não na primeira pergunta."""
-    provider = merged.get("provider") or env_baseline.get("LLM_PROVIDER") or ""
-    if provider == "gemini" and not (merged.get("gemini_api_key") or env_baseline.get("GEMINI_API_KEY")):
-        raise AiSettingsError("Para usar o Gemini, informe a chave de API.")
-    if provider == "openai" and not (merged.get("base_url") or env_baseline.get("LLM_BASE_URL")):
-        raise AiSettingsError("Para usar um servidor compatível, informe o endereço dele (ex.: http://127.0.0.1:8081/v1).")
+    if not (merged.get("base_url") or env_baseline.get("LLM_BASE_URL")):
+        raise AiSettingsError("Informe o endereço do servidor de IA (ex.: http://127.0.0.1:8081/v1).")
 
 
 # ---------------------------------------------------------------------------
@@ -238,10 +226,8 @@ def apply(stored: dict) -> None:
             os.environ.pop(var, None)
         else:
             os.environ[var] = base[var]
-    # Código que lê a chave pelo Config (avatar, mapa mental) enxerga a troca.
-    Config.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
     llm_provider.reset_clients()
-    logger.info("Configuração da IA aplicada: provedor=%s.", llm_provider.provider_name())
+    logger.info("Configuração da IA aplicada: servidor %s.", os.environ.get("LLM_BASE_URL") or "(não definido)")
 
 
 async def apply_from_store(store: Store) -> dict:
@@ -273,19 +259,6 @@ async def clear(store: Store) -> None:
 # Visão para a interface (sem as chaves)
 # ---------------------------------------------------------------------------
 
-def pii_engine() -> str:
-    """Quem oculta os nomes antes de o texto ir para o Gemini: o Presidio (com spaCy) ou, sem
-    ele, um detector por regex que deixa passar nomes."""
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("presidio_analyzer") and importlib.util.find_spec("spacy"):
-            return "presidio"
-    except Exception:  # noqa: BLE001
-        pass
-    return "regex"
-
-
 def view(stored: dict) -> dict:
     base = env_baseline()
 
@@ -295,18 +268,15 @@ def view(stored: dict) -> dict:
         return "ambiente" if base.get(ENV_VARS[field]) else "padrão"
 
     return {
-        "provider": llm_provider.provider_name(),
         "base_url": os.environ.get("LLM_BASE_URL") or "",
         "model": os.environ.get("LLM_MODEL") or "",
-        "context_tokens": llm_provider.context_tokens() if llm_provider.provider_name() == "openai" else None,
+        "context_tokens": llm_provider.context_tokens(),
         "has_api_key": bool(os.environ.get("LLM_API_KEY")),
-        "has_gemini_key": bool(os.environ.get("GEMINI_API_KEY")),
         "sources": {f: source(f) for f in ENV_VARS},
         "overridden": bool(stored),
         # O app desktop sobe e desliga o servidor de IA local por conta própria; a tela mostra o
         # caminho para trocar de modelo em vez de pedir um endereço.
         "managed_local": os.getenv("QYTHON_MANAGED_LLM") == "1",
-        "pii_engine": pii_engine(),
         "capabilities": llm_provider.capabilities(),
     }
 
@@ -316,26 +286,11 @@ def view(stored: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 async def test_connection(candidate: dict) -> dict:
-    """Conversa de verdade com o provedor (os valores informados, completados pelo que já está
-    em uso) sem salvar nada."""
+    """Conversa de verdade com o servidor de IA (os valores informados, completados pelo que já
+    está em uso) sem salvar nada."""
     import httpx
 
     started = time.monotonic()
-    provider = (candidate.get("provider") or llm_provider.provider_name()).lower()
-
-    if provider == "gemini":
-        key = candidate.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-        if not key:
-            return {"ok": False, "detail": "Informe a chave do Gemini para testar."}
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as http:
-                res = await http.get("https://generativelanguage.googleapis.com/v1beta/models", params={"key": key, "pageSize": 5})
-        except httpx.HTTPError as exc:
-            return {"ok": False, "detail": f"Não foi possível falar com o Google: {exc}"}
-        if res.status_code == 200:
-            names = [m.get("name", "").removeprefix("models/") for m in res.json().get("models", [])][:5]
-            return {"ok": True, "latency_ms": int((time.monotonic() - started) * 1000), "detail": "Chave aceita pelo Gemini.", "models": names}
-        return {"ok": False, "detail": f"O Google recusou a chave (HTTP {res.status_code})."}
 
     base = (candidate.get("base_url") or os.environ.get("LLM_BASE_URL") or "").rstrip("/")
     if not base:
