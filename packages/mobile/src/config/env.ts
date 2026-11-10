@@ -8,6 +8,9 @@
 // keep pointing at the old server until the app restarts.
 
 import { storage, STORAGE_KEYS } from '../services/storage';
+import { hostPortOf, normalizeServerUrl } from './serverUrl';
+
+export { hostPortOf, normalizeServerUrl };
 
 // Dev builds fall back to the backend on the host machine (Android emulator →
 // host is 10.0.2.2). Release builds start empty and ask for the address.
@@ -17,31 +20,22 @@ const DEV_DEFAULT_SERVER = 'http://10.0.2.2:8000';
 // address means nothing to whoever receives the text, and shouldn't leak.
 export const QYTHON_SITE_URL = 'https://qython.ai';
 
-type ServerUrlListener = (url: string) => void;
+export interface ServerUrlChange {
+  /** O endereço mudou dentro do mesmo pareamento (o computador trocou de IP): a sessão continua valendo. */
+  keepSession: boolean;
+}
+type ServerUrlListener = (url: string, change: ServerUrlChange) => void;
 const listeners = new Set<ServerUrlListener>();
 
-/**
- * Turns what the user typed ("192.168.0.10:8080", "http://host/",
- * "https://host/api") into "scheme://host[:port][/path]" with no trailing
- * slash and no /api suffix. No scheme means http, the common case on a LAN.
- */
-export function normalizeServerUrl(input: string): string {
-  let url = input.trim();
-  if (!url) {
-    return '';
-  }
-  const scheme = /^https?:\/\//i.exec(url);
-  url = scheme ? scheme[0].toLowerCase() + url.slice(scheme[0].length) : `http://${url}`;
-  return url.replace(/\/+$/, '').replace(/\/api$/i, '');
-}
 
 /** The configured server, or '' when none was set yet. */
 export function getServerUrl(): string {
   return storage.getString(STORAGE_KEYS.SERVER_URL) ?? (__DEV__ ? DEV_DEFAULT_SERVER : '');
 }
 
+
 /** Saves the server (normalized) and notifies listeners if it changed. */
-export function setServerUrl(input: string): string {
+export function setServerUrl(input: string, options: { keepSession?: boolean } = {}): string {
   const url = normalizeServerUrl(input);
   if (url === getServerUrl()) {
     return url;
@@ -51,7 +45,7 @@ export function setServerUrl(input: string): string {
   } else {
     storage.remove(STORAGE_KEYS.SERVER_URL);
   }
-  listeners.forEach((listener) => listener(url));
+  listeners.forEach((listener) => listener(url, { keepSession: options.keepSession === true }));
   return url;
 }
 

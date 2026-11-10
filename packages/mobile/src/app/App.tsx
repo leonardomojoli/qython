@@ -16,6 +16,7 @@ import { processQueue } from '../services/offlineQueue';
 import Navigation from './Navigation';
 import OfflineBanner from '../components/common/OfflineBanner';
 import { isAuthenticated as checkAuth } from '../services/auth';
+import { onSessionExpired } from '../services/sessionEvents';
 
 // Configure Google Sign-In once at startup
 configureGoogleSignIn();
@@ -33,6 +34,9 @@ function AppContent() {
       setLoading(false);
     });
   }, []);
+
+  // Sessão recusada pelo servidor (ou celular removido no computador): volta à tela de entrada.
+  useEffect(() => onSessionExpired(() => setAuthenticated(false)), []);
 
   // Setup push notifications after login
   useEffect(() => {
