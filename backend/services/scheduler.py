@@ -1070,7 +1070,7 @@ async def scheduled_stuck_document_recovery():
 async def scheduled_document_retry():
     """
     Retry job for library documents parked in 'pending' — either transcription
-    rate-limit deferrals (e.g. Groq Whisper free-tier quota) or tasks that died
+    transcription deferrals (the local whisper service down or starting) or tasks that died
     before reaching 'processing'.
     Runs every 20 minutes. Claims one stale-pending doc at a time with
     FOR UPDATE SKIP LOCKED: the APScheduler instance runs inside EVERY gunicorn
