@@ -8,8 +8,8 @@ export function loadManifest(file) {
 }
 
 export function fileUrl(model, file) {
-  // Arquivo que não está no Hugging Face (os modelos de OCR, que o projeto RapidOCR hospeda no
-  // ModelScope) traz a URL inteira, já fixada numa versão.
+  // Arquivo que não está no Hugging Face (os modelos de OCR, espelhados numa pré-release do
+  // repositório) traz a URL inteira, já fixada numa versão.
   if (file.url) return file.url;
   // `path` é o caminho dentro do repositório; `name` é como o arquivo fica no disco.
   return `https://huggingface.co/${model.repo}/resolve/${model.revision}/${file.path ?? file.name}`;

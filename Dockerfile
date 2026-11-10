@@ -23,12 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Modelos médios do OCR (PP-OCRv6, 139 MB): erram bem menos em texto miúdo de página escaneada
 # que o modelo pequeno que já vem no pacote do rapidocr, que fica como reserva se estes
-# arquivos faltarem. Fixados na versão v3.10.0 do RapidOCR e conferidos por SHA-256.
+# arquivos faltarem. Espelho, sem alteração, dos modelos do RapidOCR v3.10.0 (ModelScope, na China)
+# numa pré-release do próprio repositório; conferidos por SHA-256.
 ENV QYTHON_OCR_MODELS=/opt/qython/ocr-models
 RUN mkdir -p "$QYTHON_OCR_MODELS" \
-    && base=https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6 \
-    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_det_medium.onnx" "$base/det/PP-OCRv6_det_medium.onnx" \
-    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_rec_medium.onnx" "$base/rec/PP-OCRv6_rec_medium.onnx" \
+    && base=https://github.com/leonardomojoli/qython/releases/download/ocr-models-ppocrv6-v3.10.0 \
+    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_det_medium.onnx" "$base/PP-OCRv6_det_medium.onnx" \
+    && curl -fsSL --retry 3 -o "$QYTHON_OCR_MODELS/PP-OCRv6_rec_medium.onnx" "$base/PP-OCRv6_rec_medium.onnx" \
     && cd "$QYTHON_OCR_MODELS" \
     && printf '%s  %s\n' \
         92078b7355007ccfffcd4c8cd441a3afd4538904d06881b29a155e1e679907c2 PP-OCRv6_det_medium.onnx \
