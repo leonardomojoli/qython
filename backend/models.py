@@ -695,6 +695,18 @@ class ChatSession(Base):
     def __repr__(self):
         return f"<ChatSession {self.id} - '{self.title}'>"
 
+class ConversationSummary(Base):
+    """Resumo cacheado do começo de uma conversa do copiloto longa demais para a janela da IA
+    (services/context_manager.py). `messages_up_to` é quantas mensagens o resumo já cobre."""
+    __tablename__ = 'conversation_summaries'
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey('chat_sessions.id', ondelete='CASCADE'), nullable=False, index=True)
+    messages_up_to = Column(Integer, nullable=False)
+    summary_text = Column(Text, nullable=False)
+    token_count = Column(Integer, nullable=True)
+    # timestamp SEM fuso, como na migration antiga (bancos que a rodaram têm a coluna assim).
+    created_at = Column(DateTime, server_default=text('NOW()'), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
+
 class ChatMessage(Base):
     __tablename__ = 'chat_messages'
     id = Column(Integer, primary_key=True)
