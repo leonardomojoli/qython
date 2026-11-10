@@ -51,11 +51,11 @@ for name in os.listdir(tiktoken_cache):
 
 # Pango/GTK para o PDF (WeasyPrint): o Windows e o macOS não têm. O CI as reúne em pdf-libs/<so>
 # (windows.sh, bundle_dylibs.py). No Windows entram na raiz do pacote, onde o carregador as procura.
-# No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac), como ARQUIVOS DE DADOS: na raiz elas dividiriam
-# o nome com as que outras rodas trazem (o opencv do OCR traz libpng, libfreetype...), e como binários
-# o PyInstaller reescreve as dependências delas para @rpath/..., que aponta para a raiz do pacote e
-# não acha mais as irmãs. O bundle_dylibs.py já deixou cada dependência como @loader_path/<irmã>;
-# como dados, os arquivos vão intactos e o DYLD_FALLBACK_LIBRARY_PATH aponta para a pasta.
+# No macOS entram numa PASTA PRÓPRIA (pdf-libs/mac): na raiz elas dividiriam o nome com as que
+# outras rodas trazem (o opencv do OCR traz libpng, libfreetype...). O PyInstaller trata todo .dylib
+# como binário, mesmo vindo de `datas`: reescreve as dependências para @rpath/<irmã> e define o
+# LC_RPATH como @loader_path/../.., a raiz do pacote, onde as irmãs não estão. Por isso, depois do
+# COLLECT (fim deste arquivo), cada uma ganha @loader_path no LC_RPATH e é reassinada.
 # No Linux vêm do sistema (o GTK que o Electron já exige).
 import sys
 _pdf_dir = {"win32": "win", "darwin": "mac"}.get(sys.platform)
@@ -64,10 +64,7 @@ if _pdf_dir:
     _pdf_libs = os.path.join(SPECPATH, "pdf-libs", _pdf_dir)
     if os.path.isdir(_pdf_libs) and os.listdir(_pdf_libs):
         for name in sorted(os.listdir(_pdf_libs)):
-            if _pdf_dir == "mac":
-                datas.append((os.path.join(_pdf_libs, name), "pdf-libs/mac"))
-            else:
-                extra_binaries.append((os.path.join(_pdf_libs, name), "."))
+            extra_binaries.append((os.path.join(_pdf_libs, name), "pdf-libs/mac" if _pdf_dir == "mac" else "."))
     else:
         print(f"AVISO: {_pdf_libs} vazio; o pacote sai SEM as bibliotecas do PDF (o selftest vai falhar).")
 # Configuração mínima do fontconfig (sem ela o PDF sai sem texto): o entry point aponta FONTCONFIG_FILE para cá.
@@ -140,3 +137,19 @@ exe = EXE(
     upx=False,
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="qython-backend")
+
+# macOS: o LC_RPATH que o PyInstaller deu às bibliotecas do PDF (@loader_path/../..) não alcança a
+# pasta delas. Acrescenta @loader_path (a própria pasta) e reassina: o install_name_tool invalida a
+# assinatura e o macOS em arm64 mata o processo que carrega uma biblioteca com assinatura inválida.
+if sys.platform == "darwin":
+    import glob
+    import subprocess
+
+    _libs_dir = os.path.join(DISTPATH, "qython-backend", "_internal", "pdf-libs", "mac")
+    _dylibs = sorted(glob.glob(os.path.join(_libs_dir, "*.dylib")))
+    if not _dylibs:
+        print(f"AVISO: nenhuma biblioteca do PDF em {_libs_dir}; o PDF vai falhar no macOS.")
+    for _dylib in _dylibs:
+        subprocess.run(["install_name_tool", "-add_rpath", "@loader_path", _dylib], check=True)
+        subprocess.run(["codesign", "--force", "--sign", "-", _dylib], check=True)
+    print(f"pdf-libs/mac: @loader_path no LC_RPATH e assinatura refeita em {len(_dylibs)} bibliotecas")

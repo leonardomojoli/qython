@@ -95,7 +95,7 @@ backend, nas **mesmas versões** do lock do Docker. Não vão no pacote:
 Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no macOS o CI reúne as
 bibliotecas e elas entram dentro do pacote do backend: no Windows as DLLs do MSYS2
 (`python/pdf-libs/windows.sh`), no macOS as dylibs do Homebrew com os caminhos reescritos para
-`@loader_path/` (`python/pdf-libs/bundle_dylibs.py`), numa pasta própria do pacote (`pdf-libs/mac`), copiadas como dados: na raiz elas dividiriam o nome com as do opencv do OCR, e como binários o PyInstaller trocaria as dependências delas por `@rpath/`, que não acha as irmãs. Um `fonts-<so>.conf` mínimo vai junto, porque o
+`@loader_path/` (`python/pdf-libs/bundle_dylibs.py`), numa pasta própria do pacote (`pdf-libs/mac`: na raiz elas dividiriam o nome com as do opencv do OCR). O PyInstaller dá a elas `@rpath/` e um `LC_RPATH` que aponta para a raiz do pacote, então o fim do `qython-backend.spec` acrescenta `@loader_path` ao `LC_RPATH` de cada uma e as reassina. Um `fonts-<so>.conf` mínimo vai junto, porque o
 fontconfig empacotado não traz a configuração do sistema onde foi compilado e, sem ela, o PDF sai
 sem texto. No macOS a `libharfbuzz-subset` não vai: ela derrubou o processo ao reduzir uma fonte do sistema
 (o WeasyPrint então reduz as fontes com o fontTools, mais lento e sem esse defeito). O `selftest` do executável gera um PDF e confere que o texto (com acentos) está nele.
