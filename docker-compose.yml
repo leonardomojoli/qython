@@ -72,8 +72,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-qython}:${POSTGRES_PASSWORD:-qython}@db:5432/${POSTGRES_DB:-qython}
       CHROMA_SERVER_HOST: chroma
       CHROMA_SERVER_PORT: "8000"
-      # Transcrição local pelo serviço whisper abaixo. Para usar o Groq, defina
-      # WHISPER_SERVER_URL vazio e GROQ_API_KEY no .env.
+      # Transcrição local pelo serviço whisper abaixo (o único caminho: não há transcrição em nuvem).
       WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
       # IA local pelo serviço llm abaixo: o único caminho (o Qython não usa IA em nuvem).
       LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:8080/v1}

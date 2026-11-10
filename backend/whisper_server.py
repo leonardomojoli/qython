@@ -3,8 +3,8 @@ Standalone faster-whisper transcription service for Qython.
 
 Runs as ONE process (whisper.service) so the large-v3-turbo model is loaded a SINGLE
 time — not once per gunicorn worker (which would multiply RAM by the worker count and
-OOM the box). The backend posts audio here from transcription_service when
-WHISPER_SERVER_URL is set (otherwise it falls back to the Groq API path).
+OOM the box). The backend posts audio here from transcription_service
+(WHISPER_SERVER_URL); there is no cloud transcription path.
 
 Endpoints:
   GET  /health      -> {"status": "ok", "model": ...}

@@ -169,7 +169,7 @@ os termos da busca).
 | **Raciocínio** | `LLM_THINKING` no servidor | O modelo local raciocina antes de responder; em CPU isso custa minutos |
 | **Saída estruturada** | JSON Schema (`response_format`) | O `llm_provider` converte os esquemas do código (`llm_types.Schema`) |
 | **Embeddings e reranker (RAG)** | multilingual-e5-base e mMARCO, em ONNX | Local, sem torch no app desktop |
-| **Transcrição** | faster-whisper (large-v3-turbo) | Local; a Groq é um fallback opcional |
+| **Transcrição** | faster-whisper (large-v3-turbo) | Local; não há transcrição em nuvem |
 | **OCR** | RapidOCR com PP-OCRv6 (ONNX) | Local; modelo médio por padrão, pequeno como reserva |
 | **Fontes do copiloto** | Catálogo de medicamentos, biblioteca e PubMed, buscados *antes* de gerar | `COPILOT_LOCAL_SOURCES`, `COPILOT_PUBMED` |
 
