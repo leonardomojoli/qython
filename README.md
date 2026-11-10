@@ -63,6 +63,10 @@ Então:
 docker compose up -d
 ```
 
+As chaves que cifram nome, CPF e notas clínicas são geradas na primeira vez e guardadas no volume
+`keys`: **inclua esse volume no backup**, ou defina `QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK` no
+`.env` ([como gerar](docs/SETUP.md#6-privacidade-e-chaves-de-criptografia)).
+
 A aplicação sobe em **http://localhost:8080**.
 
 O primeiro `up` demora: a imagem do backend tem cerca de 3,5 GB e o modelo de IA,
@@ -142,26 +146,21 @@ WITH_LIBREOFFICE=true docker compose build backend
 
 Detalhamento em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Outros documentos
 úteis: [`docs/features.md`](docs/features.md) (capacidades por módulo),
-[`docs/SETUP.md`](docs/SETUP.md) (serviços externos),
+[`docs/SETUP.md`](docs/SETUP.md) (instalação e configuração),
 [`docs/QYTHON_LGPD_PLAN.md`](docs/QYTHON_LGPD_PLAN.md) (modelo de compliance).
 
-## Privacidade e escolha de modelo
+## Privacidade
 
-O Qython foi construído para lidar com dado clínico, e isso impõe uma escolha que
-vale entender antes de configurar:
+O Qython foi construído para lidar com dado clínico:
 
-- **Redação de PII** (`backend/middleware/pii_redaction.py`) roda com Presidio antes
-  das chamadas ao LLM externo que levam texto clínico: copiloto, consultas, revisão
-  automática das consultas e resumo de conversas longas. Nomes, CPF, CNS, telefone
-  e e-mail são substituídos por marcadores. A geração de material de estudo a
-  partir da biblioteca não passa por ela. A imagem já traz o modelo médio do spaCy
-  (`pt_core_news_md`); o grande reconhece nomes melhor e é usado quando instalado
-  (fica dentro do container, então repita depois de atualizar a imagem):
-  ```bash
-  docker compose exec backend python -m spacy download pt_core_news_lg
-  ```
-- **Criptografia em repouso** (Fernet) nos campos sensíveis de usuário, paciente e
-  consulta. As chaves vêm de `QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK`.
+- **A IA roda na sua máquina.** O texto das perguntas, das consultas e dos documentos não é
+  enviado a nenhum serviço de IA. Por isso não há redação de nomes antes da IA: trocar o nome do
+  paciente por um marcador só pioraria a nota gerada. A única saída por padrão é a busca do
+  copiloto no PubMed, que envia só os termos da busca (`COPILOT_PUBMED=0` desliga).
+- **Criptografia em repouso** (Fernet) nos campos sensíveis de usuário, paciente e consulta. As
+  chaves vêm de `QYTHON_FIELD_KEK` e `QYTHON_TOKEN_KEK`; sem elas no `.env`, o Docker as gera e as
+  guarda no volume `keys`, que precisa ir para o backup junto com o banco. Detalhes em
+  [`docs/SETUP.md`](docs/SETUP.md#6-privacidade-e-chaves-de-criptografia).
 - **Audit log append-only** com trigger no Postgres que rejeita UPDATE e DELETE.
 
 ## Desenvolvimento
