@@ -248,6 +248,26 @@ def selftest(_args: argparse.Namespace) -> int:
             raise RuntimeError(f"o PDF saiu sem o texto esperado (fontes?): {text!r}")
         return f"ok ({len(pdf)} bytes, texto conferido)"
 
+    def ocr_runtime():
+        # O OCR (RapidOCR + ONNX) tem os modelos como arquivo de dados dentro do pacote e o cv2
+        # como biblioteca nativa: o PyInstaller só os leva se a análise os enxergar. Lê uma imagem
+        # gerada na hora, sem rede.
+        from PIL import Image, ImageDraw, ImageFont
+
+        from backend.services.ocr_service import ocr_imagem
+
+        img = Image.new("RGB", (900, 220), "white")
+        draw = ImageDraw.Draw(img)
+        fonte = ImageFont.load_default(size=44)
+        draw.text((30, 30), "Amoxicilina 50 mg/kg/dia", fill="black", font=fonte)
+        draw.text((30, 120), "Dipirona 500 mg", fill="black", font=fonte)
+        texto = ocr_imagem(img)
+        print(f"[selftest] ocr: {texto!r}", file=sys.stderr, flush=True)
+        baixo = texto.lower()
+        if "amoxicilina" not in baixo or "dipirona" not in baixo:
+            raise RuntimeError(f"o OCR não leu a imagem de teste: {texto!r}")
+        return f"ok ({texto.count(chr(10)) + 1} linhas lidas)"
+
     def import_fitz():
         import fitz
 
@@ -277,6 +297,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("whisper", whisper_runtime)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
+    check("ocr", ocr_runtime)
     check("pdf", import_pdf)
     check("alembic", alembic_scripts)
     check("data_files", data_files)

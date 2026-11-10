@@ -74,7 +74,9 @@ hiddenimports = []
 # então a análise estática do PyInstaller não os enxerga.
 # faster_whisper, ctranslate2 e av: o modo `whisper` (transcrição) os importa dentro de função;
 # o faster-whisper tem o VAD (silero_vad_*.onnx) como arquivo de dados.
-for pkg in ("faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
+# rapidocr: os modelos .onnx (PP-OCRv6) e os .yaml de configuração são arquivos de dados do pacote;
+# o cv2 e o shapely trazem bibliotecas nativas.
+for pkg in ("rapidocr", "cv2", "shapely", "pyclipper", "omegaconf", "colorlog", "faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
             "pymupdf4llm", "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
             "cssselect2", "certifi", "email_validator", "slowapi", "limits"):
     try:
@@ -102,7 +104,7 @@ excludes = [
     "tensorflow", "jax",
     # Redação de nomes para o Gemini: instalada à parte.
     "presidio_analyzer", "presidio_anonymizer", "spacy", "thinc", "blis",
-    "firebase_admin", "cv2",
+    "firebase_admin",
     # python-magic precisa da libmagic do sistema (ausente no Windows e no macOS) e o import dele
     # trava o PyInstaller no Windows. A biblioteca usa services/mime_sniff.py no lugar.
     "magic",

@@ -198,6 +198,8 @@ export class Stack extends EventEmitter {
       ...(this.chroma ? this.chroma.backendEnv() : {}),
       ...(this.embedder ? this.embedder.backendEnv() : {}),
       ...(this.whisper ? this.whisper.backendEnv() : {}),
+      // OCR: com o modelo médio baixado, o backend o usa; sem ele, cai no pequeno que vem no pacote.
+      ...(this.models?.isInstalled('ocr-ppocrv6-medium') ? { QYTHON_OCR_MODELS: this.models.dirOf('ocr-ppocrv6-medium') } : {}),
       // Com a IA local gerenciada pelo app, a tela de Configurações da IA não pede endereço:
       // manda o médico para o assistente.
       ...(this.llm ? { ...this.llm.backendEnv(), QYTHON_MANAGED_LLM: '1' } : {}),

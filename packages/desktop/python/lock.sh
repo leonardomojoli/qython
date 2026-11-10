@@ -18,7 +18,8 @@
 #                    redação de nomes antes de mandar texto ao Gemini. Só faz falta no
 #                    modo Gemini; sem eles o backend cai no detector por regex
 #                    (middleware/pii_redaction.py).
-#   opencv-python    nada no backend importa o cv2.
+#   (opencv-python-headless ENTRA: o rapidocr o pede, para o OCR. A versão "cheia", com interface
+#   gráfica, não entra: exigiria libGL no sistema e nada no backend a usa.)
 #   python-magic     precisa da libmagic do sistema, que Windows e macOS não têm; o backend usa
 #                    services/mime_sniff.py quando ele não carrega. Pior: no Windows o import dele
 #                    TRAVA o PyInstaller (a análise de DLLs roda `import magic` num processo isolado).
@@ -31,7 +32,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT=../../..
 
-grep -v -E '^(torch|sentence-transformers|transformers|gunicorn|firebase-admin|opencv-python|python-magic|presidio-analyzer|presidio-anonymizer|pt_core_news_md)([ >=<#@]|$)' \
+grep -v -E '^(torch|sentence-transformers|transformers|gunicorn|firebase-admin|python-magic|presidio-analyzer|presidio-anonymizer|pt_core_news_md)([ >=<#@]|$)' \
   "$ROOT/requirements.txt" > requirements.in
 
 # Versões do Docker como teto/piso. O lock do Docker pina também o torch "+cpu"; como o
@@ -44,7 +45,7 @@ uv pip compile requirements.in -c .constraints.tmp -o requirements.lock \
   --custom-compile-command "packages/desktop/python/lock.sh" \
   "$@"
 
-for banned in torch nvidia- firebase-admin presidio spacy opencv-python python-magic; do
+for banned in torch nvidia- firebase-admin presidio spacy 'opencv-python([ =<>]|$)' python-magic pytesseract; do
   if grep -qiE "^${banned}" requirements.lock; then
     echo "ERRO: $banned no lock do desktop" >&2
     exit 1
