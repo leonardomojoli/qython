@@ -66,6 +66,13 @@ backup não abre. *Arquivo* → *Restaurar backup…* confere a senha antes de p
 nunca apaga o que já existia. O banco só restaura no mesmo sistema, na mesma arquitetura e na mesma
 versão maior do PostgreSQL; para trocar de sistema use a exportação por paciente (LGPD).
 
+**Celular.** Em *Perfil* → *Configurações* → *Conectar o celular*, ligue *Permitir o celular nesta rede*,
+clique em *Parear um celular* e escaneie o QR code no app Android do Qython. O celular passa a usar os
+dados do computador, direto pelo Wi-Fi (os dois na mesma rede), sem servidor no meio. A porta só fica
+aberta com a opção ligada e só serve o que o celular pareado precisa; remover o celular na mesma tela
+corta o acesso dele na hora. Se o sistema perguntar sobre o firewall, permita em *redes privadas*.
+Contrato técnico em [`PAREAMENTO.md`](PAREAMENTO.md).
+
 **Atualização.** Windows e AppImage atualizam sozinhos, em segundo plano, e instalam quando o app é
 fechado. O `.deb` atualiza pelo gerenciador de pacotes. No macOS o app só avisa. Para desligar:
 `QYTHON_NO_UPDATE=1` (checar atualização revela o IP e a versão ao GitHub).
@@ -276,6 +283,11 @@ backend.scripts.reset_password voce@exemplo.com`.
 **Transcrição não funciona.** O serviço `whisper` precisa estar de pé e o backend precisa de
 `WHISPER_SERVER_URL` (o compose define). Sem ele a transcrição fica indisponível, sem fallback em
 nuvem. No app desktop, o whisper sobe sob demanda quando há um arquivo para transcrever.
+
+**O celular não encontra o computador.** Os dois precisam estar no mesmo Wi-Fi (redes de visitantes e
+algumas redes de empresa isolam os aparelhos entre si), a opção *Permitir o celular nesta rede* precisa
+estar ligada e o firewall do sistema precisa deixar o Qython receber conexões em *redes privadas*.
+Se o computador trocou de endereço, o QR code mostrado na hora do pareamento já traz o atual.
 
 **O download do modelo parou.** No desktop o download é retomável: abra o assistente de novo. No
 Docker, `docker compose logs -f llm`.

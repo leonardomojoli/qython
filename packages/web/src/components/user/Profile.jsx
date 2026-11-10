@@ -15,6 +15,7 @@ import BillingSection from '../billing/BillingSection';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import ConnectorsSection from '../connectors/ConnectorsSection';
 import SecuritySection from './SecuritySection';
+import PairingSection from './PairingSection';
 import AvatarGeneratorModal from './AvatarGeneratorModal';
 import ComprehensiveStatistics from './ComprehensiveStatistics';
 import ErrorBoundary from '../shared/ErrorBoundary';
@@ -318,6 +319,9 @@ function Profile({ isSidebarOpen }) {
             </div>
             <div className={styles.settingsBlock}>
               <SecuritySection />
+            </div>
+            <div className={styles.settingsBlock}>
+              <PairingSection />
             </div>
 
             {/* Doctor Logo Section */}
