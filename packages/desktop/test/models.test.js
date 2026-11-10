@@ -43,7 +43,7 @@ test('os modelos de busca da biblioteca são multilíngues, fixados e não apare
     for (const f of m.files) {
       assert.match(f.sha256, /^[0-9a-f]{64}$/, `${m.id}/${f.name}`);
       assert.ok(f.size > 1e6);
-      if (!m.repo) assert.match(f.url, /^https:\/\/.+\/resolve\/v\d+\.\d+\.\d+\/.+\.onnx$/, `${m.id}/${f.name}`);
+      if (!m.repo) assert.match(f.url, /^https:\/\/github\.com\/leonardomojoli\/qython\/releases\/download\/ocr-models-[^/]+\/.+\.onnx$/, `${m.id}/${f.name}`);
     }
   }
   // O arquivo no disco tem o nome simples; a URL usa o caminho dentro do repositório.
