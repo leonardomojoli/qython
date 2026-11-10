@@ -17,7 +17,6 @@ from ..database import get_db
 from ..models import MedicalDocument, Patient, User
 from ..security import get_current_active_user
 from ..services.pdf_service import render_document_pdf
-from ..services.data_collector_service import collect_data
 
 import logging
 import io
@@ -44,7 +43,6 @@ class DocumentResponse(BaseModel):
     document_type: str
     content: dict
     created_at: datetime
-    training_data_id: Optional[int] = None  # id do TrainingData (match de feedback à prova de balas)
 
     class Config:
         from_attributes = True
@@ -147,69 +145,6 @@ async def create_document(
 
     logger.info(f"Document {document.id} created by doctor {current_user.id}")
     
-    # DATA FLYWHEEL: Coletar dados para treinamento
-    try:
-        doc_type_labels = {
-            'sick_leave': 'Atestado Médico',
-            'attendance': 'Declaração de Comparecimento',
-            'fitness': 'Atestado de Aptidão',
-            'report': 'Relatório Médico',
-            'referral': 'Encaminhamento'
-        }
-        doc_label = doc_type_labels.get(data.document_type, data.document_type)
-        
-        # Input: tipo de documento
-        input_text = f"{doc_label} para paciente"
-        
-        # Output: conteúdo relevante do documento
-        content = data.content or {}
-        output_parts = []
-        
-        if data.document_type == 'report':
-            # Relatório médico - texto livre mais valioso
-            if content.get('diagnosis'):
-                output_parts.append(f"Diagnóstico: {content['diagnosis']}")
-            if content.get('content'):
-                output_parts.append(content['content'])
-        elif data.document_type == 'referral':
-            # Encaminhamento - motivo é valioso
-            if content.get('specialty'):
-                output_parts.append(f"Especialidade: {content['specialty']}")
-            if content.get('reason'):
-                output_parts.append(f"Motivo: {content['reason']}")
-        elif data.document_type == 'sick_leave':
-            # Atestado - CID e observações
-            if content.get('cid'):
-                output_parts.append(f"CID: {content['cid']}")
-            if content.get('days'):
-                output_parts.append(f"Dias: {content['days']}")
-            if content.get('observations'):
-                output_parts.append(content['observations'])
-        else:
-            # Outros - observações se houver
-            if content.get('observations'):
-                output_parts.append(content['observations'])
-        
-        output_text = "\n".join(output_parts) if output_parts else json.dumps(content, ensure_ascii=False)
-        
-        # Relatórios têm qualidade mais alta (texto livre)
-        quality = 1 if data.document_type == 'report' else 0
-        training_data_id = None
-        
-        training_data_id = await collect_data(
-            db=db,
-            user_id=current_user.id,
-            source_type=f"medical_document_{data.document_type}",
-            input_data=input_text,
-            output_data=output_text,
-            meta={
-                "document_type": data.document_type,
-                "document_id": document.id
-            },
-            quality=quality
-        )
-    except Exception as e:
-        logger.warning(f"[DATA FLYWHEEL] Falha ao coletar documento: {e}")
     
     return DocumentResponse(
         id=document.id,
@@ -218,7 +153,6 @@ async def create_document(
         document_type=document.document_type,
         content=document.content,
         created_at=document.created_at,
-        training_data_id=training_data_id
     )
 
 

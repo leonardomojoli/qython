@@ -20,7 +20,7 @@ O Qython utiliza uma estratégia de retenção chamada "Soft Block" para usuári
 
 O objetivo do Qython é treinar o modelo proprietário **Qython-1**. Para isso, coletamos dados de alta qualidade de todas as interações de IA na plataforma.
 
-Ver `docs/ML_ROADMAP.md` para documentação detalhada do pipeline completo.
+
 
 ### Tabela: `training_data`
 

@@ -13,18 +13,12 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from ..database import get_db
-from ..models import Consultation, User, Transaction, Patient, TrainingData
+from ..models import Consultation, User, Transaction, Patient
 from ..services.llm_services import improve_consultation_notes, generate_case_summary, extract_icd10_from_notes
-from ..services.billing_service import debit_dracmas_for_feature, FEATURE_COSTS
-from ..services.data_collector_service import collect_data
-from ..services.preference_service import collect_regeneration_pair, collect_preference_pair
 from ..services import audit_service
-from ..services.self_critique_service import evaluate_and_refine, extract_critique_metrics
 from ..security import get_current_active_user
 from ..services.activity_service import track_activity
 
-# Self-critique feature flag (desabilitado por padrão até validação)
-ENABLE_SELF_CRITIQUE = os.getenv("ENABLE_SELF_CRITIQUE", "0") == "1"
 
 # Configurar logging
 logger = logging.getLogger("qython_logger")
@@ -40,14 +34,6 @@ class ConsultationPayload(BaseModel):
     improved_notes: Optional[str] = Field(None, alias='improvedNotes', max_length=100000)
     summary: Optional[str] = Field(None, max_length=50000)
     patient_id: Optional[int] = Field(None, alias='patient_id')
-    # Original AI-generated content (before user edits) for DPO pair creation
-    original_improved_notes: Optional[str] = Field(None, alias='originalImprovedNotes', max_length=100000)
-    original_summary: Optional[str] = Field(None, alias='originalSummary', max_length=50000)
-    # Engagement metrics for training data quality
-    regeneration_count_improved: int = Field(0, alias='regenerationCountImproved')
-    regeneration_count_summary: int = Field(0, alias='regenerationCountSummary')
-    time_to_first_edit_ms: Optional[int] = Field(None, alias='timeToFirstEditMs')
-    total_edit_time_ms: Optional[int] = Field(None, alias='totalEditTimeMs')
     # Consultation duration in minutes
     duration_minutes: Optional[int] = Field(None, alias='durationMinutes')
 
@@ -78,8 +64,6 @@ class ConsultationResponse(BaseModel):
     patient_name: Optional[str] = None
     patient: Optional[PatientInfo] = None
     created_at: datetime
-    training_data_id_improved: Optional[int] = None  # id do TrainingData de improved_notes
-    training_data_id_summary: Optional[int] = None   # id do TrainingData de summary
 
     class Config:
         from_attributes = True
@@ -89,9 +73,6 @@ class DraftPayload(BaseModel):
     raw_notes: str = Field(..., alias='rawNotes')
     is_first_consultation: bool = Field(True, alias='isFirstConsultation')
     patient_id: Optional[int] = Field(None, alias='patientId')
-    # DPO/Regeneration fields
-    is_regeneration: bool = Field(False, alias='isRegeneration')
-    previous_response: Optional[str] = Field(None, alias='previousResponse')
 
     class Config:
         populate_by_name = True
@@ -101,9 +82,6 @@ class DraftResponse(BaseModel):
 
 class SummaryPayload(BaseModel):
     improved_text: str = Field(..., alias='improvedText')
-    # DPO/Regeneration fields
-    is_regeneration: bool = Field(False, alias='isRegeneration')
-    previous_response: Optional[str] = Field(None, alias='previousResponse')
 
     class Config:
         populate_by_name = True
@@ -126,26 +104,6 @@ class ICD10ExtractionResponse(BaseModel):
 
     class Config:
         populate_by_name = True
-
-# --- Cost Check Endpoints ---
-
-@router.post("/draft/cost")
-async def get_draft_cost(current_user: User = Depends(get_current_active_user)):
-    """Retorna o custo em dracmas para aprimorar consulta."""
-    return {"cost": FEATURE_COSTS.get("improve_notes", 10)}
-
-
-@router.post("/summary/cost")
-async def get_summary_cost(current_user: User = Depends(get_current_active_user)):
-    """Retorna o custo em dracmas para gerar resumo."""
-    return {"cost": FEATURE_COSTS.get("generate_summary", 5)}
-
-
-@router.post("/save/cost")
-async def get_save_cost(current_user: User = Depends(get_current_active_user)):
-    """Retorna o custo em dracmas para salvar consulta (gratuito)."""
-    return {"cost": 0}
-
 
 # --- Endpoints ---
 
@@ -184,101 +142,6 @@ async def create_consultation(
         await db.commit()
         await db.refresh(new_consultation)
 
-        # ids do TrainingData p/ match exato de feedback (improved_notes e summary)
-        training_data_id_improved = None
-        training_data_id_summary = None
-
-        # --- DATA FLYWHEEL: Coletar TODAS as consultas ---
-        # Wrapped in try/except: data collection must never block consultation save
-        try:
-            # Quality tiers: -1=dislike, 0=neutro, 1=like, 2=gold (editado), 3=platinum (100% manual)
-
-            # Metadata de engajamento
-            engagement_meta = {
-                "specialty": payload.specialty,
-                "is_first": payload.is_first_consultation,
-                "regeneration_count_improved": payload.regeneration_count_improved,
-                "regeneration_count_summary": payload.regeneration_count_summary,
-                "time_to_first_edit_ms": payload.time_to_first_edit_ms,
-                "total_edit_time_ms": payload.total_edit_time_ms
-            }
-
-            if not payload.improved_notes:
-                # Consulta 100% manual (sem IA) = Platinum (quality=3)
-                # Estes dados são extremamente valiosos: escrita real de médicos
-                await collect_data(
-                    db, user_id, "consultation_raw_only",
-                    payload.raw_notes, payload.raw_notes,
-                    engagement_meta,
-                    quality=3,
-                    lang=user_lang
-                )
-            else:
-                # Determinar se foi editado pelo usuário
-                was_edited = (payload.original_improved_notes and
-                              payload.original_improved_notes.strip() != payload.improved_notes.strip())
-
-                # Consulta com IA = Gold (quality=2) - médico revisou/editou
-                training_data_id_improved = await collect_data(
-                    db, user_id, "consultation_improvement",
-                    payload.raw_notes, payload.improved_notes,
-                    {**engagement_meta, "user_edited": was_edited, "accepted_without_edit": not was_edited},
-                    quality=2,
-                    lang=user_lang
-                )
-
-                # --- DPO: Se o médico editou o conteúdo da IA, criar par de preferência ---
-                # Esta é uma das formas mais valiosas de feedback: correção humana direta
-                if was_edited and payload.original_improved_notes:
-                    await collect_preference_pair(
-                        db=db,
-                        user_id=user_id,
-                        prompt=payload.raw_notes,
-                        chosen=payload.improved_notes,  # Versão editada pelo médico
-                        rejected=payload.original_improved_notes,  # Versão original da IA
-                        source_type="consultation_improvement_edit",
-                        preference_source='human',  # Correção humana = máxima confiança
-                        confidence_score=1.0,
-                        metadata={
-                            "specialty": payload.specialty,
-                            "is_first": payload.is_first_consultation,
-                            "time_to_first_edit_ms": payload.time_to_first_edit_ms,
-                            "total_edit_time_ms": payload.total_edit_time_ms
-                        },
-                        language=user_lang
-                    )
-                    logger.info(f"[DPO] Par de edição manual de improved_notes capturado para user {user_id}")
-
-                # Resumo (se existir)
-                if payload.summary:
-                    summary_was_edited = (payload.original_summary and
-                                          payload.original_summary.strip() != payload.summary.strip())
-
-                    training_data_id_summary = await collect_data(
-                        db, user_id, "consultation_summary",
-                        payload.improved_notes, payload.summary,
-                        {"specialty": payload.specialty, "user_edited": summary_was_edited},
-                        quality=1,
-                        lang=user_lang
-                    )
-
-                    # --- DPO: Se o médico editou o resumo, criar par de preferência ---
-                    if summary_was_edited and payload.original_summary:
-                        await collect_preference_pair(
-                            db=db,
-                            user_id=user_id,
-                            prompt=payload.improved_notes,
-                            chosen=payload.summary,  # Versão editada pelo médico
-                            rejected=payload.original_summary,  # Versão original da IA
-                            source_type="consultation_summary_edit",
-                            preference_source='human',
-                            confidence_score=1.0,
-                            metadata={"specialty": payload.specialty},
-                            language=user_lang
-                        )
-                        logger.info(f"[DPO] Par de edição manual de summary capturado para user {user_id}")
-        except Exception as flywheel_error:
-            logger.warning(f"[FLYWHEEL] Data collection failed for consultation (non-blocking): {flywheel_error}")
 
         logger.info(f"Consulta salva. ID: {new_consultation.id}, User ID: {user_id}")
 
@@ -359,8 +222,6 @@ async def create_consultation(
             patient_id=new_consultation.patient_id,
             patient_name=None,
             created_at=new_consultation.created_at,
-            training_data_id_improved=training_data_id_improved,
-            training_data_id_summary=training_data_id_summary
         )
     except Exception as e:
         await db.rollback()
@@ -450,8 +311,6 @@ async def get_draft_consultation(
     language_code = current_user.language_preference or 'pt-BR'
 
     try:
-        # 1. Debita o custo ANTES de executar a ação
-        await debit_dracmas_for_feature(current_user, "improve_notes", db)
 
         # 2. If patient_id provided, fetch patient data for context
         clinical_context = ""
@@ -538,54 +397,6 @@ async def get_draft_consultation(
         if not result or "Erro:" in result:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha na geração do rascunho")
 
-        # --- SELF-CRITIQUE: Avaliar e refinar resposta (Constitutional AI) ---
-        critique_metrics = {}
-        if ENABLE_SELF_CRITIQUE:
-            try:
-                result, critique_result = await evaluate_and_refine(
-                    response=result,
-                    specialty=payload.specialty,
-                    context_type="consultation",
-                    auto_refine=True
-                )
-                critique_metrics = extract_critique_metrics(critique_result)
-                logger.info(f"[SELF-CRITIQUE] Draft avaliado. Score: {critique_metrics.get('self_critique_score', 'N/A')}, "
-                           f"Refinado: {critique_metrics.get('self_critique_was_refined', False)}")
-            except Exception as e:
-                logger.warning(f"[SELF-CRITIQUE] Falha na avaliação (continuando sem critique): {e}")
-
-        # --- DATA FLYWHEEL: Salvar par de draft (quality=0 até salvar consulta) ---
-        meta = {
-            "specialty": payload.specialty,
-            "is_first": payload.is_first_consultation,
-            **critique_metrics  # Inclui métricas de self-critique se disponíveis
-        }
-        await collect_data(
-            db, user_id, "draft_generation",
-            payload.raw_notes, result,
-            meta,
-            quality=0,
-            lang=language_code
-        )
-
-        # --- DPO: Se é regeneração, criar par de preferência ---
-        if payload.is_regeneration and payload.previous_response:
-            await collect_regeneration_pair(
-                db=db,
-                user_id=user_id,
-                prompt=payload.raw_notes,
-                original_response=payload.previous_response,
-                new_response=result,
-                source_type="consultation_draft_regeneration",
-                use_llm_judge=True,
-                metadata={
-                    "specialty": payload.specialty,
-                    "is_first": payload.is_first_consultation
-                },
-                language=language_code
-            )
-            logger.info(f"[DPO] Par de regeneração de draft capturado para: {user_email}")
-
         await track_activity(db, user_id, 'consultation', 'generate')
         await db.commit() # Salva a transação de dracmas
         logger.info(f"Rascunho gerado para: {user_email}")
@@ -611,7 +422,6 @@ async def get_summary(
     language_code = current_user.language_preference or 'pt-BR'
 
     try:
-        await debit_dracmas_for_feature(current_user, "generate_summary", db)
 
         # Executa a função síncrona de LLM em uma thread separada
         summary, usage, model_name = await run_in_threadpool(
@@ -623,46 +433,6 @@ async def get_summary(
         if not summary or "Erro:" in summary:
             logger.error(f"Falha na geração do resumo para {user_email}. Retorno do serviço: {summary}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha na geração do resumo")
-
-        # --- SELF-CRITIQUE: Avaliar e refinar resumo (Constitutional AI) ---
-        critique_metrics = {}
-        if ENABLE_SELF_CRITIQUE:
-            try:
-                summary, critique_result = await evaluate_and_refine(
-                    response=summary,
-                    specialty="",  # Summary é genérico
-                    context_type="summary",
-                    auto_refine=True
-                )
-                critique_metrics = extract_critique_metrics(critique_result)
-                logger.info(f"[SELF-CRITIQUE] Summary avaliado. Score: {critique_metrics.get('self_critique_score', 'N/A')}, "
-                           f"Refinado: {critique_metrics.get('self_critique_was_refined', False)}")
-            except Exception as e:
-                logger.warning(f"[SELF-CRITIQUE] Falha na avaliação de summary: {e}")
-
-        # --- DATA FLYWHEEL: Salvar par de summary (quality=0 até salvar consulta) ---
-        await collect_data(
-            db, user_id, "summary_generation",
-            payload.improved_text, summary,
-            critique_metrics,  # Inclui métricas de self-critique
-            quality=0,
-            lang=language_code
-        )
-
-        # --- DPO: Se é regeneração, criar par de preferência ---
-        if payload.is_regeneration and payload.previous_response:
-            await collect_regeneration_pair(
-                db=db,
-                user_id=user_id,
-                prompt=payload.improved_text,
-                original_response=payload.previous_response,
-                new_response=summary,
-                source_type="consultation_summary_regeneration",
-                use_llm_judge=True,
-                metadata={},
-                language=language_code
-            )
-            logger.info(f"[DPO] Par de regeneração de summary capturado para: {user_email}")
 
         await db.commit()
         logger.info(f"Resumo gerado para: {user_email}")
@@ -688,8 +458,6 @@ async def extract_icd10(
     Extrai códigos CID-10 sugeridos a partir das notas clínicas.
     """
     try:
-        # Cobrar pela extração de CID-10 (2 dracmas)
-        await debit_dracmas_for_feature(current_user, "extract_icd10", db)
 
         language_code = current_user.language_preference or 'pt-BR'
 
@@ -701,15 +469,6 @@ async def extract_icd10(
             language_code
         )
 
-        # --- DATA FLYWHEEL: Salvar extração de CID-10 ---
-        import json
-        await collect_data(
-            db, current_user.id, "icd10_extraction",
-            payload.clinical_notes, json.dumps(suggested_codes, ensure_ascii=False),
-            {"specialty": payload.specialty, "num_codes": len(suggested_codes)},
-            quality=0,
-            lang=language_code
-        )
         await db.commit()
 
         logger.info(f"CID-10 extraídos para {current_user.email}: {len(suggested_codes)} códigos")

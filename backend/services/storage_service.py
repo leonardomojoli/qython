@@ -26,17 +26,13 @@ def get_plan_base(plan_string: str) -> str:
 
 
 def effective_plan(user: User) -> str:
-    """Plano que vale para os limites. Sem cobrança (edição local) não há plano a
-    escolher, e todo usuário fica com o maior."""
-    if not Config.BILLING_ENABLED:
-        return 'specialist'
-    return get_plan_base(user.subscription_plan)
+    """Plano que vale para os limites. Não há planos: todo usuário fica com o maior."""
+    return 'specialist'
 
 
 def storage_quota_applies(user: User) -> bool:
-    """A cota em bytes só existe no SaaS, onde o disco era nosso. Na instalação local
-    os arquivos ficam no disco de quem instalou. Admins nunca têm cota."""
-    return Config.BILLING_ENABLED and not user.is_admin
+    """Não há cota em bytes: os arquivos ficam no disco de quem instalou."""
+    return False
 
 
 def get_storage_quota(user: User) -> int:

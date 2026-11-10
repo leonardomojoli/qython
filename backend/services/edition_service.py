@@ -46,8 +46,6 @@ async def has_users(db: AsyncSession) -> bool:
 async def public_config(db: AsyncSession) -> dict:
     captcha = captcha_required()
     return {
-        "edition": Config.EDITION,
-        "billing_enabled": Config.BILLING_ENABLED,
         # Instalação sem nenhuma conta: o front leva direto ao cadastro do dono.
         "setup_required": not await has_users(db),
         "registration": {
