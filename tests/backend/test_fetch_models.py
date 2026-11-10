@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import sys
+import pathlib
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
@@ -22,7 +23,7 @@ def manifest(tmp, payload: bytes, *, sha=None, size=None, with_url=True):
         "sha256": hashlib.sha256(payload).hexdigest() if sha is None else sha,
     }
     if with_url:
-        file["url"] = "file://" + source
+        file["url"] = pathlib.Path(source).as_uri()
     path = os.path.join(tmp, "models.json")
     with open(path, "w", encoding="utf-8") as handle:
         json.dump({"models": [{"id": "demo", "kind": "support", "repo": "a/b", "revision": "r1", "files": [file]}]}, handle)
@@ -43,7 +44,7 @@ def test_hash_errado_nao_deixa_arquivo():
         out = os.path.join(tmp, "out")
         path = manifest(tmp, b"conteudo", sha="0" * 64)
         try:
-            fetch_models.fetch(path, out, ["demo"])
+            fetch_models.fetch(path, out, ["demo"], retries=1)
         except RuntimeError as exc:
             assert "não consegui baixar" in str(exc)
         else:
@@ -56,7 +57,7 @@ def test_tamanho_errado_recusa():
     with tempfile.TemporaryDirectory() as tmp:
         path = manifest(tmp, b"conteudo", size=3)
         try:
-            fetch_models.fetch(path, os.path.join(tmp, "out"), ["demo"])
+            fetch_models.fetch(path, os.path.join(tmp, "out"), ["demo"], retries=1)
         except RuntimeError:
             return
         raise AssertionError("aceitou um arquivo do tamanho errado")
