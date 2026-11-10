@@ -1,31 +1,18 @@
 # information-department-adapter/utils/file_handler
 
 import os
-import shutil
 import subprocess
 import tempfile
 from PIL import Image
-import pytesseract
 import glob  # Adicionado para listar arquivos de imagem gerados
 import logging # Adicionado logging
 from .transcription_service import transcribe_audio # Importar transcriber
 from ...config import Config # Importar Config
+from ..ocr_service import ocr_imagem  # OCR local (RapidOCR, PP-OCRv6 em ONNX)
 import fitz
-
-# Caminho do executável do Tesseract. No Linux/Docker é /usr/bin/tesseract; no app desktop
-# ele pode vir embutido (QYTHON_TESSERACT) ou estar instalado no sistema. Sem nenhum, o
-# OCR de PDF escaneado falha com uma mensagem clara e o resto da biblioteca funciona.
-pytesseract.pytesseract.tesseract_cmd = (
-    os.getenv('QYTHON_TESSERACT') or shutil.which('tesseract') or '/usr/bin/tesseract'
-)
 
 # Configurar logging
 logger = logging.getLogger(__name__)
-
-if os.getenv("QYTHON_TESSDATA"):
-    os.environ["TESSDATA_PREFIX"] = os.environ["QYTHON_TESSDATA"]
-elif os.path.isdir("/usr/share/tesseract-ocr/5/tessdata/"):
-    os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata/"
 
 def limpar_arquivos_locais(arquivos):
     """
@@ -137,8 +124,7 @@ def aplicar_ocr_em_todas_imagens(image_paths):
     try:
         textos = []
         for image_path in image_paths:
-            text = pytesseract.image_to_string(Image.open(image_path), lang='por+spa+eng')
-            textos.append(text)
+            textos.append(ocr_imagem(image_path))
         return "\n".join(textos)  # Concatena os textos com quebras de linha
     except Exception as e:
         raise RuntimeError(f"Erro ao aplicar OCR nas imagens: {e}")
@@ -207,9 +193,7 @@ def extract_pages_from_pdf(filepath: str, ocr_threshold: int = 100):
                     )
                     pix.save(img_path)
                     tmp_imgs.append(img_path)
-                    ocr_text = pytesseract.image_to_string(
-                        Image.open(img_path), lang='por+spa+eng'
-                    ).strip()
+                    ocr_text = ocr_imagem(img_path).strip()
                     if len(ocr_text) > len(text):
                         text = ocr_text
                 except Exception as e_ocr:
@@ -236,9 +220,7 @@ def extract_pages_from_pptx(filepath: str):
         pages = []
         for i, img_path in enumerate(image_paths):
             try:
-                text = pytesseract.image_to_string(
-                    Image.open(img_path), lang='por+spa+eng'
-                ).strip()
+                text = ocr_imagem(img_path).strip()
             except Exception as e_ocr:
                 logger.warning(f"OCR do slide {i + 1} de {filepath} falhou: {e_ocr}")
                 text = ""

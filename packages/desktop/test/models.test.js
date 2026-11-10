@@ -34,14 +34,16 @@ test('o manifesto fixa cada arquivo por tamanho, SHA-256 e revisão', () => {
 
 test('os modelos de busca da biblioteca são multilíngues, fixados e não aparecem como escolha', () => {
   const mm = new ModelManager(real, '/x');
-  assert.deepEqual(mm.supports().map((m) => m.id), ['e5-base-int8', 'rerank-mmarco-int8']);
+  assert.deepEqual(mm.supports().map((m) => m.id), ['e5-base-int8', 'rerank-mmarco-int8', 'ocr-ppocrv6-medium']);
   assert.ok(mm.llms().every((m) => m.kind !== 'support'));
   assert.ok(mm.llms().length === 3 && !mm.llms().some((m) => m.id.includes('e5')));
   for (const m of mm.supports()) {
-    assert.match(m.revision, /^[0-9a-f]{40}$/);
+    // Do Hugging Face: fixado por commit. Fora dele (OCR): cada arquivo traz a URL numa versão.
+    if (m.repo) assert.match(m.revision, /^[0-9a-f]{40}$/);
     for (const f of m.files) {
       assert.match(f.sha256, /^[0-9a-f]{64}$/, `${m.id}/${f.name}`);
       assert.ok(f.size > 1e6);
+      if (!m.repo) assert.match(f.url, /^https:\/\/.+\/resolve\/v\d+\.\d+\.\d+\/.+\.onnx$/, `${m.id}/${f.name}`);
     }
   }
   // O arquivo no disco tem o nome simples; a URL usa o caminho dentro do repositório.
@@ -50,7 +52,11 @@ test('os modelos de busca da biblioteca são multilíngues, fixados e não apare
   assert.equal(model.name, 'model.onnx');
   assert.equal(fileUrl(e5, model), `https://huggingface.co/Xenova/multilingual-e5-base/resolve/${e5.revision}/onnx/model_quantized.onnx`);
   assert.equal(fileUrl(e5, e5.files.find((f) => f.role === 'tokenizer')).endsWith('/tokenizer.json'), true);
-  assert.equal(mm.supportMissing().length, 2);
+  assert.equal(mm.supportMissing().length, 3);
+  // O OCR médio vem com a URL inteira e é usado pelo nome do arquivo no disco.
+  const ocr = mm.get('ocr-ppocrv6-medium');
+  assert.deepEqual(ocr.files.map((f) => f.name), ['PP-OCRv6_det_medium.onnx', 'PP-OCRv6_rec_medium.onnx']);
+  assert.equal(fileUrl(ocr, ocr.files[0]), ocr.files[0].url);
 });
 
 test('avisa quando falta RAM, mas nunca troca de modelo sozinha', () => {

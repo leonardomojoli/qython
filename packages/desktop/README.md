@@ -55,6 +55,16 @@ desliga parado. O modelo baixa junto com a IA; quem pulou a IA baixa por **Ajuda
 transcrição de áudio e vídeo**. Se o modelo ainda não está no disco o serviço responde 503 e o
 documento volta para a fila de retentativa do backend, em vez de falhar de vez.
 
+### Leitura de documentos escaneados (OCR)
+PDFs sem texto e fotos de documentos passam por `backend/services/ocr_service.py`: RapidOCR com o
+PP-OCRv6 em ONNX, sem binário nativo e sem rede. O modelo **pequeno** (31 MB) vem dentro do pacote
+e sempre funciona. O **médio** (139 MB), que erra bem menos em texto miúdo, está no `models.json`
+como modelo de apoio: baixa junto com a IA, com SHA-256 conferido, e o app passa a pasta dele ao
+backend em `QYTHON_OCR_MODELS`. Sem ele o backend usa o pequeno. `QYTHON_OCR_MODELO=pequeno` força
+o pequeno em máquina lenta; `QYTHON_OCR_THREADS` limita os núcleos (padrão: metade, no máximo 4).
+Tempo por página densa em CPU de 4 threads: cerca de 30 s no médio, 8 s no pequeno. O `selftest`
+do executável lê uma imagem gerada na hora e confere que o pacote levou os modelos e o `cv2`.
+
 ### As chaves de criptografia
 
 `QYTHON_FIELD_KEK` cifra CPF, RG e notas clínicas. Se ela mudasse entre duas aberturas, as
@@ -85,7 +95,7 @@ backend, nas **mesmas versões** do lock do Docker. Não vão no pacote:
 Electron (o deb declara `libpango-1.0-0` e `libpangoft2-1.0-0`). No Windows e no macOS o CI reúne as
 bibliotecas e elas entram dentro do pacote do backend: no Windows as DLLs do MSYS2
 (`python/pdf-libs/windows.sh`), no macOS as dylibs do Homebrew com os caminhos reescritos para
-`@loader_path/` (`python/pdf-libs/bundle_dylibs.py`). Um `fonts-<so>.conf` mínimo vai junto, porque o
+`@loader_path/` (`python/pdf-libs/bundle_dylibs.py`), numa pasta própria do pacote (`pdf-libs/mac`: na raiz elas dividiriam o nome com as do opencv do OCR). O wheel do opencv traz uma `libglib` mais antiga com o mesmo nome e o PyInstaller liga a `libgobject` do Pango a ela (`Symbol not found: _g_string_copy`), então o fim do `qython-backend.spec` roda `pdf-libs/fix_dylibs.py`: cada biblioteca da pasta passa a apontar as irmãs por `@loader_path/<irmã>` e é reassinada. Um `fonts-<so>.conf` mínimo vai junto, porque o
 fontconfig empacotado não traz a configuração do sistema onde foi compilado e, sem ela, o PDF sai
 sem texto. No macOS a `libharfbuzz-subset` não vai: ela derrubou o processo ao reduzir uma fonte do sistema
 (o WeasyPrint então reduz as fontes com o fontTools, mais lento e sem esse defeito). O `selftest` do executável gera um PDF e confere que o texto (com acentos) está nele.
@@ -199,8 +209,6 @@ assinatura e o SmartScreen avisa.
 
 ### O que ainda não está nos instaladores
 
-- **OCR (Tesseract).** Não vai no pacote: imagens e PDFs escaneados só viram texto se o Tesseract estiver
-  instalado no computador (o backend o procura no PATH). PDFs com texto não dependem dele.
 - **macOS assinado e notarizado** (precisa de conta Apple).
 
 ## Backup e restauração

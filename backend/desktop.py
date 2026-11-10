@@ -155,6 +155,24 @@ def whisper(args: argparse.Namespace) -> int:
     return 0
 
 
+def _probe_pdf_libs() -> str:
+    """No pacote do macOS: o erro REAL do dlopen de cada biblioteca do Pango, por caminho absoluto.
+    O WeasyPrint só relata o último nome que tentou; aqui aparece qual dependência não carregou."""
+    import _ctypes  # o ctypes.CDLL do PyInstaller troca o erro do dlopen por uma mensagem genérica
+    import glob
+
+    base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    found = sorted(glob.glob(os.path.join(base, "**", "libgobject-2.0*.dylib"), recursive=True))
+    out = [f"DYLD_FALLBACK={os.environ.get('DYLD_FALLBACK_LIBRARY_PATH')}", f"libgobject em: {found}"]
+    for path in found[:2]:
+        try:
+            _ctypes.dlopen(path)
+            out.append(f"{path}: carregou")
+        except OSError as exc:
+            out.append(f"{path}: {exc}")
+    return " | ".join(out)
+
+
 def selftest(_args: argparse.Namespace) -> int:
     """Importa os módulos que o app carrega e relata o que faltou. Sem rede nem banco."""
     os.environ.setdefault("JWT_SECRET_KEY", "x" * 40)
@@ -233,7 +251,7 @@ def selftest(_args: argparse.Namespace) -> int:
             pdf = pdf_service.HTML(string="<h1>Receita</h1><p>Dipirona 500 mg — ação, coração</p>").write_pdf()
         except RuntimeError as exc:
             if getattr(sys, "frozen", False):
-                raise
+                raise RuntimeError(f"{exc} || sonda: {_probe_pdf_libs()}") from exc
             return f"indisponível: {exc}"
         print(f"[selftest] pdf: gerado ({len(pdf)} bytes); conferindo o texto", file=sys.stderr, flush=True)
         if not pdf.startswith(b"%PDF"):
@@ -247,6 +265,26 @@ def selftest(_args: argparse.Namespace) -> int:
         if "Receita" not in text or "ação" not in text:
             raise RuntimeError(f"o PDF saiu sem o texto esperado (fontes?): {text!r}")
         return f"ok ({len(pdf)} bytes, texto conferido)"
+
+    def ocr_runtime():
+        # O OCR (RapidOCR + ONNX) tem os modelos como arquivo de dados dentro do pacote e o cv2
+        # como biblioteca nativa: o PyInstaller só os leva se a análise os enxergar. Lê uma imagem
+        # gerada na hora, sem rede.
+        from PIL import Image, ImageDraw, ImageFont
+
+        from backend.services.ocr_service import ocr_imagem
+
+        img = Image.new("RGB", (900, 220), "white")
+        draw = ImageDraw.Draw(img)
+        fonte = ImageFont.load_default(size=44)
+        draw.text((30, 30), "Amoxicilina 50 mg/kg/dia", fill="black", font=fonte)
+        draw.text((30, 120), "Dipirona 500 mg", fill="black", font=fonte)
+        texto = ocr_imagem(img)
+        print(f"[selftest] ocr: {texto!r}", file=sys.stderr, flush=True)
+        baixo = texto.lower()
+        if "amoxicilina" not in baixo or "dipirona" not in baixo:
+            raise RuntimeError(f"o OCR não leu a imagem de teste: {texto!r}")
+        return f"ok ({texto.count(chr(10)) + 1} linhas lidas)"
 
     def import_fitz():
         import fitz
@@ -277,6 +315,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("whisper", whisper_runtime)
     check("chromadb", import_chroma)
     check("fitz", import_fitz)
+    check("ocr", ocr_runtime)
     check("pdf", import_pdf)
     check("alembic", alembic_scripts)
     check("data_files", data_files)

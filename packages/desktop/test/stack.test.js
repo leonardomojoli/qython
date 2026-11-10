@@ -78,3 +78,19 @@ test('o backend recebe a porta fixa do Chroma e a telemetria vem desligada', () 
   assert.equal(env.ANONYMIZED_TELEMETRY, 'False');
   assert.equal(env.HF_HUB_DISABLE_TELEMETRY, '1');
 });
+
+test('o backend só recebe a pasta do OCR médio quando o modelo está baixado', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'qy-ocr-'));
+  const paths = layout(root);
+  const stack = new Stack({
+    paths, resources: { backend: 'b', web: 'w' }, logger: quiet,
+    secrets: new SecretStore(paths.secrets, { available: async () => false }), settings: new Settings(paths.settings),
+  });
+  stack.webPort = 41000;
+  stack.pg = { url: 'postgresql://x' };
+  const keys = { JWT_SECRET_KEY: 'j', QYTHON_FIELD_KEK: 'f', QYTHON_TOKEN_KEK: 't' };
+  stack.models = { isInstalled: () => false, dirOf: (id) => `/modelos/${id}` };
+  assert.equal(stack.backendEnv(keys).QYTHON_OCR_MODELS, undefined); // cai no modelo pequeno do pacote
+  stack.models = { isInstalled: (id) => id === 'ocr-ppocrv6-medium', dirOf: (id) => `/modelos/${id}` };
+  assert.equal(stack.backendEnv(keys).QYTHON_OCR_MODELS, '/modelos/ocr-ppocrv6-medium');
+});
