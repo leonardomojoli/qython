@@ -62,9 +62,8 @@ The core AI engine of Qython, designed to assist medical professionals with evid
 
 * **Interactive Chat (Chat Interativo):**
   * Natural language interface to query medical knowledge.
-  * Powered by Gemini 3.5 Flash with thinking mode (HIGH level).
-  * Automatic fallback to Gemini 3.1 Flash-Lite with retry and exponential backoff.
-  * **Google Search Grounding** for real-time scientific references.
+  * Powered by the local model (Gemma 4 via llama.cpp); the Qython runs on local AI only.
+  * **Sources before the answer** (catalog, library, PubMed) instead of web search: see below.
   * **Unified Reference System** with anti-hallucination validation:
     * Validates all URLs via HEAD requests (discards 404, invalid).
     * Enriches metadata (author, year, title) via page fetch.
@@ -92,7 +91,7 @@ The core AI engine of Qython, designed to assist medical professionals with evid
     within the context budget; the model answers from them, cites `[n]`, and says when they do not
     cover the question. The reference list becomes the sources actually cited, renumbered; Tier
     1–4 and curation are skipped on this path. New badges: Catálogo and Biblioteca (no link).
-    Toggles: `COPILOT_LOCAL_SOURCES`, `COPILOT_PUBMED`. The Gemini path is unchanged. Measured with
+    Toggles: `COPILOT_LOCAL_SOURCES`, `COPILOT_PUBMED`. This is the only path (Gemini and web grounding were removed). Measured with
     `python -m backend.scripts.bateria_copiloto` (`--sem-fontes` for the old behavior).
 * **Illustrations from the user's own library (ago/2026):**
   * When a visual finding is central (skin lesion morphology, rash pattern, ECG tracing,
@@ -113,7 +112,7 @@ The core AI engine of Qython, designed to assist medical professionals with evid
     as real is a liability) and code-rendered diagrams (Mermaid).
 * **Medical Image Analysis (Análise de Exames - Vision):**
   * Upload capabilities for X-rays, CT scans, MRIs, and lab results.
-  * Powered by Gemini 3.5 Flash with enhanced visual reasoning.
+  * Powered by the local multimodal model (Gemma 4 with its mmproj).
   * AI detection of anomalies and regions of interest.
   * Suggests differential diagnoses for detected abnormalities.
   * *Note: Always requires human validation.*
@@ -129,8 +128,8 @@ A personalized knowledge base that allows users to leverage their own documents.
   * Upload documents: PDF, PPTX, DOCX, TXT, MD, CSV, HTML, and audio/video files.
   * Chat specifically with the content of uploaded libraries.
   * Semantic search to find concepts rather than just keywords.
-  * **Multimodal Vision Pipeline:** Images embedded in PDFs (radiographs, histology, ECGs, clinical flowcharts, etc.) are automatically extracted, described by Gemini AI, and indexed for semantic search.
-  * **Smart PDF Processing:** Direct text extraction for digital PDFs (instant); OCR fallback only for scanned documents.
+  * **Multimodal Vision Pipeline:** Images embedded in PDFs (radiographs, histology, ECGs, clinical flowcharts, etc.) are automatically extracted, described by the local multimodal model, and indexed for semantic search.
+  * **Smart PDF Processing:** Direct text extraction for digital PDFs (instant); OCR fallback (local RapidOCR, PP-OCRv6) only for scanned documents.
 * **Study Material Generation (Produtor de Materiais):**
   * **Audio Transcription:** Converts audio/video recordings (MP3, WAV, MP4, etc.) into editable text using Whisper Large V3. Ideal for transcribing lectures, classes, and presentations.
   * **Podcasts:** Converts text/documents into audio discussions between two AI hosts. (Residente+ plan required)

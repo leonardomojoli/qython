@@ -1781,7 +1781,7 @@ def rank_and_filter_references(refs: List[Dict], max_refs: int = None) -> List[D
 
 
 def _build_pubmed_query(search_queries: Optional[List[str]], response_text: str, ref_section: Optional[str] = None) -> str:
-    """Monta uma query p/ a busca ATIVA no PubMed (Tier 4). Prefere as buscas que o Gemini fez
+    """Monta uma query p/ a busca ATIVA no PubMed (Tier 4). Prefere as buscas que o modelo fez
     no grounding (já vêm focadas e muitas em inglês = melhor recall no PubMed). Sem grounding,
     usa os TÍTULOS das citações que o modelo escreveu no [REFS] (são tópicos reais, em inglês);
     senão cai nas palavras-chave da resposta. Escolhe a query com mais palavras ASCII (viés inglês)."""
@@ -1816,7 +1816,7 @@ async def process_references(
     Args:
         response_text: Texto da resposta do LLM
         grounding_sources: Sources do Google Grounding
-        search_queries: Buscas que o Gemini fez no grounding (material p/ a busca ativa Tier 4)
+        search_queries: Buscas feitas pelo modelo (material p/ a busca ativa Tier 4; vazio sem busca na web)
 
     Returns:
         tuple: (texto_limpo, referencias_unificadas)

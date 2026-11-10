@@ -4,7 +4,7 @@
 Run directly (no pytest harness in this repo):
     python3 tests/backend/test_llm_provider.py
 
-Covers the translation from the Gemini SDK request shapes the backend actually
+Covers the translation from the request shapes (llm_types) the backend actually
 uses (text, part lists, chat history dicts, types.Content with inline images,
 GenerateContentConfig with JSON schema) to /v1/chat/completions, and the
 response back into the attributes the call sites read. No network: the OpenAI
@@ -17,9 +17,8 @@ from types import SimpleNamespace
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, project_root)
 
-from google.genai import types  # noqa: E402
-
 from qython.backend.services import llm_provider as lp  # noqa: E402
+from qython.backend.services import llm_types as types  # noqa: E402
 
 
 def test_plain_text():
@@ -65,7 +64,7 @@ def test_audio_is_refused():
         lp.to_openai_messages([part])
     except lp.CapabilityUnavailable:
         return
-    raise AssertionError("áudio inline deveria exigir o Gemini")
+    raise AssertionError("áudio inline deveria ser recusado pela IA local")
 
 
 def test_json_schema_from_types_schema_and_dict():
@@ -93,7 +92,7 @@ def test_image_generation_refused():
         lp.to_openai_params(types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]))
     except lp.CapabilityUnavailable:
         return
-    raise AssertionError("gerar imagem deveria exigir o Gemini")
+    raise AssertionError("gerar imagem deveria ser recusado pela IA local")
 
 
 def test_client_roundtrip_with_stub():
@@ -114,12 +113,12 @@ def test_client_roundtrip_with_stub():
     client._client.chat.completions.create = fake_create
     cfg = types.GenerateContentConfig(system_instruction="Extraia CIDs",
                                       response_mime_type="application/json",
-                                      tools=[types.Tool(google_search=types.GoogleSearch())])
-    resp = client.models.generate_content(model="models/gemini-3.1-flash-lite", contents="HAS", config=cfg)
+                                      tools=["campo-que-o-servidor-local-nao-tem"])
+    resp = client.models.generate_content(model="models/qualquer", contents="HAS", config=cfg)
 
     assert seen["model"] == "gemma-teste"
     assert seen["messages"][0] == {"role": "system", "content": "Extraia CIDs"}
-    assert "tools" not in seen  # google_search não tem equivalente
+    assert "tools" not in seen  # o servidor local não tem tools: o campo é ignorado
     assert resp.text == '["I10"]'  # raciocínio vazado removido
     assert resp.candidates[0].finish_reason == types.FinishReason.MAX_TOKENS
     assert resp.candidates[0].grounding_metadata is None

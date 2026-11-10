@@ -36,7 +36,7 @@ logger = logging.getLogger("qython_logger")
 # dataset (moat do Qython-1) e a geração de self-play merecem um modelo melhor que
 # as tarefas triviais (título, CID, normalização). Cai para SIMPLE_TASK_LLM_MODEL e
 # depois 2.5-flash-lite se RLAIF_JUDGE_MODEL não estiver setado.
-RLAIF_JUDGE_MODEL = os.getenv("RLAIF_JUDGE_MODEL") or os.getenv("SIMPLE_TASK_LLM_MODEL", "gemini-2.5-flash-lite")
+RLAIF_JUDGE_MODEL = os.getenv("RLAIF_JUDGE_MODEL") or os.getenv("SIMPLE_TASK_LLM_MODEL", "local")
 
 # Thresholds
 RLAIF_READY_THRESHOLD = 3.5  # Average score >= 3.5 out of 5 → ready_for_training
@@ -79,22 +79,16 @@ Seja conciso mas abrangente. Cite guidelines quando relevante."""
 async def _call_judge(input_data: str, output_data: str) -> Optional[dict]:
     """Call LLM-as-Judge to score a training data entry."""
     try:
-        from google import genai
-        from google.genai import types
+        from . import llm_types as types
 
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            logger.error("[RLAIF] GEMINI_API_KEY not set")
-            return None
-
-        client = genai.Client(api_key=api_key)
+        from . import llm_services
+        client = llm_services.client  # a IA local, a mesma do resto do backend
 
         prompt = JUDGE_PROMPT_TEMPLATE.format(
             input_data=input_data[:2000],
             output_data=output_data[:3000],
         )
 
-        from . import llm_services
         response = client.models.generate_content(
             model=RLAIF_JUDGE_MODEL,
             contents=llm_services._redact_llm_contents(prompt),
@@ -121,18 +115,13 @@ async def _call_judge(input_data: str, output_data: str) -> Optional[dict]:
 async def _generate_alternative(input_data: str, temperature: float = 0.7) -> Optional[str]:
     """Generate an alternative response for self-play."""
     try:
-        from google import genai
-        from google.genai import types
+        from . import llm_types as types
 
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            return None
-
-        client = genai.Client(api_key=api_key)
+        from . import llm_services
+        client = llm_services.client  # a IA local, a mesma do resto do backend
 
         prompt = SELF_PLAY_PROMPT_TEMPLATE.format(input_data=input_data[:2000])
 
-        from . import llm_services
         response = client.models.generate_content(
             model=RLAIF_JUDGE_MODEL,
             contents=llm_services._redact_llm_contents(prompt),
@@ -174,7 +163,7 @@ async def batch_judge_training_data(
                 # Judge each entry at most once. Entries scoring < 3.5 keep
                 # quality_score=0/ready_for_training=False, so without this
                 # filter they'd be re-judged on every weekly run forever —
-                # wasted Gemini calls that grow unbounded with the backlog.
+                # wasted LLM calls that grow unbounded with the backlog.
                 # The judge writes "ai_judge" into metadata for every entry it
                 # processes; failures don't, so those are still retried.
                 TrainingData.metadata_info.op('->>')('ai_judge').is_(None),
@@ -267,7 +256,7 @@ async def self_play_generate_preferences(
                 TrainingData.is_evaluation_holdout == False,
                 # Self-play each high-quality entry only once. Without this,
                 # the random sampling below re-picks the same small pool every
-                # week, re-paying ~3 Gemini calls/entry and flooding
+                # week, re-running ~3 LLM calls/entry and flooding
                 # PreferenceData with near-duplicate synthetic pairs.
                 TrainingData.metadata_info.op('->>')('self_play_done').is_(None),
                 TrainingData.source_type.in_([

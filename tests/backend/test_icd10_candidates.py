@@ -244,7 +244,7 @@ CANDIDATES = [
 
 def test_schema_enum_reaches_both_providers():
     schema = s.selection_schema([c["code"] for c in CANDIDATES])
-    # Gemini: o próprio types.Schema. IA local: o JSON Schema do response_format.
+    # O próprio types.Schema, que o llm_provider converte no JSON Schema do response_format.
     json_schema = lp._json_schema(schema)
     item = json_schema["properties"]["diagnosticos"]["items"]
     assert item["properties"]["code"]["enum"] == ["I21.0", "I21.1", "I10"], item
@@ -381,7 +381,7 @@ async def _check_autocomplete(db):
 
 
 async def _check_live_selection(db):
-    from google.genai import types
+    from qython.backend.services import llm_types as types
 
     client = lp.OpenAICompatibleClient(base_url=LLM_BASE_URL, model=os.environ.get("LLM_MODEL", "local"),
                                        timeout=600)

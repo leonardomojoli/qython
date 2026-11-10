@@ -91,8 +91,7 @@ function renderChoose() {
     b.innerHTML = '<b>Atenção: este computador tem menos memória do que o modelo recomendado pede.</b>';
     b.append(`${rec.label} precisa de ${rec.minTotalRamGb} GB de RAM e aqui ele ${rec.assessment.ramLevel === 'insufficient' ? 'provavelmente não vai rodar' : 'vai rodar devagar e pode travar outros programas'}. ` +
       'O Qython não troca de modelo por conta própria. Você pode baixar mesmo assim, escolher um modelo menor ' +
-      '(que erra mais em dose e conduta; use só para testar) ou usar uma chave do Gemini em Configurações da IA ' +
-      '(nesse caso o texto das perguntas vai para o Google).');
+      '(que erra mais em dose e conduta; use só para testar).');
     $('banner').append(b);
   }
 

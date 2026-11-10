@@ -28,7 +28,6 @@ from .routes import (
     medication_routes, pharmacy_routes, public_routes, sync_routes,
     notification_routes, verification_routes, connector_routes, ai_settings_routes
 )
-from .services.llm_services import initialize_prompt_cache
 
 # =============================================================================
 # CONFIGURAÇÃO DE LOGGING PROFISSIONAL
@@ -113,8 +112,6 @@ def setup_logging():
     # Silencia bibliotecas externas barulhentas
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-    logging.getLogger("google_genai").setLevel(logging.WARNING)
-    logging.getLogger("google_genai.models").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
@@ -147,7 +144,6 @@ async def lifespan(app: FastAPI):
 
     # Create tables is now async
     await create_tables()
-    initialize_prompt_cache()
 
     # Seed data - use advisory lock so only one Gunicorn worker runs seeds
     async with AsyncSessionLocal() as db:

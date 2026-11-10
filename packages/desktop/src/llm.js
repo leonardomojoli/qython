@@ -40,7 +40,6 @@ export function llamaArgs({ model, mmproj, port, apiKey, contextTokens, threads 
 /** Variáveis do backend para falar com a IA local pela porta fixa. */
 export function backendLlmEnv({ port, apiKey, contextTokens }) {
   return {
-    LLM_PROVIDER: 'openai',
     LLM_BASE_URL: `http://127.0.0.1:${port}/v1`,
     LLM_MODEL: MODEL_ALIAS,
     LLM_API_KEY: apiKey,

@@ -75,38 +75,24 @@ class Config:
     ]
 
     # IAs
-    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-    # Com o Gemini cada papel usa um modelo. O app desktop não tem .env, então há um padrão;
-    # no servidor o .env continua mandando. Com IA local o nome é ignorado (llm_provider).
-    PRIMARY_LLM_MODEL = os.getenv("PRIMARY_LLM_MODEL") or "gemini-3.5-flash"
-    FALLBACK_LLM_MODEL = os.getenv("FALLBACK_LLM_MODEL") or "gemini-3.1-flash-lite"
-    SIMPLE_TASK_LLM_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL") or "gemini-3.1-flash-lite"
-    # Chat/RAG (alto volume) — modelo e thinking PRÓPRIOS, separados do PRIMARY (que segue p/
-    # consultas/resumos/relatórios). Rota o chat p/ um modelo barato: no 3.1-flash-lite o output
-    # é 6× mais barato que o 3.5-flash, então thinking pode ficar ALTO (raciocínio) e ainda dar
-    # margem saudável. Tunável por env SEM deploy (A/B): ex. CHAT_LLM_MODEL=gemini-3.1-flash
-    # (qualidade média-alta) ou CHAT_THINKING_LEVEL=medium/low.
-    CHAT_LLM_MODEL = os.getenv("CHAT_LLM_MODEL", "gemini-3.1-flash-lite")
+    # O Qython roda só com IA local: um modelo para tudo, o que o servidor de IA carregou
+    # (llm_provider ignora o nome pedido pela chamada e usa o LLM_MODEL). Os papéis abaixo
+    # continuam separados porque cada recurso os lê pelo nome; todos valem "local". Iguais
+    # entre si, o "modelo de reserva" não existe e o código não tenta um segundo modelo.
+    PRIMARY_LLM_MODEL = os.getenv("PRIMARY_LLM_MODEL") or "local"
+    FALLBACK_LLM_MODEL = os.getenv("FALLBACK_LLM_MODEL") or "local"
+    SIMPLE_TASK_LLM_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL") or "local"
+    # Chat/RAG, material e prova de concurso: o nível de raciocínio é o do servidor
+    # (LLM_THINKING); estes campos só existem porque os chamadores os leem.
+    CHAT_LLM_MODEL = os.getenv("CHAT_LLM_MODEL", "local")
     CHAT_THINKING_LEVEL = os.getenv("CHAT_THINKING_LEVEL", "high")
-    # Geração de material (Produtor de Materiais) — modelo DEDICADO, isolado do PRIMARY
-    # (consultas/resumos/relatórios). Default lite p/ margem: material a 3.5-flash dava
-    # custo ~6× a receita (ex.: questionário $0,175 vs 8 dracmas ≈ $0,028); lite ≈ break-even.
-    # Tunável por env SEM deploy (A/B ou voltar p/ gemini-3.5-flash). [COST] no log dá o real.
-    MATERIAL_LLM_MODEL = os.getenv("MATERIAL_LLM_MODEL", "gemini-3.1-flash-lite")
-    MATERIAL_FALLBACK_LLM_MODEL = os.getenv("MATERIAL_FALLBACK_LLM_MODEL", "gemini-2.5-flash-lite")
-    # Thinking do material: no lite o thinking é baratíssimo, então ALTO recupera a
-    # profundidade das justificativas (que encurtaram com thinking=0) mantendo a margem.
-    # Tunável por env (high/medium/low/minimal) sem deploy se o custo apertar.
+    MATERIAL_LLM_MODEL = os.getenv("MATERIAL_LLM_MODEL", "local")
+    MATERIAL_FALLBACK_LLM_MODEL = os.getenv("MATERIAL_FALLBACK_LLM_MODEL", "local")
     MATERIAL_THINKING_LEVEL = os.getenv("MATERIAL_THINKING_LEVEL", "high")
 
-    # Provas de concurso (Meus Concursos) — modelo FORTE, isolado do Produtor de Materiais.
-    # Motivo: o lite acerta conteúdo clínico mas erra precisão normativa (regência,
-    # concordância) — 3 de 4 questões de Português vieram defeituosas na 1ª prova real.
-    # Viável porque o contexto por bloco passou a ser amostrado (EXAM_*_CHAR_BUDGET):
-    # sem isso, 671k tokens de input × 3.5-flash davam $1,24/prova. Preço: 100 dracmas
-    # (feature generate_custom_exam). [COST] exam:<tipo> no log dá o custo real.
-    EXAM_LLM_MODEL = os.getenv("EXAM_LLM_MODEL", "gemini-3.5-flash")
-    EXAM_FALLBACK_LLM_MODEL = os.getenv("EXAM_FALLBACK_LLM_MODEL", "gemini-2.5-flash")
+    # Provas de concurso (Meus Concursos).
+    EXAM_LLM_MODEL = os.getenv("EXAM_LLM_MODEL", "local")
+    EXAM_FALLBACK_LLM_MODEL = os.getenv("EXAM_FALLBACK_LLM_MODEL", "local")
     EXAM_THINKING_LEVEL = os.getenv("EXAM_THINKING_LEVEL", "high")
     # Orçamento de contexto por bloco (chars). Material que couber vai INTEIRO; acima do
     # teto, amostragem por JANELAS distribuídas (nunca truncar — o fim do programa não
@@ -127,17 +113,13 @@ class Config:
     # Referências: lista curta e forte comunica mais confiança que lista longa e desigual.
     # Fonte "web" (source_type 'other') só aparece quando NÃO há este tanto de fonte forte.
     REF_MAX = int(os.getenv("REF_MAX", "5"))
-    # IA local (sem busca na web): para pergunta clínica, o copiloto busca fontes ANTES de
+    # Sem busca na web (a IA é local): para pergunta clínica, o copiloto busca fontes ANTES de
     # responder (catálogo de medicamentos, biblioteca, PubMed) e responde a partir delas.
     # COPILOT_PUBMED=0 tira o PubMed, para instalação sem internet.
     COPILOT_LOCAL_SOURCES = os.getenv("COPILOT_LOCAL_SOURCES", "1") == "1"
     COPILOT_PUBMED = os.getenv("COPILOT_PUBMED", "1") == "1"
     REF_WEB_FALLBACK_MIN_STRONG = int(os.getenv("REF_WEB_FALLBACK_MIN_STRONG", "2"))
-    MEDICAL_IMAGE_ANALYST_MODEL = os.getenv("MEDICAL_IMAGE_ANALYST_MODEL")
-    IMAGE_GEN_MODEL = os.getenv("IMAGE_GEN_MODEL")
-    IMAGE_GEN_MODEL_PRO = os.getenv("IMAGE_GEN_MODEL_PRO")  # Pro model for high-quality material generation
-    ENABLE_GROUNDING = os.getenv("ENABLE_GROUNDING", "0") == "1"
-    ENABLE_PROMPT_CACHING = os.getenv("ENABLE_PROMPT_CACHING", "0") == "1"
+    MEDICAL_IMAGE_ANALYST_MODEL = os.getenv("MEDICAL_IMAGE_ANALYST_MODEL") or "local"
     # NCBI PubMed E-utilities API key (optional). Without it PubMed allows only
     # ~3 req/s shared per IP; with it, ~10 req/s — recommended in production so
     # citation lookups don't fail under concurrent load.
@@ -252,7 +234,7 @@ class Config:
     }
 
     # --- Vision Pipeline (Document Image Descriptions) ---
-    VISION_DESCRIPTION_MODEL = os.getenv("VISION_DESCRIPTION_MODEL", "gemini-2.5-flash-lite")
+    VISION_DESCRIPTION_MODEL = os.getenv("VISION_DESCRIPTION_MODEL", "local")
     VISION_BATCH_SIZE = 25
     VISION_RPM_LIMIT = 25
     VISION_MAX_RETRIES = 3

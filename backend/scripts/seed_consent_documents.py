@@ -103,10 +103,9 @@ identidade visual do Qython permanecem de propriedade da Olympos Group SAS.
 6.1. Dados de pacientes que você registra são tratados com base na tutela
 da saúde por profissional (LGPD, Art. 11 §2º, II, f). Esses dados são
 encriptados em repouso e auditados a cada acesso.
-6.2. Antes de qualquer chamada a modelos externos (Google Gemini,
-Anthropic Claude, OpenAI), dados pessoais identificáveis são
-automaticamente redigidos por nossa infraestrutura. A lista completa de
-sub-operadores está em https://qython.ai/subprocessors.
+6.2. A inteligência artificial do Qython roda localmente: não há chamada a
+modelos de IA externos. A lista completa de sub-operadores está em
+https://qython.ai/subprocessors.
 6.3. O uso de dados para treinar e aprimorar os modelos do Qython é
 ESTRITAMENTE OPCIONAL. O default é desligado. Você pode conceder ou
 revogar a qualquer momento, por finalidade, em Configurações →

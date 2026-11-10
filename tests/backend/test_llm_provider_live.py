@@ -16,9 +16,8 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, project_root)
 
-from google.genai import types  # noqa: E402
-
 from qython.backend.services import llm_provider as lp  # noqa: E402
+from qython.backend.services import llm_types as types  # noqa: E402
 
 BASE_URL = os.environ.get("LLM_BASE_URL")
 
@@ -29,7 +28,7 @@ def client():
 
 def test_plain_chat_with_system_instruction():
     cfg = types.GenerateContentConfig(system_instruction="Responda em uma frase.", max_output_tokens=64, temperature=0)
-    resp = client().models.generate_content(model="models/gemini-x", contents="Diga olá.", config=cfg)
+    resp = client().models.generate_content(model="models/qualquer", contents="Diga olá.", config=cfg)
     assert resp.text and resp.text.strip(), "resposta vazia"
     assert "<think>" not in resp.text
     assert resp.usage_metadata.prompt_token_count > 0
@@ -43,7 +42,7 @@ def test_history_with_repeated_roles():
         {"role": "user", "parts": [types.Part(text="Repita meu nome.")]},
     ]
     resp = client().models.generate_content(
-        model="models/gemini-x", contents=history,
+        model="models/qualquer", contents=history,
         config=types.GenerateContentConfig(max_output_tokens=32, temperature=0))
     assert resp.text is not None
 
@@ -55,14 +54,14 @@ def test_json_schema_output():
     cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema,
                                       max_output_tokens=96, temperature=0)
     resp = client().models.generate_content(
-        model="models/gemini-x", contents="Liste dois códigos CID-10 de hipertensão.", config=cfg)
+        model="models/qualquer", contents="Liste dois códigos CID-10 de hipertensão.", config=cfg)
     data = json.loads(resp.text)
     assert isinstance(data.get("codigos"), list), data
 
 
 def test_output_cap_is_respected():
     cfg = types.GenerateContentConfig(max_output_tokens=8, temperature=0)
-    resp = client().models.generate_content(model="models/gemini-x", contents="Conte até cem.", config=cfg)
+    resp = client().models.generate_content(model="models/qualquer", contents="Conte até cem.", config=cfg)
     assert resp.usage_metadata.candidates_token_count <= 8
     assert resp.candidates[0].finish_reason == types.FinishReason.MAX_TOKENS
 

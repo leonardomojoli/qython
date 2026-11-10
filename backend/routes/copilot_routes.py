@@ -51,7 +51,7 @@ class GroundingSupportItem(BaseModel):
     text: Optional[str] = None
     chunk_indices: List[int] = []
 
-    # O grounding do Gemini pode trazer start/end_index None (segmento que começa em 0).
+    # start/end_index podem vir None (segmento que começa em 0).
     # Coerção defensiva None→0 p/ nunca estourar 500 na validação do ChatResponse.
     @field_validator('start_index', 'end_index', mode='before')
     @classmethod
@@ -393,7 +393,7 @@ async def handle_chat_message(
         # judge relevance in context (see the ESCOPO section of the system
         # prompt). The old pre-LLM classifier blocked legitimate medicine-adjacent
         # queries (biostatistics, CFM/ethics/LGPD, medical writing, health
-        # economics, etc.) and added a Gemini call per message.
+        # economics, etc.) and added an LLM call per message.
         effective_language = language or current_user.language_preference or 'pt'
 
         # Debit for the message before processing (3 tiers: texto, documento, imagem)
@@ -482,9 +482,9 @@ async def handle_chat_message(
         history_for_llm, total_tokens = await context_manager.get_managed_context(
             session_id=session_id,
             db=db,
-            # Gemini: 80% de 1M. Modelo local: a janela é pequena e divide espaço com
-            # instruções, biblioteca e a própria resposta.
-            max_tokens=llm_provider.token_budget(0.8 if llm_provider.provider_name() == "gemini" else 0.3),
+            # A janela do modelo local é pequena e divide espaço com instruções, biblioteca e
+            # a própria resposta.
+            max_tokens=llm_provider.token_budget(0.3),
         )
         logger.info(f"[CONTEXT] Managed context: {len(history_for_llm)} entries, {total_tokens} tokens")
 

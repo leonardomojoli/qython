@@ -1008,7 +1008,7 @@ async def scheduled_welcome_day3():
 
 async def scheduled_vision_processing():
     """
-    Scheduled task to process pending document image descriptions via Gemini Vision.
+    Scheduled task to process pending document image descriptions via the local vision model.
     Runs daily at 1:00 AM UTC (large batch) and every 4h (catch-up).
     Stops gracefully on rate limit — defers to next cycle.
     """

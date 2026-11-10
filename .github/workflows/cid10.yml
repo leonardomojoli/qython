@@ -47,7 +47,7 @@ jobs:
           python-version: "3.12"
 
       - name: Dependências (versões do lock)
-        run: pip install "sqlalchemy[asyncio]==2.1.6" "asyncpg==0.32.0" "google-genai==2.33.0" "cryptography==50.0.2"
+        run: pip install "sqlalchemy[asyncio]==2.1.6" "asyncpg==0.32.0" "cryptography==50.0.2"
 
       - name: Testes
         env:

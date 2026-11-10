@@ -1,10 +1,10 @@
 // O ambiente dos processos filhos (backend, Chroma, llama-server, Postgres).
 //
 // Eles NÃO herdam o ambiente do computador do médico: herdar seria deixar uma variável solta
-// (GEMINI_API_KEY de um teste antigo, DATABASE_URL de outro projeto, PGPASSWORD, LLM_PROVIDER)
-// decidir para onde o texto clínico vai. O backend escolhe o provedor de IA pelo ambiente, e
-// com uma GEMINI_API_KEY herdada ele passaria a mandar as perguntas ao Google sem ninguém
-// pedir. Só passa o que o sistema operacional e a rede precisam; o resto o app define.
+// (LLM_BASE_URL de um teste antigo, DATABASE_URL de outro projeto, PGPASSWORD) decidir para onde
+// o texto clínico vai. O backend lê o endereço da IA e o banco pelo ambiente: um valor herdado
+// mandaria as perguntas para um servidor que ninguém escolheu. Só passa o que o sistema
+// operacional e a rede precisam; o resto o app define.
 const EXACT = new Set([
   'PATH', 'PATHEXT', 'HOME', 'USER', 'USERNAME', 'LOGNAME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA',
   'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMW6432', 'COMMONPROGRAMFILES',

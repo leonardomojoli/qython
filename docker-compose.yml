@@ -1,6 +1,6 @@
 # Qython — stack completa em um comando.
 #
-#   cp .env.example .env    # preencha ao menos GEMINI_API_KEY e JWT_SECRET_KEY
+#   cp .env.example .env    # preencha ao menos o JWT_SECRET_KEY
 #   docker compose up -d
 #   → web em http://localhost:8080, API em http://localhost:8080/api
 #
@@ -75,9 +75,7 @@ services:
       # Transcrição local pelo serviço whisper abaixo. Para usar o Groq, defina
       # WHISPER_SERVER_URL vazio e GROQ_API_KEY no .env.
       WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
-      # IA local pelo serviço llm abaixo. Com GEMINI_API_KEY no .env e
-      # LLM_PROVIDER=gemini, o texto vai para o Gemini.
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      # IA local pelo serviço llm abaixo: o único caminho (o Qython não usa IA em nuvem).
       LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:8080/v1}
       LLM_MODEL: ${LLM_MODEL:-gemma-4}
       LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-16384}

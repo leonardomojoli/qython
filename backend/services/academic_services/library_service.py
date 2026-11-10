@@ -50,7 +50,7 @@ DRIVE_CACHE_TTL_SECONDS = 3600
 
 
 # Heurística LOCAL (sem LLM) p/ sugerir um ícone Font Awesome pelo nome da biblioteca.
-# Substitui a antiga chamada ao Gemini: escolher 1 de ~24 ícones é tarefa de keyword,
+# Substitui a antiga chamada a um LLM: escolher 1 de ~24 ícones é tarefa de keyword,
 # não precisa de IA (custo + latência + dependência num caminho crítico de criação).
 _ICON_KEYWORDS = [
     (("cardio", "coração", "coracao", "heart", "corazón", "corazon", "cardía", "cardia", "valvul", "coronar"), "heart-pulse"),

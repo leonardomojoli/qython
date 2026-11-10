@@ -11,10 +11,9 @@ from pptx import Presentation
 from pptx.util import Inches
 from ..llm_services import client, PRIMARY_LLM_MODEL, FALLBACK_LLM_MODEL, MAX_RETRIES, INITIAL_BACKOFF, MAX_BACKOFF, _get_thinking_config_for_model
 from .. import llm_provider
-from google.genai import types
+from .. import llm_types as types
 import time
 from ...config import Config
-from ...services import stock_image_service
 # demjson3 removed for security (accepts Python expressions from untrusted LLM output)
 import shutil
 from fpdf import FPDF
@@ -24,8 +23,8 @@ load_dotenv()
 logger = logging.getLogger("qython_logger")
 
 # Schema de saída estruturada para questionnaire_objective.
-# O Gemini usa constrained decoding p/ garantir JSON sintaticamente válido —
-# previne "Expecting ',' delimiter" e outros erros de sintaxe do lite+thinking.
+# O servidor de IA usa constrained decoding (JSON Schema) p/ garantir JSON sintaticamente
+# válido — previne "Expecting ',' delimiter" e outros erros de sintaxe.
 _QUESTIONNAIRE_OBJECTIVE_SCHEMA = types.Schema(
     type=types.Type.OBJECT,
     required=['questionario_objetivo'],
@@ -974,129 +973,6 @@ Sua resposta DEVE ser um único bloco de código JSON válido, sem texto adicion
     return prompt
 
 
-def generate_mind_map_image(outline_data: dict) -> Optional[str]:
-    """
-    Generates a mind map image using Gemini 2.5 Flash Image based on the outline data.
-
-    Args:
-        outline_data: The structured mind map data (mapa_mental dict)
-
-    Returns:
-        Base64 encoded image string, or None if generation fails
-    """
-    try:
-        from ..llm_provider import gemini_client
-        from google.genai import types
-        import base64
-
-        if not Config.GEMINI_API_KEY:
-            logger.error("[MIND_MAP_IMAGE] GEMINI_API_KEY não configurada")
-            return None
-
-        # Use Pro model for high-quality image generation, fallback to standard model
-        image_model = Config.IMAGE_GEN_MODEL_PRO or Config.IMAGE_GEN_MODEL
-        if not image_model:
-            logger.error("[MIND_MAP_IMAGE] IMAGE_GEN_MODEL_PRO e IMAGE_GEN_MODEL não configuradas")
-            return None
-
-        # Build structured text from outline
-        central_theme = outline_data.get('tema_central', 'Mapa Mental')
-        description = outline_data.get('descricao', '')
-        nodes = outline_data.get('nos', [])
-
-        # Create a structured prompt for the mind map
-        branches_text = []
-        for i, node in enumerate(nodes[:6], 1):  # Limit to 6 main branches for clarity
-            category = node.get('categoria', '')
-            title = node.get('titulo', '')
-            children = node.get('filhos', [])
-
-            branch_str = f"Ramo {i}: {title}"
-            if children:
-                children_titles = [c.get('titulo', '') for c in children[:4]]  # Limit children
-                branch_str += f" (subtópicos: {', '.join(children_titles)})"
-            branches_text.append(branch_str)
-
-        branches_formatted = '\n'.join(branches_text)
-
-        # Craft the image generation prompt
-        image_prompt = f"""Create a professional medical mind map diagram with the following structure:
-
-CENTRAL TOPIC: "{central_theme}"
-
-MAIN BRANCHES:
-{branches_formatted}
-
-STYLE REQUIREMENTS:
-- Clean, professional medical/educational style
-- Central topic in a prominent oval or rounded rectangle in the center
-- Main branches radiating outward with clear connecting lines
-- Use a cohesive color scheme: purple for central, then blue, green, teal, orange for branches
-- Each branch should be in a rounded rectangle with readable text
-- Include subtle icons or visual cues for medical context
-- White or very light background for clarity
-- Sans-serif font, bold for titles
-- Hierarchical layout with clear visual hierarchy
-- All text must be clearly legible
-- Modern, minimalist aesthetic suitable for medical education
-- Aspect ratio approximately 16:9 (landscape)"""
-
-        logger.info(f"[MIND_MAP_IMAGE] Gerando imagem com {image_model}")
-        logger.debug(f"[MIND_MAP_IMAGE] Prompt: {image_prompt[:200]}...")
-
-        # Initialize client
-        image_client = gemini_client()  # imagem: só Gemini, mesmo com texto local
-
-        # Retry logic
-        max_retries = 3
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                response = image_client.models.generate_content(
-                    model=image_model,
-                    contents=image_prompt,
-                    config=types.GenerateContentConfig(
-                        response_modalities=["IMAGE", "TEXT"],
-                    )
-                )
-
-                # Extract image from response
-                image_data = None
-                for part in response.candidates[0].content.parts:
-                    if hasattr(part, 'inline_data') and part.inline_data:
-                        image_data = part.inline_data.data
-                        break
-
-                if image_data:
-                    logger.info(f"[MIND_MAP_IMAGE] Imagem gerada com sucesso na tentativa {attempt + 1}")
-                    # Return base64 encoded image
-                    if isinstance(image_data, bytes):
-                        return base64.b64encode(image_data).decode('utf-8')
-                    return image_data
-                else:
-                    # Check for text response
-                    text_parts = [p.text for p in response.candidates[0].content.parts if hasattr(p, 'text') and p.text]
-                    if text_parts:
-                        logger.warning(f"[MIND_MAP_IMAGE] API retornou texto ao invés de imagem: {text_parts[0][:100]}")
-                    last_error = "Modelo não gerou imagem"
-
-            except Exception as e:
-                logger.warning(f"[MIND_MAP_IMAGE] Tentativa {attempt + 1} falhou: {str(e)}")
-                last_error = str(e)
-
-            # Wait before retry
-            if attempt < max_retries - 1:
-                time.sleep(1 * (attempt + 1))
-
-        logger.error(f"[MIND_MAP_IMAGE] Falha após {max_retries} tentativas: {last_error}")
-        return None
-
-    except Exception as e:
-        logger.error(f"[MIND_MAP_IMAGE] Erro ao gerar imagem: {str(e)}", exc_info=True)
-        return None
-
-
 def generate_comparative_table_prompt(subject_context):
     prompt = f"""
 Você é um especialista em criar materiais de estudo para a área da saúde.
@@ -1476,15 +1352,13 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
         # demais materiais seguem conservadores.
         quiz_temperature = 0.85 if material_type in ('questionnaire_objective', 'questionnaire_subjective') else 0.4
         genai_config = {'temperature': quiz_temperature, 'max_output_tokens': 32768}
-        # O teto de 32k cobre o raciocínio do Gemini, que conta como saída. Num modelo local
-        # em CPU (~7 tokens/s) ele vira horas quando a amostragem degenera: medido, tentativas
-        # de 7 mil tokens para 3 questões, contra ~600 numa geração normal. O teto passa a
-        # acompanhar o pedido, com folga de mais do dobro.
-        if llm_provider.provider_name() != "gemini":
-            if material_type in ('questionnaire_objective', 'questionnaire_subjective'):
-                genai_config['max_output_tokens'] = 450 * (question_count or 25) + 600
-            else:
-                genai_config['max_output_tokens'] = 6000
+        # Um teto de 32k num modelo local em CPU (~7 tokens/s) vira horas quando a amostragem
+        # degenera: medido, tentativas de 7 mil tokens para 3 questões, contra ~600 numa
+        # geração normal. O teto acompanha o pedido, com folga de mais do dobro.
+        if material_type in ('questionnaire_objective', 'questionnaire_subjective'):
+            genai_config['max_output_tokens'] = 450 * (question_count or 25) + 600
+        else:
+            genai_config['max_output_tokens'] = 6000
         if is_json_output:
             genai_config['response_mime_type'] = 'application/json'
         # Structured output schema por tipo: constrained decoding garante JSON válido
@@ -1623,48 +1497,10 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
         if material_type == 'slideshow_only':
             json_content = _pre_parsed_json
             
-            # This list will hold paths for images that need to be embedded in the PPTX
-            # and then cleaned up.
-            temp_files_for_pptx_cleanup = []
-            
-            # This is the public-facing directory for previews. We won't clean this up immediately.
-            public_preview_dir = os.path.join(Config.PERMANENT_UPLOAD_FOLDER, 'temp_preview_images')
-            os.makedirs(public_preview_dir, exist_ok=True)
-
-            for slide in json_content.get("slides", []):
-                for content_block in slide.get("content", []):
-                    if content_block.get("type") == "image_suggestion":
-                        description = content_block.get("description")
-                        # Generate the image using our robust service
-                        temp_path_from_service = stock_image_service.generate_image_from_prompt(description)
-                        
-                        if temp_path_from_service:
-                            filename = os.path.basename(temp_path_from_service)
-                            
-                            # 1. Create a permanent copy for the web preview
-                            public_path = os.path.join(public_preview_dir, filename)
-                            shutil.copy(temp_path_from_service, public_path)
-                            
-                            # 2. Assign the public URL for the frontend
-                            content_block['generated_image_url'] = f"/{Config.STATIC_URL_PATH_PREFIX.strip('/')}/uploads/temp_preview_images/{filename}"
-                            
-                            # 3. Keep track of the path for PPTX embedding
-                            content_block['temp_image_path'] = public_path 
-                            temp_files_for_pptx_cleanup.append(public_path)
-
-                            # The original file from the service is no longer needed
-                            os.remove(temp_path_from_service)
-            
+            # Os slides saem sem imagem: a IA local não gera imagem. As sugestões de imagem
+            # (`image_suggestion`) ficam no conteúdo como texto para o autor ilustrar.
             file_path = create_presentation_from_json(json_content, user_id)
             
-            # Now, we clean up the files we copied for the preview/pptx.
-            # A better long-term solution is a cron job to clean this folder periodically.
-            # For now, we'll leave them so the preview works. The user can close the modal.
-            # The key is that the 404 is gone.
-            
-            # Let's just log that we are NOT cleaning them for now.
-            logger.info(f"{len(temp_files_for_pptx_cleanup)} preview images were generated and will remain for the user session.")
-
             part_dict = {
                 "slideshow_file_path": file_path,
                 "slideshow_content": json_content
@@ -1680,19 +1516,9 @@ def generate_study_material(document_content: str, material_type: str, user_id: 
         elif material_type == 'mind_map':
             part_dict = _pre_parsed_json
 
-            # Generate the mind map image using the outline data
-            if 'mapa_mental' in part_dict:
-                logger.info("[MIND_MAP] Gerando imagem do mapa mental...")
-                mind_map_image = generate_mind_map_image(part_dict['mapa_mental'])
-                if mind_map_image:
-                    part_dict['mind_map_image'] = mind_map_image
-                    logger.info("[MIND_MAP] Imagem gerada com sucesso")
-                else:
-                    logger.warning("[MIND_MAP] Falha ao gerar imagem, retornando apenas outline")
-                    part_dict['mind_map_image'] = None
-            else:
-                logger.warning("[MIND_MAP] Estrutura mapa_mental não encontrada no JSON")
-                part_dict['mind_map_image'] = None
+            # Sem imagem gerada (a IA local não gera imagem): a tela desenha o mapa como diagrama
+            # interativo a partir do `mapa_mental`.
+            part_dict['mind_map_image'] = None
         else:
             part_dict = _pre_parsed_json if _pre_parsed_json is not None else extract_json_from_response(raw_output)
 

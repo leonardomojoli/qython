@@ -1,22 +1,23 @@
 # qython/backend/services/llm_provider.py
 """
-Provedor de IA trocável: Google Gemini ou qualquer servidor compatível com a API da
-OpenAI — llama.cpp (`llama-server`), Ollama, LM Studio, vLLM, OpenRouter, a própria
-OpenAI.
+IA do Qython: um servidor local compatível com a API da OpenAI — llama.cpp
+(`llama-server`, o padrão), Ollama, LM Studio, vLLM. O Qython roda só com modelo
+local: não há provedor em nuvem.
 
-O backend inteiro fala com a IA pela interface do SDK do Gemini,
+O backend inteiro fala com a IA por uma interface herdada do SDK do Google,
 `client.models.generate_content(model=..., contents=..., config=...)`. Em vez de
-reescrever as ~30 chamadas, o provedor OpenAI-compatível imita essa interface:
-traduz o pedido para /v1/chat/completions e devolve um objeto com os campos que o
-código lê (`.text`, `.candidates`, `.usage_metadata`).
+reescrever as ~30 chamadas, o cliente daqui imita essa interface: traduz o pedido
+para /v1/chat/completions e devolve um objeto com os campos que o código lê
+(`.text`, `.candidates`, `.usage_metadata`). O nome de modelo que a chamada pede é
+ignorado; vale o `LLM_MODEL` da instalação.
 
-O que não tem equivalente fora do Gemini fica de fora, e `capabilities()` diz o que
-a instalação oferece, para o front esconder ou avisar:
-  - busca do Google (tool google_search): a resposta vem sem grounding;
-  - geração de imagem: exige a chave do Gemini.
+O que um modelo local não faz fica de fora, e `capabilities()` diz o que a
+instalação oferece, para o front esconder ou avisar:
+  - busca na web durante a resposta: o copiloto busca nas próprias fontes (catálogo,
+    biblioteca, PubMed) antes de responder;
+  - geração de imagem e de áudio: não existe.
 
 Configuração (.env):
-  LLM_PROVIDER    gemini | openai. Padrão: gemini se houver GEMINI_API_KEY.
   LLM_BASE_URL    endereço da API, com o /v1 (ex.: http://127.0.0.1:8081/v1).
   LLM_MODEL       nome do modelo para o servidor (o llama-server ignora; o Ollama
                   exige, ex.: gemma4:e4b).
@@ -41,27 +42,22 @@ import weakref
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
-from google.genai import types
+from . import llm_types as types
 
 logger = logging.getLogger("qython_logger")
 
 
 class CapabilityUnavailable(RuntimeError):
-    """O provedor configurado não faz isso (ex.: gerar imagem sem o Gemini)."""
+    """A IA local não faz isso (ex.: gerar imagem)."""
 
 
 def provider_name() -> str:
-    explicit = (os.getenv("LLM_PROVIDER") or "").strip().lower()
-    if explicit in ("gemini", "openai"):
-        return explicit
-    return "gemini" if os.getenv("GEMINI_API_KEY") else "openai"
+    """Sempre 'openai': o único caminho é o servidor local compatível com a API da OpenAI."""
+    return "openai"
 
 
 def context_tokens() -> int:
-    """Janela de contexto do modelo de texto, em tokens. O Gemini aceita 1 milhão; um
-    modelo local, o que o servidor foi configurado para alocar."""
-    if provider_name() == "gemini":
-        return 1_000_000
+    """Janela de contexto do modelo, em tokens: o que o servidor foi configurado para alocar."""
     return int(os.getenv("LLM_CONTEXT_TOKENS", "16384"))
 
 
@@ -76,21 +72,18 @@ def approx_tokens(text: str) -> int:
 
 
 def capabilities() -> dict:
-    """O que a IA desta instalação faz. Gerar imagem depende só de haver uma chave do
-    Gemini, mesmo com o texto num modelo local."""
-    gemini_text = provider_name() == "gemini"
-    has_gemini_key = bool(os.getenv("GEMINI_API_KEY"))
+    """O que a IA desta instalação faz."""
     return {
         "provider": provider_name(),
-        "model": os.getenv("LLM_MODEL") if not gemini_text else None,
-        "web_search": gemini_text,
-        "image_generation": has_gemini_key,
+        "model": os.getenv("LLM_MODEL"),
+        "web_search": False,
+        "image_generation": False,
         "vision": True,
     }
 
 
 # --------------------------------------------------------------------------- #
-# Resposta no formato do SDK do Gemini (só os campos que o backend lê)
+# Resposta no formato do SDK do Google (só os campos que o backend lê)
 # --------------------------------------------------------------------------- #
 
 @dataclass
@@ -155,7 +148,7 @@ def _get(obj, name, default=None):
 
 
 def _part_to_openai(part) -> Optional[dict]:
-    """Uma parte do Gemini (str, types.Part, dict) -> item de conteúdo da OpenAI."""
+    """Uma parte (str, types.Part, dict) -> item de conteúdo da OpenAI."""
     if part is None:
         return None
     if isinstance(part, str):
@@ -171,10 +164,10 @@ def _part_to_openai(part) -> Optional[dict]:
             data = base64.b64encode(data).decode("ascii")
         if not mime.startswith("image/"):
             # Áudio, vídeo e PDF inline não têm formato comum entre os servidores.
-            raise CapabilityUnavailable(f"Conteúdo {mime} só é aceito pelo Gemini.")
+            raise CapabilityUnavailable(f"Conteúdo {mime} não é aceito pela IA local (só texto e imagem).")
         return {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data}"}}
     if _get(part, "file_data") is not None:
-        raise CapabilityUnavailable("Arquivos enviados ao Gemini (file_data) só valem no Gemini.")
+        raise CapabilityUnavailable("A IA local não lê arquivos enviados por referência (file_data).")
     return None
 
 
@@ -183,7 +176,7 @@ def _is_turn(item) -> bool:
 
 
 def _turns(contents) -> List[tuple]:
-    """contents do Gemini -> [(papel, [partes])]. Aceita os formatos usados no
+    """contents -> [(papel, [partes])]. Aceita os formatos usados no
     backend: texto, lista de textos/partes (um turno só), types.Content e dicts
     {'role', 'parts'} (conversa)."""
     if contents is None:
@@ -220,7 +213,7 @@ def to_openai_messages(contents, system_instruction=None) -> List[dict]:
         if not items:
             continue
         role = "assistant" if role == "model" else "user"
-        # O Gemini aceita turnos seguidos do mesmo papel; templates de chat de modelos
+        # O backend monta turnos seguidos do mesmo papel; templates de chat de modelos
         # locais (Gemma, por exemplo) recusam se usuário e assistente não alternam.
         if messages and messages[-1]["role"] == role:
             previous = messages[-1]["content"]
@@ -234,17 +227,30 @@ def to_openai_messages(contents, system_instruction=None) -> List[dict]:
     return messages
 
 
+def _normalize_schema(value):
+    """Dict de esquema já escrito em JSON Schema: só garante tipos em minúsculas ("STRING" ->
+    "string") e converte `Schema` aninhado."""
+    if isinstance(value, types.Schema):
+        return value.to_json_schema()
+    if isinstance(value, dict):
+        out = {}
+        for key, item in value.items():
+            if key == "type" and isinstance(item, str):
+                out[key] = item.lower()
+            else:
+                out[key] = _normalize_schema(item)
+        return out
+    if isinstance(value, (list, tuple)):
+        return [_normalize_schema(item) for item in value]
+    return value
+
+
 def _json_schema(schema) -> Optional[dict]:
-    """response_schema do Gemini (types.Schema, dict ou modelo pydantic) -> JSON Schema."""
+    """response_schema (types.Schema, dict ou modelo pydantic) -> JSON Schema."""
     if schema is None:
         return None
-    if isinstance(schema, types.Schema):
-        return schema.json_schema.model_dump(exclude_none=True, mode="json")
-    if isinstance(schema, dict):
-        try:
-            return types.Schema.model_validate(schema).json_schema.model_dump(exclude_none=True, mode="json")
-        except Exception:
-            return schema
+    if isinstance(schema, (types.Schema, dict)):
+        return _normalize_schema(schema)
     if hasattr(schema, "model_json_schema"):
         return schema.model_json_schema()
     return None
@@ -266,7 +272,7 @@ def to_openai_params(config) -> dict:
 
     modalities = [str(m).upper() for m in (_get(config, "response_modalities") or [])]
     if any("IMAGE" in m or "AUDIO" in m for m in modalities):
-        raise CapabilityUnavailable("Gerar imagem ou áudio exige a chave do Gemini.")
+        raise CapabilityUnavailable("O Qython roda só com IA local, que não gera imagem nem áudio.")
 
     if _get(config, "response_mime_type") == "application/json":
         schema = _json_schema(_get(config, "response_json_schema") or _get(config, "response_schema"))
@@ -332,13 +338,13 @@ class _OpenAIModels:
 
         system = _get(config, "system_instruction")
         request = {
-            # O nome de modelo do Gemini pedido pela chamada não existe aqui; vale o
-            # modelo configurado da instalação.
+            # O nome de modelo que a chamada pede não existe aqui; vale o modelo
+            # configurado da instalação.
             "model": self._default_model,
             "messages": to_openai_messages(contents, system),
             **to_openai_params(config),
         }
-        # Pedidos feitos para o Gemini chegam a 32k tokens de saída; numa janela local de
+        # Alguns pedidos chegam a 32k tokens de saída; numa janela local de
         # 16k isso não cabe junto com o prompt. A resposta fica com o que sobra.
         if request.get("max_tokens"):
             prompt_tokens = approx_tokens(str(request["messages"]))
@@ -381,7 +387,7 @@ class _OpenAIModels:
 
 
 class OpenAICompatibleClient:
-    """Imita o genai.Client nas partes que o backend usa (`.models`)."""
+    """Imita o cliente do SDK do Google nas partes que o backend usa (`.models`)."""
 
     def __init__(self, base_url: str, model: str, api_key: Optional[str] = None,
                  timeout: float = 600.0, thinking: bool = False):
@@ -396,28 +402,6 @@ class OpenAICompatibleClient:
         return self.models.count_tokens(**kwargs)
 
 
-_gemini_client = None
-
-
-def gemini_client():
-    """genai.Client, criado na primeira vez que alguém precisa dele. Serve ao texto
-    quando o provedor é o Gemini e ao que só o Gemini faz (imagem, áudio, busca do
-    Google) com qualquer provedor. Sem chave, avisa em vez de quebrar o boot: antes o
-    cliente nascia na importação dos módulos e o backend nem subia sem a chave."""
-    global _gemini_client
-    if _gemini_client is None:
-        from google import genai
-
-        key = os.getenv("GEMINI_API_KEY")
-        if not key:
-            raise CapabilityUnavailable("Este recurso precisa de uma chave do Gemini (GEMINI_API_KEY).")
-        _gemini_client = genai.Client(
-            api_key=key,
-            http_options=types.HttpOptions(client_args={"timeout": 300.0}),
-        )
-    return _gemini_client
-
-
 _lazy_clients: "weakref.WeakSet[LazyClient]" = weakref.WeakSet()
 
 
@@ -425,8 +409,6 @@ def reset_clients() -> None:
     """Descarta os clientes de IA já construídos. A configuração da IA pode mudar em tempo de
     execução (tela de Configurações): o próximo uso reconstrói o cliente com o provedor, o
     endereço e a chave novos."""
-    global _gemini_client
-    _gemini_client = None
     for lazy in list(_lazy_clients):
         lazy._client = None
 
@@ -453,7 +435,7 @@ def build_openai_client() -> OpenAICompatibleClient:
     base_url = os.getenv("LLM_BASE_URL")
     if not base_url:
         raise RuntimeError(
-            "LLM_PROVIDER=openai exige LLM_BASE_URL (ex.: http://127.0.0.1:8081/v1)."
+            "A IA local exige LLM_BASE_URL (ex.: http://127.0.0.1:8081/v1)."
         )
     return OpenAICompatibleClient(
         base_url=base_url.rstrip("/"),

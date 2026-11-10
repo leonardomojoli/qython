@@ -34,7 +34,7 @@ from ..config import Config
 logger = logging.getLogger("qython_logger")
 
 # === CONSTANTES ===
-LLM_JUDGE_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL", "gemini-2.5-flash-lite")
+LLM_JUDGE_MODEL = os.getenv("SIMPLE_TASK_LLM_MODEL", "local")
 LLM_JUDGE_CONFIDENCE_THRESHOLD = 0.7  # Mínimo para aceitar julgamento automático
 
 
@@ -156,11 +156,10 @@ async def llm_judge_preference(
         Tuple de (chosen, rejected, confidence_score)
     """
     try:
-        from google import genai
-        from google.genai import types
+        from . import llm_types as types
 
-        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        from . import llm_services
+        client = llm_services.client  # a IA local, a mesma do resto do backend
 
         # === PROMPT DO JUIZ ===
         criteria_descriptions = {
@@ -193,7 +192,6 @@ Responda APENAS com um JSON válido no formato:
 
 IMPORTANTE: Responda SOMENTE o JSON, sem texto adicional."""
 
-        from . import llm_services
         response = client.models.generate_content(
             model=LLM_JUDGE_MODEL,
             contents=llm_services._redact_llm_contents(judge_prompt),
