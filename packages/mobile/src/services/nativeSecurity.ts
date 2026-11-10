@@ -11,6 +11,7 @@ interface QythonSecurityNative {
   probeFingerprint(host: string, port: number): Promise<string>;
   secureSet(name: string, value: string): Promise<void>;
   secureGet(name: string): Promise<string | null>;
+  secureGetOrCreate(name: string, bytes: number): Promise<{ value: string; created: boolean }>;
   secureRemove(name: string): Promise<void>;
   scanQrCode(): Promise<string | null>;
 }
@@ -60,6 +61,18 @@ export async function secureSet(name: string, value: string): Promise<void> {
 export async function secureGet(name: string): Promise<string | null> {
   const module = native();
   return module ? module.secureGet(name) : AsyncStorage.getItem(FALLBACK_PREFIX + name);
+}
+
+/** O segredo com este nome, criado aleatório no cofre se ainda não existe. Só no Android (com o módulo nativo). */
+export async function secureGetOrCreate(
+  name: string,
+  bytes: number,
+): Promise<{ value: string; created: boolean }> {
+  const module = native();
+  if (!module) {
+    throw new Error('Sem cofre do sistema neste aparelho.');
+  }
+  return module.secureGetOrCreate(name, bytes);
 }
 
 export async function secureRemove(name: string): Promise<void> {

@@ -1,5 +1,7 @@
 package ai.qython.app
 
+import android.util.Base64
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -8,6 +10,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import java.net.InetSocketAddress
+import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
@@ -102,6 +105,33 @@ class QythonSecurityModule(private val reactContext: ReactApplicationContext) :
     fun secureGet(name: String, promise: Promise) {
         try {
             promise.resolve(SecureStore.get(reactContext, name))
+        } catch (e: Exception) {
+            promise.reject("E_SECURE", e.message, e)
+        }
+    }
+
+    /**
+     * O segredo guardado com este nome; se não existe, cria um aleatório de [bytes] bytes (base64 sem
+     * preenchimento) no cofre e o devolve. `created` diz se acabou de nascer, para quem precisa migrar
+     * dados que estavam protegidos de outro jeito (a chave do cache offline).
+     */
+    @ReactMethod
+    fun secureGetOrCreate(name: String, bytes: Double, promise: Promise) {
+        try {
+            val result = Arguments.createMap()
+            val existing = SecureStore.get(reactContext, name)
+            if (existing != null) {
+                result.putString("value", existing)
+                result.putBoolean("created", false)
+            } else {
+                val random = ByteArray(bytes.toInt().coerceIn(16, 64))
+                SecureRandom().nextBytes(random)
+                val value = Base64.encodeToString(random, Base64.NO_WRAP or Base64.NO_PADDING)
+                SecureStore.put(reactContext, name, value)
+                result.putString("value", value)
+                result.putBoolean("created", true)
+            }
+            promise.resolve(result)
         } catch (e: Exception) {
             promise.reject("E_SECURE", e.message, e)
         }
