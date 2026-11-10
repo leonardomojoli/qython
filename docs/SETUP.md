@@ -36,8 +36,10 @@ Baixe o instalador da página de [releases](https://github.com/leonardomojoli/qy
 **Aviso de segurança na primeira abertura.** Os instaladores ainda não são assinados (a assinatura
 depende de cadastros que o projeto ainda não fez). O Windows (SmartScreen) e o macOS (Gatekeeper)
 vão avisar que o programa não é de um desenvolvedor conhecido. No Windows: *Mais informações* →
-*Executar assim mesmo*. No macOS: clique com o botão direito no app → *Abrir*, ou *Ajustes do
-Sistema* → *Privacidade e Segurança* → *Abrir assim mesmo*.
+*Executar assim mesmo*. No macOS 15 (Sequoia) ou mais novo: tente abrir o app uma vez, depois vá em *Ajustes do Sistema* →
+*Privacidade e Segurança*, role até o aviso sobre o Qython e clique em *Abrir Assim Mesmo* (o atalho
+do botão direito → *Abrir* só funciona até o macOS 14). Se o macOS disser que o app "está danificado",
+é o mesmo bloqueio: no Terminal, `xattr -dr com.apple.quarantine /Applications/Qython.app`.
 
 **Primeiro uso.** Um assistente mostra a memória e o disco do computador e escolhe a IA:
 
