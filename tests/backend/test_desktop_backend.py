@@ -278,6 +278,24 @@ def test_falha_no_boot_aparece_no_stderr_com_traceback():
     assert 'ValueError: JWT_SECRET_KEY' in err, err[-500:]
 
 
+def test_fix_dylibs_aponta_so_as_irmas_por_loader_path():
+    fix = load('fix_dylibs', 'packages/desktop/python/pdf-libs/fix_dylibs.py')
+    saida_l = (
+        'pdf-libs/mac/libgobject-2.0.0.dylib:\n'
+        '\t@rpath/libgobject-2.0.0.dylib (compatibility version 9001.0.0, current version 9001.1.0)\n'
+        '\t@rpath/libglib-2.0.0.dylib (compatibility version 9001.0.0, current version 9001.1.0)\n'
+        '\t@loader_path/libintl.8.dylib (compatibility version 10.0.0, current version 10.0.0)\n'
+        '\t/usr/lib/libffi.dylib (compatibility version 1.0.0, current version 40.0.0)\n'
+        '\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)\n')
+    deps = fix.parse_deps(saida_l)
+    assert deps[0] == '@rpath/libgobject-2.0.0.dylib' and len(deps) == 5, deps
+    assert fix.parse_id('pdf-libs/mac/libgobject-2.0.0.dylib:\n@rpath/libgobject-2.0.0.dylib\n') == '@rpath/libgobject-2.0.0.dylib'
+    irmas = {'libgobject-2.0.0.dylib', 'libglib-2.0.0.dylib', 'libintl.8.dylib'}
+    # a libglib vira @loader_path; o próprio id, a libintl (já certa) e as do sistema ficam como estão
+    assert fix.rewrites(deps, '@rpath/libgobject-2.0.0.dylib', irmas) == [
+        ('@rpath/libglib-2.0.0.dylib', '@loader_path/libglib-2.0.0.dylib')]
+
+
 def test_boot_com_banco_inalcancavel_diz_o_motivo():
     # Com banco inalcançável, o motivo e o código de saída também chegam ao stderr.
     env = {k: v for k, v in os.environ.items() if k != 'JWT_SECRET_KEY'}
