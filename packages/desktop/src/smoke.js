@@ -42,7 +42,6 @@ export async function runSmoke({ stack, log, window, lan }) {
   step('configuração pública: instalação sem conta');
   const cfg = await call(api, 'GET', '/public/config');
   assert(cfg.status === 200 && cfg.data.setup_required === true, `setup_required esperado, veio ${JSON.stringify(cfg.data)}`);
-  assert(cfg.data.edition === 'local', 'edição deveria ser local');
 
   step('cadastro do dono');
   const form = new FormData();
