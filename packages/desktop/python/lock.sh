@@ -6,7 +6,8 @@
 # Os pacotes que também estão no requirements.lock do Docker ficam na MESMA versão
 # (constraint): o desktop não deve testar versões que o servidor nunca viu.
 #
-# O que sai, e por quê:
+# O que sai, e por quê (o requirements.txt do servidor já não traz torch, firebase-admin, presidio nem
+# spaCy; a exclusão abaixo e a checagem no fim ficam como guarda contra a volta deles):
 #   torch, sentence-transformers, transformers
 #       só serviam ao embedder e ao whisper; os dois rodam sem torch (onnxruntime e
 #       ctranslate2), em outro processo do mesmo executável, sob demanda. Eram ~3 GB.

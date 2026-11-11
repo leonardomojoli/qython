@@ -75,9 +75,9 @@ function client(port, { fingerprint, method = 'GET', url, headers = {}, body }) 
   });
 }
 
-async function up() {
+async function up(verifyToken = null) {
   const backend = await fakeBackend();
-  const lan = new LanServer({ backendPort: () => backend.port, logger: quiet });
+  const lan = new LanServer({ backendPort: () => backend.port, logger: quiet, verifyToken });
   await lan.start({ port: 0, host: '127.0.0.1', cert: cert.cert_pem, key: cert.key_pem });
   return { backend, lan, fp: cert.fingerprint, call: (o) => client(lan.port, { fingerprint: cert.fingerprint, ...o }) };
 }
@@ -246,4 +246,62 @@ test('erro ao gerar o certificado vira mensagem na tela, não exceção', opts, 
   const st = await lan.setEnabled(true);
   assert.equal(st.listening, false);
   assert.match(st.error, /sem cryptography/);
+});
+
+test('com conferente de acesso: só passa o token de aparelho; o resto nem chega ao backend', opts, async () => {
+  const asked = [];
+  const { backend, lan, call } = await up(async (token) => {
+    asked.push(token);
+    return token === 'token-do-aparelho';
+  });
+  try {
+    assert.equal((await call({ url: '/api/health' })).status, 200, 'rota aberta não pede acesso');
+    assert.deepEqual(asked, []);
+    assert.equal((await call({ url: '/api/user/info', headers: { Authorization: 'Bearer qualquer-coisa' } })).status, 401);
+    assert.equal((await call({ url: '/api/public/prescription/abc', headers: { Authorization: 'Bearer x' } })).status, 401,
+      'um Bearer inventado não alcança nem as rotas do backend que dispensam login');
+    assert.equal((await call({ url: '/api/user/info', headers: { Authorization: 'Bearer token-do-aparelho' } })).status, 200);
+    assert.deepEqual(backend.seen.map((r) => r.url), ['/api/health', '/api/user/info']);
+    assert.deepEqual(asked, ['qualquer-coisa', 'x', 'token-do-aparelho']);
+  } finally {
+    await lan.stop();
+    await backend.close();
+  }
+});
+
+test('conferente que falha vira recusa (nunca passa por engano)', opts, async () => {
+  const { backend, lan, call } = await up(async () => {
+    throw new Error('sem chave');
+  });
+  try {
+    assert.equal((await call({ url: '/api/user/info', headers: { Authorization: 'Bearer x' } })).status, 401);
+    assert.equal(backend.seen.length, 0);
+  } finally {
+    await lan.stop();
+    await backend.close();
+  }
+});
+
+test('o WebSocket com token inválido é recusado antes de chegar ao backend', opts, async () => {
+  const { backend, lan, fp } = await up(async (token) => token === 'bom');
+  try {
+    const open = (token) => new Promise((resolve, reject) => {
+      const req = https.request({
+        host: '127.0.0.1', port: lan.port, path: `/api/notifications/ws?token=${token}`, ca: cert.cert_pem, agent: false,
+        headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Key': 'x3JJHMbDL1EzLkh9GBhXDw==', 'Sec-WebSocket-Version': '13' },
+        checkServerIdentity: (_h, peer) => (crypto.createHash('sha256').update(peer.raw).digest('hex') === fp ? undefined : new Error('fp')),
+      });
+      req.on('upgrade', (_res, socket) => { socket.destroy(); resolve('upgrade'); });
+      req.on('response', (res) => { res.resume(); resolve(res.statusCode); });
+      req.on('error', reject);
+      req.end();
+    });
+    assert.equal(await open('ruim'), 401);
+    assert.equal(backend.seen.filter((r) => r.method === 'UPGRADE').length, 0);
+    assert.equal(await open('bom'), 'upgrade');
+    assert.equal(backend.seen.filter((r) => r.method === 'UPGRADE').length, 1);
+  } finally {
+    await lan.stop();
+    await backend.close();
+  }
 });

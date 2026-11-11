@@ -1,13 +1,11 @@
 """
-Client for the standalone embedding/rerank service (RAG v2) + the v2 feature switch.
+Cliente do serviço de embeddings e rerank (backend/embed_onnx.py: multilingual-e5 e reranker em ONNX).
 
-`is_v2_enabled()` is the single master flag: it returns True only when EMBED_SERVER_URL is
-set. When False, vector_db_service uses the legacy in-process MiniLM path unchanged, so a
-deploy with EMBED_SERVER_URL absent is a no-op for retrieval (safe rollback = unset the var).
+`is_v2_enabled()` diz se o serviço está configurado (EMBED_SERVER_URL). Sem ele a busca e a indexação
+da biblioteca ficam indisponíveis (vector_db_service levanta um erro claro).
 
-Mirrors the whisper self-host pattern (transcription_service): a localhost FastAPI service
-holds the model once; the 4 gunicorn workers + APScheduler call it over HTTP instead of each
-loading e5 + the reranker (which would OOM the 8 GB box).
+Mesmo padrão do whisper (transcription_service): um serviço FastAPI guarda o modelo uma vez, e os
+workers do gunicorn e o agendador o chamam por HTTP, em vez de cada um carregar e5 + reranker.
 """
 
 import os
@@ -18,12 +16,12 @@ import requests
 
 logger = logging.getLogger("qython_logger")
 
-# Master switch: serviço de embeddings/rerank. Vazio => RAG v1 (MiniLM local).
+# Endereço do serviço de embeddings/rerank. Vazio => sem busca na biblioteca.
 EMBED_SERVER_URL = os.getenv("EMBED_SERVER_URL", "").strip().rstrip("/")
 EMBED_REQUEST_TIMEOUT = int(os.getenv("EMBED_REQUEST_TIMEOUT", "120"))
 
-# Sufixo das coleções v2 (library_{id}_e5) — roda lado a lado com a coleção legada
-# (dimensão/espaço diferentes), permitindo cutover e rollback sem perder os vetores antigos.
+# Sufixo das coleções (library_{id}_e5). As coleções antigas (library_{id}, modelo menor) têm outra
+# dimensão e outro espaço, então ficam à parte até o reindex_to_v2.
 EMBED_NAMESPACE = os.getenv("EMBED_NAMESPACE", "e5").strip()
 
 # Sub-flags do pipeline v2 (default ligado). Desligáveis se RAM/latência apertar.

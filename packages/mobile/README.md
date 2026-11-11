@@ -51,6 +51,9 @@ O que há de nativo (Android, `android/app/src/main/java/ai/qython/app/`):
   `MainApplication.kt`) e é carregado de um arquivo antes de a primeira requisição sair.
 - `SecureStore.kt`: o acesso da conta e o segredo do aparelho ficam cifrados com uma chave AES-GCM do
   Android Keystore (antes o JWT ficava em texto no AsyncStorage; um token antigo é movido na primeira leitura).
+- O cache offline (MMKV: pacientes, consultas, fila) é cifrado com uma chave AES-256 ALEATÓRIA que nasce no
+  Keystore (`secureGetOrCreate`), não com um texto fixo no código; `index.js` só carrega o app depois de
+  `initStorage()` abrir o armazenamento, e o que estava sob a chave antiga é recifrado na primeira abertura.
 - `QythonSecurityModule.kt`: a ponte para tudo isso, `probeFingerprint` (pareamento digitado) e `scanQrCode`.
 
 No JavaScript: `services/pairingProtocol.ts` (QR code, código, impressão digital; puro e testado),

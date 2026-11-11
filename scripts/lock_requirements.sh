@@ -8,8 +8,8 @@
 # o boot sem nenhuma mudança no código.
 #
 # Resolve para a plataforma da imagem (Linux x86_64, Python 3.12), não para a
-# máquina de quem roda o script. O índice CPU do PyTorch entra para o torch vir
-# na build "+cpu", sem as bibliotecas nvidia-*.
+# máquina de quem roda o script. Não há torch no backend (os embeddings da biblioteca e o
+# rerank rodam em ONNX, no serviço embedder), então não há índice especial do PyTorch.
 #
 # Uso:  scripts/lock_requirements.sh             mantém as versões já fixadas
 #       scripts/lock_requirements.sh --upgrade   sobe tudo para o mais novo possível
@@ -21,14 +21,11 @@ cd "$(dirname "$0")/.."
 uv pip compile requirements.txt -o requirements.lock \
   --python-version 3.12 \
   --python-platform x86_64-manylinux_2_28 \
-  --extra-index-url https://download.pytorch.org/whl/cpu \
-  --index-strategy unsafe-best-match \
-  --emit-index-url \
   --custom-compile-command "scripts/lock_requirements.sh" \
   "$@"
 
-if grep -qiE '^nvidia-' requirements.lock; then
-  echo "ERRO: bibliotecas nvidia-* no lock — o torch não veio do índice CPU." >&2
+if grep -qiE '^(torch|nvidia-|sentence-transformers|transformers)' requirements.lock; then
+  echo "ERRO: torch (ou nvidia-*, sentence-transformers, transformers) voltou ao lock: algum pacote o puxou." >&2
   exit 1
 fi
 echo "requirements.lock atualizado: $(grep -cE '^[A-Za-z]' requirements.lock) pacotes."

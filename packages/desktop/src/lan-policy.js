@@ -28,7 +28,8 @@ const WS_PATH = '/api/notifications/ws';
  * backend roteia: assim `/api/auth%2Flogin` não escapa da regra de `/api/auth`.
  *
  * @param {{method:string, url:string, headers:Record<string,string|string[]|undefined>, upgrade?:boolean}} req
- * @returns {{ok:true, path:string}|{ok:false, status:number, message:string}}
+ * @returns {{ok:true, path:string, token?:string}|{ok:false, status:number, message:string}}
+ *   `token` é o acesso que a rota exige (cabeçalho Bearer, ou ?token= no WebSocket); quem chama o confere.
  */
 export function decide({ method, url, headers, upgrade = false }) {
   let parsed;
@@ -52,14 +53,16 @@ export function decide({ method, url, headers, upgrade = false }) {
   const verb = upgrade ? 'WS' : String(method || '').toUpperCase();
   if (upgrade) {
     if (bare !== WS_PATH) return { ok: false, status: 404, message: 'Não encontrado.' };
-    if (!parsed.searchParams.get('token')) return { ok: false, status: 401, message: 'Falta o acesso do aparelho.' };
-    return { ok: true, path: parsed.pathname + parsed.search };
+    const token = parsed.searchParams.get('token');
+    if (!token) return { ok: false, status: 401, message: 'Falta o acesso do aparelho.' };
+    return { ok: true, path: parsed.pathname + parsed.search, token };
   }
   if (!OPEN.has(`${verb} ${bare}`)) {
-    const auth = String(headers.authorization ?? '');
-    if (!/^Bearer\s+\S+/i.test(auth)) {
+    const match = /^Bearer\s+(\S+)/i.exec(String(headers.authorization ?? ''));
+    if (!match) {
       return { ok: false, status: 401, message: 'Falta o acesso do aparelho. Pareie o celular de novo.' };
     }
+    return { ok: true, path: parsed.pathname + parsed.search, token: match[1] };
   }
   return { ok: true, path: parsed.pathname + parsed.search };
 }
