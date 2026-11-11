@@ -19,7 +19,6 @@ const AdminSettings = () => {
     // SaaS; gateways de pagamento, da cobrança.
     const { config } = usePublicConfig();
     const isHosted = config?.edition === 'hosted';
-    const billingEnabled = Boolean(config?.billing_enabled);
 
     // Loading states
     const [loading, setLoading] = useState(true);
@@ -27,9 +26,6 @@ const AdminSettings = () => {
 
     // Settings state
     const [settings, setSettings] = useState({
-        payment_gateway_stripe_enabled: false,
-        payment_gateway_binance_enabled: false,
-        payment_gateway_dlocal_enabled: false,
         server_maintenance_level: 0,
         new_registrations_enabled: true,
         require_invite: false,
@@ -62,9 +58,6 @@ const AdminSettings = () => {
             const data = response.data;
 
             setSettings({
-                payment_gateway_stripe_enabled: data.payment_gateway_stripe_enabled === 'true',
-                payment_gateway_binance_enabled: data.payment_gateway_binance_enabled === 'true',
-                payment_gateway_dlocal_enabled: data.payment_gateway_dlocal_enabled === 'true',
                 server_maintenance_level: parseInt(data.server_maintenance_level) || 0,
                 new_registrations_enabled: data.new_registrations_enabled === 'true',
                 require_invite: data.require_invite === 'true',
@@ -154,7 +147,7 @@ const AdminSettings = () => {
     // Toggle with confirmation for critical settings
     const handleToggle = (key) => {
         const newValue = !settings[key];
-        const criticalSettings = ['payment_gateway_stripe_enabled', 'payment_gateway_binance_enabled', 'payment_gateway_dlocal_enabled', 'new_registrations_enabled'];
+        const criticalSettings = ['new_registrations_enabled'];
 
         if (criticalSettings.includes(key) && !newValue) {
             // Show confirmation modal for disabling critical settings
@@ -331,60 +324,6 @@ const AdminSettings = () => {
                     ) : (
                         <p className={styles.noData}>Nenhuma métrica disponível</p>
                     )}
-                </div>
-                )}
-
-                {/* Payment Gateways Card */}
-                {billingEnabled && (
-                <div className={styles.card}>
-                    <div className={styles.cardHeader}>
-                        <FaCreditCard size={24} style={{ color: '#bb86fc' }} />
-                        <h3>Gateways de Pagamento</h3>
-                    </div>
-
-                    <div className={styles.settingsList}>
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <FaCreditCard size={20} style={{ color: '#1a8cff' }} />
-                                <div>
-                                    <strong>dLocal</strong>
-                                    <span>Cartão, PIX e boleto (LatAm) — merchant Olympos Group SAS</span>
-                                </div>
-                            </div>
-                            <ToggleButton
-                                active={settings.payment_gateway_dlocal_enabled}
-                                onClick={() => handleToggle('payment_gateway_dlocal_enabled')}
-                            />
-                        </div>
-
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <SiStripe size={20} style={{ color: '#6772e5' }} />
-                                <div>
-                                    <strong>Stripe</strong>
-                                    <span>Cartões de crédito e débito</span>
-                                </div>
-                            </div>
-                            <ToggleButton
-                                active={settings.payment_gateway_stripe_enabled}
-                                onClick={() => handleToggle('payment_gateway_stripe_enabled')}
-                            />
-                        </div>
-
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <span style={{ fontWeight: 'bold', color: '#f0b90b' }}>B</span>
-                                <div>
-                                    <strong>Binance Pay</strong>
-                                    <span>Criptomoedas</span>
-                                </div>
-                            </div>
-                            <ToggleButton
-                                active={settings.payment_gateway_binance_enabled}
-                                onClick={() => handleToggle('payment_gateway_binance_enabled')}
-                            />
-                        </div>
-                    </div>
                 </div>
                 )}
 

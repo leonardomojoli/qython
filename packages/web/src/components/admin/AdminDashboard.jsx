@@ -4,9 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import InvitationManager from './InvitationManager';
-import FeedbackManager from './FeedbackManager';
 import PromptManager from './PromptManager';
-import MLDatasetStats from './MLDatasetStats';
 import { api } from '../../api';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import { FaUsers, FaUserClock, FaFileMedical, FaDollarSign, FaChartLine, FaBrain, FaDatabase, FaPills, FaStore, FaClipboardList, FaShareAlt } from 'react-icons/fa';
@@ -18,11 +16,9 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const navigate = useNavigate();
-    // Receita, rede de farmácias e dataset de treino são do SaaS; convites saem por
-    // e-mail e só existem com o Resend configurado.
+    // Convites saem por e-mail e só existem com o Resend configurado.
     const { config } = usePublicConfig();
     const isHosted = config?.edition === 'hosted';
-    const billingEnabled = Boolean(config?.billing_enabled);
     const canInvite = Boolean(config?.registration?.email_verification);
 
     useEffect(() => {
@@ -83,18 +79,6 @@ const AdminDashboard = () => {
                     >
                         <FaBrain /> IA & Prompts
                     </button>
-                    {isHosted && (
-                    <button
-                        onClick={() => setActiveTab('ml-dataset')}
-                        style={{
-                            ...tabButtonStyle(activeTab === 'ml-dataset'),
-                            background: activeTab === 'ml-dataset' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255,255,255,0.05)',
-                            color: activeTab === 'ml-dataset' ? '#4caf50' : '#aaa'
-                        }}
-                    >
-                        <FaDatabase /> ML Dataset
-                    </button>
-                    )}
                 </div>
             </div>
 
@@ -147,19 +131,6 @@ const AdminDashboard = () => {
                             <h3><FaFileMedical /> Consultas Geradas</h3>
                             <div className="value">{stats?.total_consultations || 0}</div>
                         </div>
-
-                        {/* 5. Receita -> Vai para Auditoria Financeira */}
-                        {billingEnabled && (
-                        <div
-                            className="stat-card"
-                            style={clickableCardStyle}
-                            onClick={() => navigate('/admin/finance')}
-                            title="Ver detalhes financeiros"
-                        >
-                            <h3><FaDollarSign /> Receita Total</h3>
-                            <div className="value">US$ {stats?.total_revenue?.toFixed(2) || '0.00'}</div>
-                        </div>
-                        )}
                     </div>
 
                     {/* Pharmacy Module Stats */}
@@ -211,19 +182,16 @@ const AdminDashboard = () => {
                     </>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: canInvite ? '1fr 1fr' : '1fr', gap: '20px', marginTop: '20px' }}>
-                        {canInvite && <InvitationManager />}
-                        <FeedbackManager />
-                    </div>
+                    {canInvite && (
+                        <div style={{ marginTop: '20px' }}>
+                            <InvitationManager />
+                        </div>
+                    )}
                 </>
             )}
 
             {activeTab === 'prompts' && (
                 <PromptManager />
-            )}
-
-            {isHosted && activeTab === 'ml-dataset' && (
-                <MLDatasetStats />
             )}
 
         </AdminLayout>

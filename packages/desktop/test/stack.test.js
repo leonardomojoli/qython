@@ -50,7 +50,6 @@ test('o ambiente do backend leva as chaves, a edição local e a origem da janel
   const env = stack.backendEnv({
     JWT_SECRET_KEY: 'j', QYTHON_FIELD_KEK: 'f', QYTHON_TOKEN_KEK: 't',
   });
-  assert.equal(env.QYTHON_EDITION, 'local');
   assert.equal(env.DATABASE_URL, 'postgresql://qython:pw@127.0.0.1:5000/qython');
   assert.equal(env.QYTHON_FIELD_KEK, 'f');
   assert.equal(env.QYTHON_WEB_DIR, '/app/web');

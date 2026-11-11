@@ -22,9 +22,6 @@ class SystemSettingsService:
 
     # Default values for all settings
     DEFAULTS = {
-        "payment_gateway_stripe_enabled": "false",   # Stripe não serve no Uruguai (sem conta/chaves) — não habilitar
-        "payment_gateway_binance_enabled": "false",  # sem chaves Binance configuradas — habilitar só após setar BINANCE_PAY_*
-        "payment_gateway_dlocal_enabled": "false",   # off até ter chaves + validar no sandbox; admin liga no painel
         "server_maintenance_level": "0",
         "new_registrations_enabled": "true",
         "require_invite": "false",  # waitlist/convite: false = quem verifica entra direto (sem fricção)
@@ -111,9 +108,6 @@ class SystemSettingsService:
     async def get_public_settings(cls, db: AsyncSession) -> Dict[str, Any]:
         """Get settings that are safe to expose publicly (no auth required)"""
         return {
-            "payment_gateway_stripe_enabled": await cls.get_bool("payment_gateway_stripe_enabled", db),
-            "payment_gateway_binance_enabled": await cls.get_bool("payment_gateway_binance_enabled", db),
-            "payment_gateway_dlocal_enabled": await cls.get_bool("payment_gateway_dlocal_enabled", db),
             "server_maintenance_level": await cls.get_int("server_maintenance_level", db),
             "new_registrations_enabled": await cls.get_bool("new_registrations_enabled", db),
             "require_invite": await cls.get_bool("require_invite", db),
@@ -174,21 +168,6 @@ class SystemSettingsService:
         return True
 
     # Convenience methods for common checks
-    @classmethod
-    async def is_stripe_enabled(cls, db: AsyncSession) -> bool:
-        """Check if Stripe payments are enabled"""
-        return await cls.get_bool("payment_gateway_stripe_enabled", db)
-
-    @classmethod
-    async def is_binance_enabled(cls, db: AsyncSession) -> bool:
-        """Check if Binance Pay is enabled"""
-        return await cls.get_bool("payment_gateway_binance_enabled", db)
-
-    @classmethod
-    async def is_dlocal_enabled(cls, db: AsyncSession) -> bool:
-        """Check if dLocal Go payments are enabled"""
-        return await cls.get_bool("payment_gateway_dlocal_enabled", db)
-
     @classmethod
     async def get_maintenance_level(cls, db: AsyncSession) -> int:
         """Get current maintenance level (0=normal, 1=high traffic, 2=maintenance)"""

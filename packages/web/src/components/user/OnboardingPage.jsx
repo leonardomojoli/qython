@@ -213,7 +213,7 @@ const OnboardingPage = () => {
             await api.put('/user/update', { username: username.toLowerCase() });
             await refreshUser();
             addNotification('Perfil configurado!', 'success');
-            await finishOnboarding('/pricing');
+            await finishOnboarding('/copilot');
         } catch (error) {
             const msg = error.response?.data?.detail || 'Erro ao salvar';
             addNotification(msg, 'error');
@@ -240,7 +240,7 @@ const OnboardingPage = () => {
     };
 
     const handleSkipToPlans = () => {
-        finishOnboarding('/pricing');
+        finishOnboarding('/copilot');
     };
 
     return (

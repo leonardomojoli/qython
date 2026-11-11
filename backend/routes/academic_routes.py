@@ -19,7 +19,6 @@ from starlette.concurrency import run_in_threadpool
 
 from ..database import get_db, AsyncSessionLocal
 from ..models import User, Transaction, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
-from ..services.billing_service import debit_dracmas_for_feature
 from ..services.academic_services import library_service, vector_db_service
 from ..services.academic_services.transcription_service import transcribe_audio
 from ..services.academic_services import exam_generation_service
@@ -31,7 +30,6 @@ from ..utils import allowed_file, UPLOAD_FOLDER, THUMBNAIL_FOLDER
 from ..security import get_current_active_user
 from ..services import llm_services
 from ..services import llm_provider
-from ..services.data_collector_service import collect_data
 from ..services.activity_service import track_activity
 from fastapi.responses import FileResponse
 from ..config import Config
@@ -127,7 +125,6 @@ class SimuladoGenerationJobResponse(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    training_data_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -142,7 +139,6 @@ class AcademicMaterialResponse(BaseModel):
     expires_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-    training_data_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -195,22 +191,6 @@ async def _run_simulado_generation_task(job_id: int, exam: ArenaExam, user_id: i
             job.result_content = quiz_data
             job.status = 'completed'
             await db.commit()
-
-            # --- DATA FLYWHEEL: Salvar questões geradas para treinamento ---
-            try:
-                import json
-                questions = quiz_data.get("questionario_objetivo", [])
-                input_summary = f"Exam: {exam.exam_code}\nQuestions: {len(questions)}"
-                output_summary = json.dumps(questions[:3], ensure_ascii=False)[:5000]  # Sample for training
-                job.training_data_id = await collect_data(
-                    db, user_id, "simulado_generation",
-                    input_summary, output_summary,
-                    {"exam_code": exam.exam_code, "num_questions": len(questions)},
-                    quality=0
-                )
-                await db.commit()
-            except Exception as flywheel_err:
-                logger.warning(f"[FLYWHEEL] Erro ao coletar dados do simulado: {flywheel_err}")
 
             logger.info(f"Simulado para a tarefa {job_id} gerado com sucesso.")
 
@@ -560,15 +540,6 @@ async def _run_material_generation_task(material_id: int, input_data: str, mater
             if material_type == 'slideshow_only' and material_content.get('slideshow_file_path'):
                 material.expires_at = _generated_content_expiry()
 
-            # --- DATA FLYWHEEL: Salvar material gerado ---
-            import json
-            material.training_data_id = await collect_data(
-                db, user_id, f"study_material_{material_type}",
-                input_data[:5000],  # Limitar input para economia
-                json.dumps(material_content, ensure_ascii=False)[:10000],  # Limitar output
-                {"material_type": material_type}, quality=1
-            )
-            
             await db.commit()
             logger.info(f"Material ID {material_id} (tipo: {material_type}) gerado com sucesso.")
 
@@ -699,11 +670,6 @@ async def _run_blueprint_generation_task(material_id: int, blocks: list, materia
                 material.content['textos_base'] = support_texts
                 logger.info(f"[QA] material {material_id}: {len(support_texts)} texto(s) de apoio")
             material.status = 'completed'
-            material.training_data_id = await collect_data(
-                db, user_id, f"study_material_{material_type}",
-                ("\n\n".join(input_samples))[:5000],
-                json.dumps(material.content, ensure_ascii=False)[:10000],
-                {"material_type": material_type, "blueprint": True, "blocks": len(blocks)}, quality=1)
             await db.commit()
             logger.info(f"Material ID {material_id} (blueprint: {len(blocks)} blocos, {len(combined)} questões) gerado.")
         except Exception as e:
@@ -824,7 +790,6 @@ async def process_file(
             # Cobrar pela geração de material de estudo
             # Mapa mental usa modelo Pro (mais caro)
             feature_cost_key = "generate_mind_map" if payload.material_type == 'mind_map' else "generate_study_material"
-            await debit_dracmas_for_feature(current_user, feature_cost_key, db)
 
             new_material = AcademicMaterial(
                 user_id=current_user.id,
@@ -859,8 +824,6 @@ async def process_file(
             if payload.source_type != 'filepath':
                  raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transcrição só é suportada para arquivos de áudio/vídeo únicos.")
 
-            # Cobrar pela transcrição de áudio (3 dracmas)
-            await debit_dracmas_for_feature(current_user, "transcribe_audio", db)
 
             transcription = await run_in_threadpool(transcribe_audio, str(payload.source_value))
             new_material = AcademicMaterial(
@@ -1019,7 +982,6 @@ async def start_quiz(
     user_email = current_user.email
 
     try:
-        await debit_dracmas_for_feature(current_user, "start_quiz", db)
 
         result = await db.execute(select(ArenaExam).filter(ArenaExam.exam_code == payload.mode))
         exam = result.scalars().first()
@@ -1289,8 +1251,6 @@ async def chat_with_library(
             detail="Biblioteca não encontrada ou não pertence ao usuário."
         )
 
-    # Cobrar por chat RAG com biblioteca (3 dracmas)
-    await debit_dracmas_for_feature(current_user, "library_rag_chat", db)
 
     response_text = await llm_services.chat_with_library_rag(
         query=payload.message,
@@ -1299,25 +1259,10 @@ async def chat_with_library(
         history=payload.history
     )
 
-    # --- DATA FLYWHEEL: Salvar interação RAG com biblioteca ---
-    import json
-    language_code = current_user.language_preference or 'pt-BR'
-    rich_input = json.dumps({
-        "query": payload.message,
-        "history": payload.history[-4:] if payload.history else []
-    }, ensure_ascii=False)
-
-    training_data_id = await collect_data(
-        db, current_user.id, "library_rag_chat",
-        rich_input, response_text,
-        {"library_id": library_id, "library_name": library.name},
-        quality=0,
-        lang=language_code
-    )
     await track_activity(db, current_user.id, 'academic', 'rag_chat')
     await db.commit()
 
-    return {"response": response_text, "training_data_id": training_data_id}
+    return {"response": response_text}
 
 @router.get("/thumbnails/{filename}", status_code=status.HTTP_200_OK)
 async def get_thumbnail(filename: str, current_user: User = Depends(get_current_active_user)):
@@ -2252,7 +2197,7 @@ async def delete_custom_exam_card(
                 logger.warning(f"[arena] Falha ao apagar biblioteca de apoio {lib_id} do card {card_id}: {e}")
 
     # cascade: sources + rounds (+ attempts) são apagados; drafts (AcademicMaterial)
-    # têm card_id SET NULL e PERMANECEM (preserva o flywheel).
+    # têm card_id SET NULL e PERMANECEM.
     await db.delete(card)
     await db.commit()
     return {"message": "Card removido.", "libraries_deleted": libraries_deleted}
@@ -2403,7 +2348,6 @@ async def generate_custom_exam_draft(
 
     # Cobrança: feature PRÓPRIA da prova de concurso (100 dracmas) — custo real muito
     # acima do material comum (1 chamada por bloco + modelo forte). Ver billing_service.
-    await debit_dracmas_for_feature(current_user, "generate_custom_exam", db)
 
     new_material = AcademicMaterial(
         user_id=current_user.id,
@@ -2596,8 +2540,6 @@ async def research_custom_exam(
         except Exception:
             content_sample = None
 
-    # Cobrança (chamada grounded; reusa a feature de geração de material por ora)
-    await debit_dracmas_for_feature(current_user, "generate_study_material", db)
 
     result = await run_in_threadpool(
         exam_research_service.research_exam_dossier,

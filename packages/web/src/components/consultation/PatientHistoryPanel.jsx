@@ -22,9 +22,8 @@ import {
   faTrash,
   faUndo
 } from '@fortawesome/free-solid-svg-icons';
-import { getPatientHistory, parsePatientHistory, savePatientHistory, updateHistoryEntry, submitFeedback } from '../../api';
+import { getPatientHistory, parsePatientHistory, savePatientHistory, updateHistoryEntry } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
-import FeedbackModal from '../shared/FeedbackModal';
 import styles from './PatientHistoryPanel.module.css';
 
 function PatientHistoryPanel({ isOpen, onClose, patient, onHistoryUpdated }) {
@@ -59,8 +58,6 @@ function PatientHistoryPanel({ isOpen, onClose, patient, onHistoryUpdated }) {
   // UI states
   const [error, setError] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState({ type: '', content: '', id: null });
 
   // Fetch patient history when modal opens
   useEffect(() => {
@@ -285,59 +282,8 @@ function PatientHistoryPanel({ isOpen, onClose, patient, onHistoryUpdated }) {
     }
   };
 
-  // --- Feedback Handlers ---
-  const handleLike = async () => {
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: 'clinical_history_parsing',
-        content_id: `patient_${patient?.id}_history`,
-        training_data_id: historyTrainingDataId,
-        original_content: JSON.stringify(parsedHistoryDraft || parsedHistory),
-        user_prompt: rawHistory,
-        conversation_context: null,
-        feedback_text: '',
-        contact_permission: false,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit like feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleDislike = () => {
-    setCurrentFeedback({
-      type: 'dislike',
-      content: JSON.stringify(parsedHistoryDraft || parsedHistory),
-      id: `patient_${patient?.id}_history`,
-      training_data_id: historyTrainingDataId,
-      user_prompt: rawHistory,
-    });
-    setIsFeedbackModalOpen(true);
-  };
 
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    try {
-      await submitFeedback({
-        feedback_type: currentFeedback.type,
-        content_type: 'clinical_history_parsing',
-        content_id: currentFeedback.id,
-        training_data_id: currentFeedback.training_data_id,
-        original_content: currentFeedback.content,
-        user_prompt: currentFeedback.user_prompt,
-        conversation_context: null,
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -494,14 +440,6 @@ function PatientHistoryPanel({ isOpen, onClose, patient, onHistoryUpdated }) {
                           <FontAwesomeIcon icon={faCheck} className={styles.successIcon} />
                           {t('organizedConsultations')} ({parsedHistoryDraft.length})
                         </h4>
-                        <div className={styles.feedbackActions}>
-                          <button onClick={handleLike} title={t('like')} className={styles.feedbackBtn}>
-                            <FontAwesomeIcon icon={faThumbsUp} />
-                          </button>
-                          <button onClick={handleDislike} title={t('dislike')} className={styles.feedbackBtn}>
-                            <FontAwesomeIcon icon={faThumbsDown} />
-                          </button>
-                        </div>
                       </div>
 
                       <div className={styles.draftPreview}>
@@ -568,12 +506,6 @@ function PatientHistoryPanel({ isOpen, onClose, patient, onHistoryUpdated }) {
         </div>
       </div>
 
-      {/* Feedback Modal */}
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-      />
     </div>
   );
 }

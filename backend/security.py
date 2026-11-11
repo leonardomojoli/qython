@@ -76,26 +76,6 @@ def create_verification_token(data: dict):
     return create_access_token(data=data, expires_delta=expires)
 
 
-def create_unsubscribe_token(user_id: int) -> str:
-    """Token JWT sem expiração para descadastro de e-mails de ciclo de vida
-    (1 clique, sem login). O claim `purpose` impede uso cruzado com outros tokens."""
-    return jwt.encode(
-        {"sub": str(user_id), "purpose": "unsubscribe"},
-        SECRET_KEY, algorithm=ALGORITHM,
-    )
-
-
-def verify_unsubscribe_token(token: str) -> Optional[int]:
-    """Valida o token de descadastro e retorna o user_id, ou None se inválido."""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("purpose") != "unsubscribe":
-            return None
-        return int(payload["sub"])
-    except (JWTError, ValueError, KeyError, TypeError):
-        return None
-
-
 def verify_verification_token(token: str) -> Optional[str]:
     """Verifica um token de verificação e retorna o email se for válido."""
     try:

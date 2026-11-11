@@ -4,10 +4,9 @@ import styles from './SupplySearch.module.css';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faFilter, faMedkit, faCheck, faTimes, faInfoCircle, faThumbsUp, faThumbsDown, faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import { searchMedications, submitFeedback } from '../../api';
+import { searchMedications } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUser } from '../../contexts/UserContext';
-import FeedbackModal from '../shared/FeedbackModal';
 
 function FilterDropdown({ options, value, onChange, placeholder, className }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -134,9 +133,6 @@ function SupplySearch() {
   const [therapeuticClass, setTherapeuticClass] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [feedbackSent, setFeedbackSent] = useState({});
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedbackItem, setCurrentFeedbackItem] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const debounceRef = useRef(null);
@@ -232,50 +228,8 @@ function SupplySearch() {
     return parts.join(' | ');
   };
 
-  const handleLike = async (item) => {
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: 'medication_detail',
-        content_id: String(item.id),
-        original_content: buildContent(item),
-        feedback_text: '',
-        contact_permission: false,
-      });
-      setFeedbackSent(prev => ({ ...prev, [item.id]: 'like' }));
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error('Failed to submit supply like:', error);
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleDislike = (item) => {
-    setCurrentFeedbackItem(item);
-    setIsFeedbackModalOpen(true);
-  };
 
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    if (!currentFeedbackItem) return;
-    try {
-      await submitFeedback({
-        feedback_type: 'dislike',
-        content_type: 'medication_detail',
-        content_id: String(currentFeedbackItem.id),
-        original_content: buildContent(currentFeedbackItem),
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      setFeedbackSent(prev => ({ ...prev, [currentFeedbackItem.id]: 'dislike' }));
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error('Failed to submit supply dislike:', error);
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-      setCurrentFeedbackItem(null);
-    }
-  };
 
   const getBadgeStyle = (prog) => {
     switch (prog.code) {
@@ -479,41 +433,11 @@ function SupplySearch() {
                 </div>
               )}
 
-              {/* Feedback buttons */}
-              <div className={styles.feedbackSection}>
-                <span className={styles.feedbackLabel}>{t('medDataCorrect')}</span>
-                <div className={styles.feedbackButtons}>
-                  <button
-                    className={`${styles.feedbackBtn} ${feedbackSent[selectedItem.id] === 'like' ? styles.feedbackBtnActive : ''}`}
-                    onClick={() => handleLike(selectedItem)}
-                    disabled={!!feedbackSent[selectedItem.id]}
-                    title={t('like')}
-                  >
-                    <FontAwesomeIcon icon={faThumbsUp} />
-                  </button>
-                  <button
-                    className={`${styles.feedbackBtn} ${styles.feedbackBtnDislike} ${feedbackSent[selectedItem.id] === 'dislike' ? styles.feedbackBtnActive : ''}`}
-                    onClick={() => handleDislike(selectedItem)}
-                    disabled={!!feedbackSent[selectedItem.id]}
-                    title={t('dislike')}
-                  >
-                    <FontAwesomeIcon icon={faThumbsDown} />
-                  </button>
-                </div>
-                {feedbackSent[selectedItem.id] && (
-                  <span className={styles.feedbackThanks}>{t('medFeedbackThanks')}</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => { setIsFeedbackModalOpen(false); setCurrentFeedbackItem(null); }}
-        onSubmit={handleFeedbackSubmit}
-      />
     </div>
   );
 }

@@ -72,7 +72,6 @@ langchain-text-splitters  # chunking dos documentos da biblioteca
 numpy
 requests
 starlette  # importado direto, nao so como transitiva do fastapi
-stripe  # billing_service/billing_routes ainda o importam no topo; sai junto com o codigo de cobranca
 Werkzeug
 
 # Opcionais: importados dentro de funcao, entao a ausencia degrada o recurso

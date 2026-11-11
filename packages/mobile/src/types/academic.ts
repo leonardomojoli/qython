@@ -170,7 +170,6 @@ export const MATERIAL_TYPE_CONFIG: Record<string, { icon: string; labelKey: stri
   quiz: { icon: '❓', labelKey: 'quiz', descriptionKey: 'quizDescription' },
 };
 
-export const ARENA_ALLOWED_PLANS = ['resident', 'staff', 'specialist'];
 
 // Mapa nome-de-ícone-FontAwesome → emoji. O web renderiza o glyph FA nativo; o mobile usa o
 // emoji equivalente. O valor `icon` gravado é o mesmo nos dois (nome FA ou emoji cru) → paridade

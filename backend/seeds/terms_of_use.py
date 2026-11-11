@@ -92,8 +92,6 @@ continua depois de um novo aceite.
 async def seed_terms_of_use(db: AsyncSession) -> bool:
     """Publica o termo da edição local se esta versão ainda não existe.
     Retorna True quando publicou."""
-    if Config.EDITION != "local":
-        return False
     exists = await db.scalar(
         select(ConsentDocument.id).where(
             ConsentDocument.type == ConsentDocumentType.terms_of_use,

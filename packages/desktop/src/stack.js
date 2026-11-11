@@ -180,7 +180,6 @@ export class Stack extends EventEmitter {
       JWT_SECRET_KEY: keys.JWT_SECRET_KEY,
       QYTHON_FIELD_KEK: keys.QYTHON_FIELD_KEK,
       QYTHON_TOKEN_KEK: keys.QYTHON_TOKEN_KEK,
-      QYTHON_EDITION: 'local',
       QYTHON_DATA_DIR: this.paths.data,
       QYTHON_LOG_DIR: path.join(this.paths.logs, 'backend'),
       QYTHON_WEB_DIR: this.resources.web,

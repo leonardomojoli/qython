@@ -766,8 +766,7 @@ function Register({ setIsLoggedIn }) {
                   {/* BOTÃO INTELIGENTE - navega diretamente */}
                   <button
                     onClick={() => {
-                      if (inviteToken) navigate('/pricing'); // VIP -> Upsell para Planos
-                      else if (!inviteRequired) navigate('/copilot'); // sem convite exigido -> entra direto
+                      if (!inviteRequired) navigate('/copilot'); // sem convite exigido -> entra direto
                       else navigate('/waitlist'); // Waitlist -> Tela de Espera
                     }}
                     className={styles.themeButton}

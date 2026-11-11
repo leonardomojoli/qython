@@ -22,7 +22,7 @@ const VerificationBanner = () => {
     });
 
     // Páginas onde o banner NÃO deve aparecer
-    const hiddenRoutes = ['/waitlist', '/login', '/register', '/', '/pricing', '/terms-of-use', '/privacy-policy'];
+    const hiddenRoutes = ['/waitlist', '/login', '/register', '/', '/terms-of-use', '/privacy-policy'];
 
     if (loadingUser || dismissed) {
         return null;

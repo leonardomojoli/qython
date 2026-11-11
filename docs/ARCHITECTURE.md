@@ -16,96 +16,7 @@ O Qython utiliza uma estratégia de retenção chamada "Soft Block" para usuári
    - O usuário **consegue logar**, mas é redirecionado forçadamente para `/waitlist`.
    - Lá, ele pode inserir um token para virar `active` instantaneamente.
 
-## 2. Data Flywheel (Estratégia de Dados)
-
-O objetivo do Qython é treinar o modelo proprietário **Qython-1**. Para isso, coletamos dados de alta qualidade de todas as interações de IA na plataforma.
-
-Ver `docs/ML_ROADMAP.md` para documentação detalhada do pipeline completo.
-
-### Tabela: `training_data`
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| `source_type` | String | Origem: consultation_improvement, chat_interaction, podcast_script, etc. |
-| `input_data` | Text | Entrada do usuário/contexto |
-| `output_data` | Text | Saída gerada pela IA |
-| `quality_score` | Integer | -2=rejeitado, -1=dislike, 0=neutro, 1=like, 2=gold, 3=platinum |
-| `creation_method` | String | 'human', 'ai_generated', 'hybrid' |
-| `generation_number` | Integer | 0=humano, 1=primeira IA, N+1=modelo treinado em gen N |
-| `bloom_level` | String | Taxonomia de Bloom: remember→create |
-| `difficulty_score` | Float | 0.0-1.0 para curriculum learning |
-| `pii_detected` | Boolean | PII detectado (CPF, CRM, etc.) |
-| `consent_id` | FK | Consentimento ML que autorizou a captura (NULL = legado/anon) |
-| `anonymization_level` | String | `pseudo` (consentido, tokenizado) ou `anon` (irreversível, Art. 12) |
-| `excluded_due_to_revocation` | Boolean | Removido do pool por revogação/exclusão de conta |
-| `is_evaluation_holdout` | Boolean | Reservado para eval, nunca treinar |
-| `ready_for_training` | Boolean | Aprovado para uso em fine-tuning |
-| `content_hash` | String | Hash MD5 para deduplicação |
-
-### Tabela: `preference_data`
-
-Pares chosen/rejected para DPO training:
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| `prompt` | Text | Contexto/pergunta original |
-| `chosen` | Text | Resposta preferida |
-| `rejected` | Text | Resposta rejeitada |
-| `preference_source` | String | 'human', 'llm_judge', 'implicit', 'self_play' |
-| `confidence_score` | Float | 0.0-1.0 |
-
-### Pipeline de Coleta
-
-Todas as rotas chamam `collect_data()` que automaticamente:
-1. **Consent gate (LGPD):** checa consentimento ML ativo do usuário; sem isso, roteia para o trilho anon
-2. **PII assessment (Presidio):** PII de paciente → redação inline (ou descarte se confiança < 0,8) + força trilho anon
-3. Valida qualidade (tamanho, placeholders, conteúdo real)
-4. Classifica: creation_method, bloom_level, generation_number
-5. Define `anonymization_level` (pseudo/anon) e `consent_id`
-6. Calcula difficulty_score + gera hash para deduplicação
-7. Salva com savepoint (não bloqueia transação principal)
-
-### Pipeline RLAIF (Semanal)
-
-Jobs automáticos no scheduler (domingo):
-- **2:00 AM UTC:** AI-as-Judge avalia entries com quality=0 (accuracy, completeness, safety, style)
-- **3:00 AM UTC:** Self-play gera pares sintéticos de preferência
-
-### Quality Decay Detection (Semanal)
-
-Job automático no scheduler (segunda):
-- **1:00 AM UTC:** Snapshot de qualidade com métricas + alertas + health status
-- Monitora model collapse: quality score, % dados humanos, % generation > 1
-- Alertas automáticos (warning/critical) quando thresholds são violados
-- Training Readiness Assessment: 6 checks para avaliar prontidão para fine-tuning
-
-**Tabela:** `quality_snapshots` (snapshot_data JSON, alerts JSON, health_status)
-
-### Iterative Refinement Tracking
-
-Rastreia cadeias de refinamento (original → refinado) para treinar auto-melhoria:
-- `self_critique`: auto-refinado pelo Constitutional AI
-- `user_edit`: médico editou output da IA
-- `regeneration`: usuário pediu nova resposta
-- `rlaif_judge`: AI judge flagou e re-gerou
-
-**Tabela:** `refinement_chains` (original_id → refined_id, step, type)
-**Export:** DPO JSONL com pares (rejected=original, chosen=refined)
-
-### Feedback Matching
-
-Feedback do usuário (like/dislike) é vinculado ao TrainingData correto via:
-1. Mapa `FEEDBACK_TO_SOURCE`: content_type → source_types
-2. Match por prefixo de conteúdo (não apenas "última entrada")
-3. Feedback history acumula como array no metadata
-
-**Módulos cobertos:** chat, consultas (improved_notes, summary, icd10), biblioteca (library_rag_chat), materiais acadêmicos.
-
-### Tratamento de Imagens (Training Data)
-
-- **Compressão:** WebP com qualidade 80%
-- **Redimensionamento:** Max 1024px no maior lado (padrão VLM)
-- **Armazenamento:** Disco local em `/training_dataset/`
-- **Referência:** Caminho salvo no `input_data` como JSON
+## 2. Pipelines e armazenamento
 
 ### Document Image Extraction & Vision Pipeline (Março 2026)
 
@@ -129,11 +40,6 @@ Pipeline multimodal em duas fases para extrair e descrever imagens médicas de P
 - IDs: `doc_{id}_img_{img_id}` (sem colisão com text chunks)
 - Metadata: `content_type: "image_description"`, `page_number`
 - `get_all_text_for_library()` inclui seção `--- MEDICAL IMAGES IN THIS DOCUMENT ---` no contexto de geração de materiais
-
-**Integração com Training Data (Data Flywheel):**
-- Pares imagem+descrição salvos automaticamente via `collect_data(source_type='image_diagnosis')`
-- Imagens comprimidas para WebP 1024px no `training_dataset/`
-- Classificação: `creation_method='ai_generated'`, `bloom_level='analyze'`
 
 **Modelo:** `DocumentImage` (tabela `document_images`, migration `2026_03_15_doc_images`)
 **Campos:** `document_id`, `library_id`, `image_filename`, `page_number`, `image_index`, `width`, `height`, `file_size_bytes`, `vision_status`, `vision_description`, `vision_model`, `vision_error`, `retry_count`, `vision_completed_at`
@@ -192,13 +98,11 @@ slides saem sem imagem) e geração de áudio.
 /api/copilot        → Chat com IA (Copiloto Clínico)
 /api/academic       → Biblioteca, Arena, Materiais
 /api/connectors     → Conectores de nuvem do usuário (OAuth Google Drive, status, Picker)
-/api/billing        → Dracmas, Stripe, transações
 /api/orientations   → Orientações ao paciente (templates + geração IA)
 /api/medications    → Catálogo de medicamentos, Farmácia Popular, interações
 /api/pharmacy       → Farmácias parceiras, redes, inventário, waitlist
 /api/public         → Receita pública (QR code), farmácias próximas (sem auth)
 /api/admin          → Dashboard, gerenciamento de usuários
-/api/feedback       → Sistema de feedback (likes/dislikes)
 /api/sync           → Sync offline (medications, interactions, user-data)
 /api/notifications  → Notification center, preferences, unread count
 ```
@@ -209,7 +113,6 @@ slides saem sem imagem) e geração de áudio.
 |--------|------|-----------|
 | `GET` | `/api/orientations` | Lista orientações do médico (filtro opcional por `patient_id`) |
 | `POST` | `/api/orientations` | Salva orientação (template ou conteúdo editado) |
-| `POST` | `/api/orientations/generate` | Gera orientação personalizada via IA (5 dracmas) |
 | `GET` | `/api/orientations/{id}` | Busca orientação específica por ID |
 | `GET` | `/api/orientations/{id}/pdf` | Gera PDF da orientação (com cabeçalho médico/paciente) |
 | `DELETE` | `/api/orientations/{id}` | Remove orientação |
@@ -227,7 +130,6 @@ slides saem sem imagem) e geração de áudio.
 | `GET` | `/api/medications/government-programs` | Autenticado | Listar programas governamentais (BR: Farmácia Popular; UY: FNR, ASSE) |
 | `GET` | `/api/medications/government-programs/{code}` | Autenticado | Detalhe do programa governamental |
 | `GET` | `/api/medications/{id}` | Autenticado | Detalhe do medicamento |
-| `POST` | `/api/medications/check-interactions` | Autenticado | Verificar interações medicamentosas (0 dracmas) |
 
 #### Farmácias (`/api/pharmacy`)
 
@@ -292,21 +194,6 @@ O Qython implementa logging profissional com as seguintes características:
 
 ## 7. Storage Management e Scheduled Jobs
 
-### Quotas de Armazenamento
-
-O sistema impõe limites de storage por plano de assinatura:
-
-| Plano | Quota | Docs/Biblioteca | Bibliotecas |
-|-------|-------|-----------------|-------------|
-| free | 500 MB | 20 | 3 |
-| resident | 2 GB | 50 | 10 |
-| staff | 5 GB | 100 | 25 |
-| specialist | 15 GB | ilimitado | ilimitado |
-
-- **Enforcement:** Upload (`413`), criação de biblioteca (`403`), limite de documentos (`403`)
-- **Tracking:** `storage_used_bytes` no model `User`, atualizado incrementalmente
-- **Serviço:** `backend/services/storage_service.py`
-
 ### TTL de Conteúdo Gerado
 
 Arquivos de mídia gerados (podcasts, vídeos, slideshows) expiram em **72 horas**:
@@ -321,13 +208,10 @@ Arquivos de mídia gerados (podcasts, vídeos, slideshows) expiram em **72 horas
 |-----|---------------|--------|
 | `daily_ranking_update` | 3:00 AM | Atualiza rankings da Arena |
 | `season_check` | Cada 6h | Verifica/ativa temporadas |
-| `dracma_expiration` | 2:00 AM | Processa dracmas expirados |
 | `avatar_cleanup` | 3:30 AM | Remove avatares órfãos (não referenciados no DB, > 1h) |
 | `chat_images_cleanup` | 4:00 AM | Remove imagens de chat > 30 dias |
 | `generated_content_cleanup` | 5:00 AM | Remove mídia expirada, temp files > 24h, thumbnails órfãos |
-| `dracma_expiration_notifications` | 10:00 AM | Emails de aviso (30d, 7d, 1d) + push/in-app |
 | `notification_cleanup` | 6:00 AM | Remove notificações lidas com 90+ dias |
-| `weekly_digest` | Monday 8:00 AM | Email de resumo semanal (consultas, dracmas, arena, streak) |
 | `inactivity_check` | 9:00 AM | Emails de inatividade (14d) e aviso de desativação (60d) |
 | `welcome_day3` | 10:30 AM | Email de dicas 3 dias após ativação |
 
@@ -356,16 +240,6 @@ Plano completo em `docs/QYTHON_LGPD_PLAN.md`.
 | Direitos do titular (Art. 18) | Endpoints em `user_routes`: `GET /api/user/me/data-export` (portabilidade), `DELETE /api/user/me` (eliminação + soft delete + purga async), `GET/POST/DELETE /api/user/me/consents`, `GET /api/user/me/audit-log`. |
 | Páginas públicas | `/encarregado` (DPO), `/subprocessors` (categorias, sem nomes), `/paciente` (aviso + QR de transparência). |
 | Minimização de divulgação | Sub-operadores e residência de dados publicados por categoria/região, sem nomes de fornecedor nem RUT. Detalhe nominal só sob demanda ao Encarregado. |
-
-## 9. Monitoramento de Servidor
-
-O `ServerMonitor` coleta métricas automaticamente:
-
-- **Intervalo:** 60 segundos
-- **Métricas:** CPU, RAM, Disco, Conexões ativas
-- **Auto-manutenção:** Ativada quando CPU/RAM > threshold
-- **Alertas:** Email automático para admins em situações críticas
-- **Retenção:** 7 dias de histórico de métricas
 
 ## 10. Convenção de Datetime
 
@@ -435,7 +309,6 @@ O hook `useDeviceClass()` retorna a classe do dispositivo baseada na largura da 
 | Ambulatório | Consultas (24 esp.), pacientes CRUD, prescrições, exames, orientações, voz, timer, undo/redo | ✅ Implementado |
 | Farmácia | Medicamentos (busca, filtros, 20 países), insumos, interações, prescrições | ✅ Implementado |
 | Acadêmico | Bibliotecas (CRUD + edit), upload, RAG chat, materiais, podcasts, arena, challenges, rankings, difficulty badges | ✅ Implementado |
-| Perfil | Avatar, plano, dracmas, tema, idioma, senha, privacidade/consentimentos LGPD, tour system, logout | ✅ Implementado |
 
 ### API Endpoints Usados pelo Mobile
 
@@ -444,13 +317,11 @@ O hook `useDeviceClass()` retorna a classe do dispositivo baseada na largura da 
 | `POST /auth/login` | Login email/senha |
 | `POST /auth/google` | Login Google (Firebase token) |
 | `POST /auth/logout` | Logout |
-| `GET /user/info` | Dados do usuário (avatar, plano, dracmas) |
 | `POST /user/push-token` | Registrar token FCM |
 | `POST /copilot` | Enviar mensagem (multipart/form-data) |
 | `GET /copilot/sessions` | Listar sessões |
 | `GET /copilot/sessions/:id` | Mensagens de uma sessão |
 | `DELETE /copilot/sessions/:id` | Excluir sessão |
-| `POST /copilot/feedback` | Like/dislike em mensagem |
 
 ### Sync Endpoints (`/api/sync`)
 
@@ -497,7 +368,6 @@ Tabela `push_tokens` armazena tokens FCM/APNs por dispositivo:
 Tabela `notifications` armazena notificações persistentes para o Notification Center:
 - `user_id`, `type`, `title`, `body`, `data` (JSON), `is_read`, `created_at`
 - Índices em `user_id`, `type`, `created_at` para consultas rápidas
-- Tipos: `material_ready`, `material_failed`, `dracma_expiring`, `kyc_verified`, `kyc_rejected`, `waitlist_activated`, `arena_season_started`, `arena_season_ended`, `system_announcement`
 
 **Notification Service** (`backend/services/notification_service.py`):
 - `send_notification()`: persiste no DB + envia push via FCM + broadcast via WebSocket
@@ -528,7 +398,6 @@ Tabela `notifications` armazena notificações persistentes para o Notification 
 
 **Event Triggers**:
 - Material generation (podcast/video/simulado) → `material_ready` / `material_failed`
-- Dracma expiration warnings → `dracma_expiring`
 - KYC verification → `kyc_verified` / `kyc_rejected`
 - Arena season activation → `arena_season_started`
 
@@ -547,25 +416,3 @@ Tabela `user_activity` rastreia uso de features para o Analytics Dashboard:
 - Fire-and-forget: `track_activity()` adiciona ao session sem flush/commit
 - Commit acontece junto com a operação principal da rota
 - Erros são logados mas nunca propagados
-
-### Analytics Endpoints (`/api/admin/analytics`)
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/api/admin/analytics/dau-mau?days=30` | DAU/WAU/MAU diário via `last_login_at` |
-| `GET` | `/api/admin/analytics/growth?period=30d` | Registros agrupados por dia |
-| `GET` | `/api/admin/analytics/retention?weeks=8` | Matriz de retenção cohort semanal |
-| `GET` | `/api/admin/analytics/feature-usage?days=30` | Adoção de features via `user_activity` |
-| `GET` | `/api/admin/analytics/ai-usage?days=30` | Uso de IA por tipo + consumo de dracmas |
-
-### Transactional Email Templates
-
-5 templates adicionais ao `email_service.py` (todos i18n PT/EN/ES, design glassmorphism):
-
-| Template | Trigger | `email_tracking` key |
-|----------|---------|---------------------|
-| `send_material_ready_email` | Podcast/video/simulado completou | — |
-| `send_weekly_digest_email` | Scheduler (Monday 8:00 UTC) | `weekly_digest` |
-| `send_inactivity_email` | 14 dias sem login | `inactivity_14d` |
-| `send_deactivation_warning_email` | 60 dias sem login | `deactivation_60d` |
-| `send_welcome_day3_email` | 3 dias após ativação | `welcome_day3` |

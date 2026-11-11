@@ -212,15 +212,6 @@ export interface GenerateOrientationResponse {
   id: number;
   title: string;
   content: string;
-  training_data_id?: number;
-}
-
-export interface FeedbackPayload {
-  feedback_type: 'like' | 'dislike';
-  content_type: 'improved_notes' | 'summary' | 'patient_orientation';
-  content_id?: number;
-  training_data_id?: number;
-  comment?: string;
 }
 
 // ─── Constants ──────────────────────────────────────────────

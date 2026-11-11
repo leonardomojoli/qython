@@ -10,7 +10,7 @@ import {
 import { useNotification } from '../../contexts/NotificationContext';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import {
-  getPrescriptions, createPrescriptionShareLink,
+  getPrescriptions,
   getPrescriptionPharmacySends, getPrescriptionPdf
 } from '../../api';
 
@@ -49,21 +49,6 @@ function MyPrescriptions() {
     fetchPrescriptions();
   }, [fetchPrescriptions]);
 
-  const handleGenerateShareLink = async (rxId) => {
-    setSharingId(rxId);
-    try {
-      const data = await createPrescriptionShareLink(rxId);
-      if (data?.share_url) {
-        await navigator.clipboard.writeText(data.share_url);
-        addNotification(t('shareLinkCopied'), 'success');
-      }
-    } catch (err) {
-      console.error(err);
-      addNotification(t('error'), 'error');
-    } finally {
-      setSharingId(null);
-    }
-  };
 
   // Folha de compartilhar do sistema (WhatsApp, e-mail...) quando o navegador aceita
   // arquivo; senão, baixa o PDF para o médico anexar onde quiser.
@@ -167,17 +152,6 @@ function MyPrescriptions() {
 
           {/* Actions */}
           <div className={styles.rxActions}>
-            {isHosted ? (
-              <button
-                className={styles.actionBtn}
-                onClick={() => handleGenerateShareLink(rx.id)}
-                disabled={sharingId === rx.id}
-                title={t('generateShareLink')}
-              >
-                <FontAwesomeIcon icon={sharingId === rx.id ? faSpinner : faQrcode} spin={sharingId === rx.id} />
-                <span>{t('shareLink')}</span>
-              </button>
-            ) : (
               <button
                 className={styles.actionBtn}
                 onClick={() => handleSharePdf(rx.id)}
@@ -186,7 +160,6 @@ function MyPrescriptions() {
                 <FontAwesomeIcon icon={sharingId === rx.id ? faSpinner : faShareFromSquare} spin={sharingId === rx.id} />
                 <span>{t('sharePrescriptionPdf', 'Compartilhar PDF')}</span>
               </button>
-            )}
           </div>
 
           {/* Expanded: pharmacy sends */}

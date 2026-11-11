@@ -290,11 +290,6 @@ export const deleteDoctorLogo = async () => {
   return response.data;
 };
 
-export const updateTrainingDataPreference = async (optOut) => {
-  const response = await api.put('/user/training-data-preference', { opt_out: optOut });
-  return response.data;
-};
-
 // ============================================================
 // LGPD endpoints (Direitos do Titular — Art. 18)
 // ============================================================
@@ -494,17 +489,6 @@ export const deleteConsultations = async (ids) => {
     return response.data;
   } catch (error) {
     handleError(error, 'excluir consultas');
-  }
-};
-
-export const submitFeedback = async (feedbackData) => {
-  try {
-    const response = await api.post('/feedback', feedbackData, {
-      timeout: 30000,
-    });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'enviar feedback');
   }
 };
 
@@ -1382,24 +1366,6 @@ export const getPharmacyMedications = async (pharmacyId, params = {}) => {
 
 // --- Prescription Sharing ---
 
-export const createPrescriptionShareLink = async (prescriptionId) => {
-  try {
-    const response = await api.post(`/prescriptions/${prescriptionId}/share`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'gerar link de compartilhamento');
-  }
-};
-
-export const revokePrescriptionShareLinks = async (prescriptionId) => {
-  try {
-    await api.delete(`/prescriptions/${prescriptionId}/share`);
-    return true;
-  } catch (error) {
-    handleError(error, 'revogar links de compartilhamento');
-  }
-};
-
 export const sendPrescriptionToPharmacy = async (prescriptionId, pharmacyId) => {
   try {
     const response = await api.post(`/prescriptions/${prescriptionId}/send-to-pharmacy`, {
@@ -1421,19 +1387,6 @@ export const getPrescriptionPharmacySends = async (prescriptionId) => {
 };
 
 // --- Public (no auth) ---
-
-export const getPublicPrescription = async (token, params = {}) => {
-  try {
-    const response = await axios.get(`${API_URL.replace('/api', '')}/api/public/prescription/${token}`, {
-      params,
-      timeout: 30000,
-    });
-    return response.data;
-  } catch (error) {
-    // For public endpoint, throw the raw error so component can handle 404/410
-    throw error;
-  }
-};
 
 export const getNearbyPharmaciesPublic = async (lat, lng, radiusKm = 10) => {
   try {

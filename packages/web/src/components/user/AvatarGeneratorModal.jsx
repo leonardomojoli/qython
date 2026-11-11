@@ -6,7 +6,6 @@ import { api } from '../../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpload, faClockRotateLeft, faCamera, faSpinner, faCrown } from '@fortawesome/free-solid-svg-icons';
 import ConfirmationModal from '../shared/ConfirmationModal';
-import UpgradeModal from '../shared/UpgradeModal';
 
 const AvatarGeneratorModal = ({
   isOpen,
@@ -35,7 +34,6 @@ const AvatarGeneratorModal = ({
   const [avatarToDeleteIsPreset, setAvatarToDeleteIsPreset] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [avatarLimits, setAvatarLimits] = useState(null);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // Fetch presets on mount
   useEffect(() => {
@@ -228,26 +226,6 @@ const AvatarGeneratorModal = ({
                       />
                     </div>
                   </div>
-                  {avatarLimits.plan === 'free' && (
-                    <button
-                      className={styles.upgradeChip}
-                      onClick={() => setIsUpgradeModalOpen(true)}
-                    >
-                      <FontAwesomeIcon icon={faCrown} />
-                      {t('getMore') || 'Obter mais'}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Upgrade banner when at limit */}
-              {avatarLimits && avatarLimits.used >= avatarLimits.max && avatarLimits.plan === 'free' && (
-                <div className={styles.upgradeBanner} onClick={() => setIsUpgradeModalOpen(true)}>
-                  <FontAwesomeIcon icon={faCrown} className={styles.upgradeBannerIcon} />
-                  <div>
-                    <strong>{t('avatarLimitReached') || 'Galeria cheia'}</strong>
-                    <p>{t('upgradeForMoreAvatars') || 'Faça upgrade para salvar até 50 avatares'}</p>
-                  </div>
                 </div>
               )}
 
@@ -305,17 +283,6 @@ const AvatarGeneratorModal = ({
         cancelButtonText="Cancelar"
       />
 
-      <UpgradeModal
-        isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        onUpgrade={() => {
-          setIsUpgradeModalOpen(false);
-          onClose();
-          navigate('/pricing');
-        }}
-        feature="avatar_history"
-        message={t('avatarUpgradeMessage') || `Seu plano atual permite ${avatarLimits?.max || 5} avatares. Faça upgrade para expandir sua galeria.`}
-      />
     </div>
   );
 };

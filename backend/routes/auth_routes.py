@@ -250,13 +250,6 @@ async def register_step1(
     else:
         initial_status = 'email_pending'
 
-    # Dracmas Iniciais: 150 (base) + 150 (bônus estudante) = 300 para estudantes
-    # Suficiente para ~100 msgs de chat ou ~36 resumos - teste adequado das features
-    is_student = form_data.occupation == 'Estudante de Medicina'
-    plan_dracmas = 150.0
-    student_bonus = 150.0 if is_student else 0.0
-    initial_dracmas = plan_dracmas + student_bonus
-
     # Plano de assinatura: todos começam com 'interno'
     # Outros planos (residente, staff, especialista, institucional) são selecionados depois
     subscription_plan = 'interno'
@@ -279,13 +272,11 @@ async def register_step1(
         status=initial_status,
         subscription_plan=subscription_plan,
         profile_picture='default-profile.png',
-        dracmas=initial_dracmas,
         verification_status='pending',
         marketing_consent=form_data.marketing_consent,
         is_admin=is_owner,
         access_granted=is_owner,
-        # O onboarding é a escolha de plano do SaaS; sem cobrança não há o que escolher.
-        onboarding_completed=not Config.BILLING_ENABLED,
+        onboarding_completed=True,
     )
     db.add(new_user)
     await db.flush()

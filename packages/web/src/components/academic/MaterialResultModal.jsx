@@ -15,9 +15,8 @@ import { toPng, toSvg } from 'html-to-image';
 
 import styles from './MaterialResultModal.module.css';
 import { useNotification } from '../../contexts/NotificationContext';
-import FeedbackModal from '../shared/FeedbackModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
-import { submitFeedback, api, API_STATIC_URL } from '../../api';
+import { api, API_STATIC_URL } from '../../api';
 import { handleShareAsTxt, handleShareAsPdf, convertMarkdownToPlainText, handleShareAsMarkdown } from '../shared/ShareComponent';
 import InlineLoading from '../shared/InlineLoading';
 import InlineMarkdown from '../shared/InlineMarkdown';
@@ -497,8 +496,6 @@ const MaterialResultModal = ({ isOpen, onClose, result, sourceName, sourceType, 
   const { t, i18n } = useTranslation();
   const { addNotification } = useNotification();
 
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [feedbackType, setFeedbackType] = useState(null);
   
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
@@ -719,33 +716,7 @@ const MaterialResultModal = ({ isOpen, onClose, result, sourceName, sourceType, 
     return null;
   }
 
-  const handleFeedbackSubmit = async (type, comment = '', contactPermission = false) => {
-    try {
-      const payload = {
-        feedback_type: type,
-        content_type: materialType || 'material_gerado',
-        training_data_id: (result && result.training_data_id) || null,
-        original_content: JSON.stringify(result),
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      };
-      await submitFeedback(payload);
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      addNotification(t('errorSendingFeedback'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-    }
-  };
 
-  const handleFeedbackClick = (type) => {
-    setFeedbackType(type);
-    if (type === 'like') {
-      handleFeedbackSubmit('like');
-    } else {
-      setIsFeedbackModalOpen(true);
-    }
-  };
 
   const getContentForCopyAndShare = () => {
     if (!result || !result.content) {
@@ -2279,25 +2250,10 @@ const MaterialResultModal = ({ isOpen, onClose, result, sourceName, sourceType, 
                 </div>
               )}
             </div>
-            <div className={styles.feedbackRight}>
-              <button onClick={() => handleFeedbackClick('like')} title={t('like')}>
-                <FontAwesomeIcon icon={faThumbsUp} />
-              </button>
-              <button onClick={() => handleFeedbackClick('dislike')} title={t('dislike')}>
-                <FontAwesomeIcon icon={faThumbsDown} />
-              </button>
-            </div>
           </div>
         </div>
       </div>
       )}
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={(comment, contactPermission) =>
-          handleFeedbackSubmit(feedbackType, comment, contactPermission)
-        }
-      />
       <ConfirmationModal
         isOpen={confirmRetakeOpen}
         onClose={() => setConfirmRetakeOpen(false)}

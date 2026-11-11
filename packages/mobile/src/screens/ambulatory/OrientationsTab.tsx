@@ -20,7 +20,6 @@ import { ORIENTATION_TEMPLATES, TEMPLATE_CONTENT } from '../../data/orientationT
 import SpecialtyPicker from '../../components/ambulatory/SpecialtyPicker';
 import PatientPickerModal from '../../components/ambulatory/PatientPickerModal';
 import GradientButton from '../../components/shared/GradientButton';
-import FeedbackButtons from '../../components/ambulatory/FeedbackButtons';
 import type { Patient } from '../../types/ambulatory';
 
 type Mode = 'templates' | 'ai';
@@ -54,7 +53,6 @@ export default function OrientationsTab() {
   const [aiSpecialty, setAiSpecialty] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiTrainingDataId, setAiTrainingDataId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [specialtyPickerVisible, setSpecialtyPickerVisible] = useState(false);
   const [patientPickerVisible, setPatientPickerVisible] = useState(false);
@@ -85,7 +83,6 @@ export default function OrientationsTab() {
       });
       setEditableTitle(result.title);
       setEditableContent(result.content);
-      setAiTrainingDataId(result.training_data_id ?? null);
     } catch {
       Alert.alert('', t('errorGeneratingOrientation', 'Erro ao gerar orientacao'));
     } finally {
@@ -329,13 +326,6 @@ export default function OrientationsTab() {
               </TouchableOpacity>
             )}
 
-            {/* Cost badge */}
-            <View style={[styles.costBadge, { backgroundColor: `${theme.primary}15` }]}>
-              <Text style={[styles.costBadgeText, { color: theme.primary }]}>
-                5 dracmas
-              </Text>
-            </View>
-
             {/* Generate button */}
             <View style={styles.ctaWrapper}>
               <GradientButton
@@ -374,13 +364,6 @@ export default function OrientationsTab() {
                   multiline
                   textAlignVertical="top"
                 />
-
-                {aiTrainingDataId != null && (
-                  <FeedbackButtons
-                    contentType="patient_orientation"
-                    trainingDataId={aiTrainingDataId}
-                  />
-                )}
 
                 {/* Download PDF */}
                 <View style={styles.ctaWrapper}>

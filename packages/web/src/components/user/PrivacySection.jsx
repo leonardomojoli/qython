@@ -15,9 +15,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  listMyConsents,
-  grantConsent,
-  revokeConsent,
   exportMyData,
   deleteMyAccount,
 } from '../../api';
@@ -30,45 +27,11 @@ const PATIENT_NOTICE_URL = 'https://qython.ai/paciente';
  * Privacy settings panel (LGPD Direitos do Titular).
  *
  * Lets the user:
- * - Toggle 6 granular ML consents (opt-in, default OFF, expire in 12 months)
  * - Export all their personal data as a ZIP (Art. 18 V)
  * - Delete their account with double confirmation (Art. 18 VI)
  *
  * Visual style mirrors the rest of Profile.js settings blocks.
  */
-
-const ML_SCOPES = [
-  {
-    type: 'ml_training_general',
-    label: 'Treinamento do copiloto clínico geral',
-    description: 'Permite que conversas e consultas anonimizadas sejam usadas para melhorar o copiloto.',
-  },
-  {
-    type: 'ml_training_specialty',
-    label: 'Treinamento por especialidade',
-    description: 'Permite que dados anonimizados ajudem a treinar modelos especializados na sua área.',
-  },
-  {
-    type: 'ml_training_image',
-    label: 'Treinamento de modelos de imagem médica',
-    description: 'Permite uso de imagens médicas anonimizadas (sem identificadores do paciente).',
-  },
-  {
-    type: 'ml_training_voice',
-    label: 'Treinamento de modelos de transcrição',
-    description: 'Permite que áudios anonimizados ajudem a treinar a transcrição automática.',
-  },
-  {
-    type: 'ml_training_feedback',
-    label: 'Uso de feedback para melhorias (DPO)',
-    description: 'Permite que seus likes/dislikes ajudem a ajustar as respostas do copiloto.',
-  },
-  {
-    type: 'ml_research_publication',
-    label: 'Pesquisa acadêmica anônima publicada',
-    description: 'Permite uso em pesquisas acadêmicas publicadas (sempre com dados anonimizados).',
-  },
-];
 
 const PrivacySection = () => {
   const { t } = useTranslation();
@@ -79,9 +42,6 @@ const PrivacySection = () => {
   const { config } = usePublicConfig();
   const isHosted = config?.edition === 'hosted';
 
-  const [consents, setConsents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [busyScope, setBusyScope] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [deletingStage, setDeletingStage] = useState(null); // null | 'confirm' | 'final' | 'deleting'
   const [deleteError, setDeleteError] = useState(null);
@@ -120,43 +80,6 @@ const PrivacySection = () => {
       </body></html>
     `);
     win.document.close();
-  };
-
-  const loadConsents = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await listMyConsents(false);
-      setConsents(data);
-    } catch (err) {
-      console.error('Erro ao carregar consentimentos:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConsents();
-  }, [loadConsents]);
-
-  const isScopeActive = (type) => {
-    return consents.some(c => c.type === type && c.is_active);
-  };
-
-  const handleToggle = async (type) => {
-    setBusyScope(type);
-    try {
-      if (isScopeActive(type)) {
-        await revokeConsent(type);
-      } else {
-        await grantConsent(type);
-      }
-      await loadConsents();
-    } catch (err) {
-      console.error('Erro ao atualizar consentimento:', err);
-      alert('Erro ao atualizar consentimento. Tente novamente.');
-    } finally {
-      setBusyScope(null);
-    }
   };
 
   const handleExport = async () => {
@@ -203,57 +126,10 @@ const PrivacySection = () => {
         <FontAwesomeIcon icon={faShieldAlt} className={styles.sectionIcon} />
         Privacidade e dados (LGPD)
       </h4>
-      {isHosted ? (
-        <p className={styles.sectionDescription}>
-          Você decide o que pode ser usado para melhorar nossos modelos.
-          Todas as opções abaixo são opt-in e podem ser revogadas a qualquer momento.
-          Dados de pacientes são <strong>sempre</strong> anonimizados antes de qualquer uso para treinamento.
-        </p>
-      ) : (
-        <p className={styles.sectionDescription}>
-          Seus dados ficam no banco desta instalação. Você pode baixar uma cópia de
-          tudo ou excluir a sua conta a qualquer momento.
-        </p>
-      )}
-
-      {/* ML Consent Scopes */}
-      {isHosted && (
-      <div className={styles.consentBlock}>
-        <h5 className={styles.subheader}>Consentimentos para treinamento de IA</h5>
-
-        {loading ? (
-          <div className={styles.loading}>
-            <FontAwesomeIcon icon={faSpinner} spin /> Carregando…
-          </div>
-        ) : (
-          <div className={styles.scopesList}>
-            {ML_SCOPES.map(scope => {
-              const active = isScopeActive(scope.type);
-              const busy = busyScope === scope.type;
-              return (
-                <div key={scope.type} className={styles.scopeRow}>
-                  <label className={styles.toggleSwitch}>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      onChange={() => handleToggle(scope.type)}
-                      disabled={busy}
-                    />
-                    <span className={styles.toggleSlider}></span>
-                  </label>
-                  <div className={styles.scopeText}>
-                    <span className={styles.scopeLabel}>{scope.label}</span>
-                    <span className={styles.scopeDescription}>{scope.description}</span>
-                  </div>
-                  {busy && <FontAwesomeIcon icon={faSpinner} spin className={styles.busyIcon} />}
-                  {active && !busy && <FontAwesomeIcon icon={faCheck} className={styles.activeIcon} />}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      )}
+      <p className={styles.sectionDescription}>
+        Seus dados ficam no banco desta instalação. Você pode baixar uma cópia de
+        tudo ou excluir a sua conta a qualquer momento.
+      </p>
 
       {/* Data Export */}
       <div className={styles.consentBlock}>

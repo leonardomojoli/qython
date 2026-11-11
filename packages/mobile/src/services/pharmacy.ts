@@ -67,19 +67,3 @@ export async function getPrescriptionPharmacySends(
   return response.data;
 }
 
-export async function submitMedicationFeedback(params: {
-  feedbackType: 'like' | 'dislike';
-  contentId: string;
-  originalContent: string;
-  feedbackText?: string;
-  contactPermission?: boolean;
-}): Promise<void> {
-  await api.post('/feedback', {
-    feedback_type: params.feedbackType,
-    content_type: 'medication_detail',
-    content_id: params.contentId,
-    original_content: params.originalContent,
-    feedback_text: params.feedbackText || '',
-    contact_permission: params.contactPermission || false,
-  });
-}

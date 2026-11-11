@@ -51,13 +51,6 @@ class Config:
     # --- BANCO DE DADOS (CRÍTICO PARA O ALEMBIC) ---
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
-    # --- Edição ---
-    # 'local' (padrão): o Qython instalado pelo próprio médico ou hospital. Não há
-    # cobrança, e cada trava do cadastro (captcha, SMS, e-mail, Lastreo) só vale se
-    # o serviço dela estiver configurado. 'hosted': o antigo SaaS, com dracmas e planos.
-    EDITION = os.getenv("QYTHON_EDITION", "local").strip().lower()
-    BILLING_ENABLED = EDITION == "hosted"
-
     # --- URLs públicas (emails, deep links, redirects) ---
     WEB_BASE_URL = os.getenv("WEB_BASE_URL", "https://qython.ai").rstrip("/")
     API_BASE_URL = os.getenv("API_BASE_URL", f"{WEB_BASE_URL}/api").rstrip("/")
@@ -127,24 +120,6 @@ class Config:
     # ~3 req/s shared per IP; with it, ~10 req/s — recommended in production so
     # citation lookups don't fail under concurrent load.
     NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")
-
-    # --- PAGAMENTOS (NOVOS) ---
-    STRIPE_API_KEY = os.getenv('STRIPE_API_KEY')
-    STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
-    
-    BINANCE_PAY_API_KEY = os.getenv('BINANCE_PAY_API_KEY')
-    BINANCE_PAY_SECRET_KEY = os.getenv('BINANCE_PAY_SECRET_KEY')
-
-    # dLocal Go (cartão + PIX/boleto + métodos locais LatAm; cobrança cross-border
-    # liquidando na entidade do Uruguai). Auth Bearer API_KEY:SECRET; o HMAC do webhook
-    # reusa as duas chaves (sem secret de webhook separado).
-    DLOCAL_API_KEY = os.getenv('DLOCAL_API_KEY')
-    DLOCAL_SECRET_KEY = os.getenv('DLOCAL_SECRET_KEY')
-    DLOCAL_ENV = os.getenv('DLOCAL_ENV', 'sbx')          # 'sbx' (sandbox) | 'live' (produção)
-    # Moeda/país de cobrança. USD = cross-border (o cliente paga em moeda local no checkout
-    # do dLocal e liquidamos em USD); tunável por .env após validar no sandbox (ex.: BRL/BR).
-    DLOCAL_CURRENCY = os.getenv('DLOCAL_CURRENCY', 'USD')
-    DLOCAL_COUNTRY = os.getenv('DLOCAL_COUNTRY', '')      # vazio = dLocal detecta no checkout
 
     # --- Diretórios ---
     # BACKEND_DIR e PROJECT_ROOT são o CÓDIGO (somente leitura: no app desktop, a pasta
@@ -244,9 +219,8 @@ class Config:
     MAX_IMAGES_PER_DOCUMENT = 50
 
     # --- TTL for Generated Content ---
-    # No SaaS, podcasts, videoaulas e slides expiravam em 72 h para poupar o disco do
-    # servidor. Na instalação local o disco é de quem gerou: ficam até serem apagados.
-    GENERATED_CONTENT_TTL_HOURS = 72 if BILLING_ENABLED else None
+    # O disco é de quem gerou: podcasts, videoaulas e slides ficam até serem apagados.
+    GENERATED_CONTENT_TTL_HOURS = None
 
     # --- Avatar History ---
     MAX_AVATAR_HISTORY = {

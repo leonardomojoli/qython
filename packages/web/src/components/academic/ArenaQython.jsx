@@ -128,7 +128,6 @@ const ArenaQython = () => {
     // Ranking, desafios e temporada precisam de um servidor central com todos os
     // usuários: só existem no SaaS. Sem cobrança, a Arena inteira é liberada.
     const competitive = config?.edition === 'hosted';
-    const billingEnabled = Boolean(config?.billing_enabled);
     const [activeSimuladoJob, setActiveSimuladoJob] = useState(null);
     const [availableExams, setAvailableExams] = useState([]);
     const [enrolledExamCodes, setEnrolledExamCodes] = useState([]);
@@ -141,8 +140,7 @@ const ArenaQython = () => {
     const [xpProfile, setXpProfile] = useState(null);
     const [refreshTick, setRefreshTick] = useState(0);
 
-    // Check if user has Arena access (plan-based or admin)
-    const hasArenaAccess = !billingEnabled || ARENA_ALLOWED_PLANS.includes(user?.subscription_plan) || user?.is_admin;
+    const hasArenaAccess = true;
     const currentUserDisplay = user?.username ? `@${user.username}` : user?.full_name;
 
     const fetchData = useCallback(async () => {

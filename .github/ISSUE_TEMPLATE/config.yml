@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/leonardomojoli/qython/security/advisories/new
+    about: Não abra issue pública. Use o relato privado.
+  - name: Como instalar e configurar
+    url: https://github.com/leonardomojoli/qython/blob/main/docs/SETUP.md
+    about: Instalação do app, servidor com Docker, IA local e solução de problemas.
