@@ -25,7 +25,6 @@ Qython offers a comprehensive suite of tools to streamline the medical consultat
   * **Aptidão:** Fitness certificates (physical aptitude, clearance for activities).
 * **Patient Orientations (Orientações ao Paciente):**
   * Pre-built templates for common patient education materials (e.g., blood pressure tracking, dietary guidelines, pre/post-operative instructions).
-  * AI-powered generation of personalized orientation materials based on doctor's prompt and patient context (costs 5 dracmas).
   * Editable content before printing or saving as PDF.
   * PDF export with doctor/clinic header and patient data.
   * History of all generated orientations with search and filtering.
@@ -49,8 +48,6 @@ Qython offers a comprehensive suite of tools to streamline the medical consultat
   * Pharmacy waitlist for onboarding new pharmacy partners.
   * Admin panel: CRUD for chains/pharmacies, waitlist management, chain metrics dashboard.
   * Clinical reference data: Whitebook-style fields (common brands, usual posology, max dose, indications, pregnancy category, renal/hepatic adjustments).
-  * Medication detail modal with thumbs up/down feedback — feeds Data Flywheel for data quality scoring and DPO training.
-  * Drug interactions and pharmacy sends cost 0 dracmas (loss leader for engagement).
 * **Consultation History:**
   * Save and manage patient consultations.
   * "Improved Notes" feature to refine raw notes into structured medical records.
@@ -69,7 +66,6 @@ The core AI engine of Qython, designed to assist medical professionals with evid
     * Enriches metadata (author, year, title) via page fetch.
     * Combines grounding sources with validated model-generated references.
     * Single academic-style citations section with clickable links.
-  * All validated references stored for future model training (Data Flywheel).
   * **Model curation of references (ago/2026):** after the mechanical validation, a light LLM
     pass judges each candidate against the answer's claims — `irrelevante` is dropped,
     `fraca` is demoted, `sustenta` is kept. Safeguards: the list is never emptied (if all are
@@ -157,7 +153,7 @@ Gamified learning environment for medical students and residents.
 
 ## 5. Storage Management (Gerenciamento de Armazenamento)
 
-> ⚠️ **Retired as a plan feature (2026-07, Drive-first).** With the library storing originals in the user's own cloud (see section 3), storage is no longer a per-plan quota or upsell lever — there is no file limit and the storage card was removed from billing. The quotas below remain only as a **safeguard for the legacy server-side residue** (users who have not yet connected a cloud, with `CLOUD_LIBRARY_REQUIRED` OFF). Cost per user is now processing (dracmas), not storage.
+> Não há cota nem plano: os arquivos ficam no disco de quem instalou (ou no Drive que o usuário conectou).
 
 * **Storage Quotas per Plan (legacy safeguard):**
 
@@ -174,8 +170,6 @@ Gamified learning environment for medical students and residents.
   * JSON-based materials (flashcards, summaries, mind maps, questionnaires) do **not** expire — they are stored inline and don't consume significant disk space.
 * **Storage Tracking:**
   * User's `storage_used_bytes` is maintained incrementally on every upload and delete.
-  * `GET /user/storage` endpoint returns usage, quota, percentage, library counts, and plan limits.
-  * Storage bar displayed in the Billing section with color warnings at 70% and 90% usage.
 * **Avatar Storage Policy:**
   * Avatar history limit varies by plan (`MAX_AVATAR_HISTORY`): Free=5, Residente=15, Staff=30, Especialista=50. Oldest entries are auto-removed when limit is exceeded (file + DB record).
   * The currently active profile picture is never deleted by the limit enforcement.
@@ -185,23 +179,7 @@ Gamified learning environment for medical students and residents.
   * **Daily at 4:00 AM UTC:** Deletes chat visualization images older than 30 days.
   * **Daily at 5:00 AM UTC:** Deletes expired generated content, temp upload files (>24h), and orphan thumbnails.
 
-## 6. Billing & Economy (Faturamento e Economia)
-
-* **Dracmas (Virtual Currency):**
-  * Used to pay for premium AI generations (Podcasts, Videos, Advanced Image Analysis).
-  * Earned via subscription plans or purchased separately.
-* **Subscription Plans:**
-  * **Interno (Free):** Basic access, limited Dracmas.
-  * **Residente:** Monthly subscription, more Dracmas, access to Arena.
-  * **Staff:** Higher limits, full Image Analysis access.
-  * **Especialista:** Priority processing, maximum limits.
-  * **Institucional:** Custom plans for hospitals/universities.
-* **Billing Management:**
-  * Monthly vs Annual billing (with discounts).
-  * Stripe integration for secure payments.
-  * Binance Pay for cryptocurrency payments.
-
-## 7. Pesquisa: Qython Medical AI Benchmark
+## 6. Pesquisa: Qython Medical AI Benchmark
 
 Página dedicada (`/benchmark` no web) com o estudo comparativo do Qython 1
 contra os principais LLMs de mercado (Claude Opus 4.7, Sonnet 4.6, GPT-5.5,
@@ -230,7 +208,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Export my data (Art. 18 V) — ZIP with structured JSON.
   * Delete my account (Art. 18 VI) — cascade + soft delete + async purge.
   * Patient transparency block — copy link + printable QR code for the `/paciente` notice (waiting room).
-  * Public pages: `/encarregado` (DPO), `/subprocessors` (by category), `/paciente`.
   * Under the hood: field-level encryption (Fernet), append-only audit log, PII redaction before any external LLM call. See `docs/QYTHON_LGPD_PLAN.md`.
 
 ## 9. Mobile App (Android — React Native)
@@ -249,7 +226,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Full chat with markdown rendering and typing animation.
   * Camera and gallery image upload (max 3 images, 5 files, 20MB).
   * Session management (create, switch, delete).
-  * Like/dislike feedback on AI responses.
   * Clinical reasoning toggle.
   * Source references display.
   * Library context selection (RAG).
@@ -264,7 +240,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Voice transcription (mobile-exclusive: record audio → text).
   * Consultation timer with inactivity timeout (mobile-exclusive).
   * Quick insert bar and subtemplate sheets.
-  * Feedback buttons on AI-generated content.
 * **Pharmacy (Full Web Parity):**
   * Medication search with filters (therapeutic class, controlled type, government program, country).
   * Medication detail modals with clinical reference data.
@@ -281,7 +256,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Arena: exam simulations, rankings, seasons.
 * **Profile (3-Tab Layout):**
   * **Personal Tab:** Edit profile (name, specialty, country), change password.
-  * **Billing Tab:** Subscription card, dracma balance breakdown, storage usage, dracma statement, PricingModal, DracmaPurchaseModal (all gated with ComingSoonModal).
   * **Settings Tab:** Privacy & data rights (granular ML consent opt-in, export/delete account), dark/light theme toggle, language selector (PT/EN/ES), about, logout.
   * Header: avatar + name + email (fixed above TabBar).
 * **i18n:**
@@ -292,16 +266,10 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Token registration via `POST /user/push-token`.
   * Foreground and background message handlers.
   * Android 13+ POST_NOTIFICATIONS permission handling.
-* **Billing (Dashboard + Coming Soon Gating):**
-  * ProfileScreen refactored into 3-tab layout (Personal, Billing, Settings).
-  * BillingTab dashboard: subscription card, dracma balance with source breakdown, storage usage bar, dracma statement with expiration tracking.
   * PricingModal: 5 plans (Intern/Resident/Staff/Specialist/Enterprise), monthly/annual toggle with 20% discount.
-  * DracmaPurchaseModal: 3 packages (500/2,000/4,000 dracmas).
   * ComingSoonModal: waitlist integration (check + join), gating all payment CTAs.
-  * API: `GET /billing/balance/breakdown`, `GET /user/storage`, waitlist check/join.
 * **Native Share Sheet:**
   * `useShare()` hook: reusable PDF download + native share, with loading state and temp-file cleanup.
-  * `sharePdf(endpoint, filename)`: authenticated download via `react-native-blob-util`, opens OS share sheet via `react-native-share`.
   * `shareText(text, title?)`: plain-text sharing via RN built-in `Share.share()`.
   * Used por ambulatório (receitas, relatórios, pedidos de exame, orientações).
 * **Modo Offline (Offline Mode):**
@@ -334,7 +302,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
     * Polling as fallback: web 5min, mobile 60s.
   * In-app toast notifications for foreground push messages (mobile: animated slide-down with color-coded types; web: stacked glassmorphism toasts).
   * FCM push notifications for background/killed-state events.
-  * Event-driven triggers: material generation complete/failed, dracma expiration warnings, KYC verification status, arena season start.
   * Unread badge updated in real-time via WebSocket (with polling fallback).
   * Mark as read (individual or bulk) with optimistic UI updates + WebSocket broadcast of updated unread count.
   * Notification preferences: per-type and global push/email toggles.
@@ -344,7 +311,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
 * **Transactional Email System:**
   * 5 automated email templates with dark glassmorphism design (matching brand):
     * **Material Ready:** Sent when podcast/video/simulado completes generation. Includes direct link.
-    * **Weekly Digest:** Monday morning summary with consultation count, dracmas used, arena score, and streak days.
     * **Inactivity (14 days):** "We miss you" re-engagement email.
     * **Deactivation Warning (60 days):** Urgency email warning of account deactivation with red banner.
     * **Welcome Day 3:** Tips email 3 days after activation (create library, generate podcasts, train in arena).
@@ -356,7 +322,6 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Metrics: DAU, WAU (with week-over-week change), MAU, Total Active Users.
   * Charts (Recharts): DAU line chart, registration growth bar chart, feature adoption donut, AI usage horizontal bars.
   * Activity tracking across 4 features: copilot, consultation, academic, pharmacy.
-  * Backend endpoints: DAU/MAU, growth, cohort retention, feature usage, AI/dracma usage.
   * Fire-and-forget `track_activity()` service piggybacks on existing route commits.
 * **iOS Build Setup:**
   * Info.plist with permission descriptions (camera, photo library, microphone, speech recognition).
@@ -368,22 +333,18 @@ após coleta. Newsletter de inscrição reaproveita o endpoint
   * Comprehensive iOS build documentation at `docs/IOS_BUILD.md`.
 * **Recent Features (February 2026):**
   * **Session Rename (Copilot):** Long-press on session in drawer to rename or delete. Inline TextInput for editing session title.
-  * **Undo/Redo (Ambulatory):** After AI improves notes, undo restores original raw notes. Redo offers "with edits" (current text) or "from original" options. Tracks original notes for DPO training data.
   * **Challenges (Academic Arena):** Create challenges by username + exam selection. Accept/decline incoming challenges. Score comparison and result display.
   * **Onboarding Tour System:** Reusable `QythonTour` component with spotlight overlay, step navigation, and AsyncStorage persistence. 5 module configs (Copilot, Consultation, Academic, Pharmacy, Profile). Reset tours option in Settings.
   * **Difficulty Badges (Quiz):** Color-coded difficulty labels (easy/medium/hard) and topic badges displayed in quiz questions.
   * **Library Edit/Delete:** Visible edit (pencil) and delete (X) action buttons on library cards. Long-press menu with edit/delete options. Dual-mode CreateLibraryModal (create + edit).
   * **iOS/Android Parity:** Standardized KeyboardAvoidingView behavior, platform-safe vibration patterns, zero TypeScript errors.
 * **Mobile Design System (Clinical Glassmorphism)** *(May 2026)*:
-  * Shared `GradientButton` component (3 variants: primary, secondary, outline) with LinearGradient + luminous brand-colored shadow + animated press feedback.
   * Shared `useButtonPress` hook (scale + translateY spring animation, mirrors web `.cta:hover`).
   * `alpha(hex, opacity)` helper in `theme/colors.ts` to replace inline `+ '20'` transparency suffixes.
   * `react-native-linear-gradient` lib (^2.8.3) — auto-linked on Android, requires `pod install` on iOS.
   * `qython-imagotipo.png` brand asset shared with web.
-  * Coverage: Auth (Login/Register), Profile (Screen/PersonalTab/Avatar), Copilot (Screen/Bubble/Header), Ambulatory (4 form tabs + cards + FAB), Pharmacy (4 tabs + 5 card components + MedicationPill), Academic (LibraryDetail + Document/MaterialCard + FAB), Billing (PricingModal), TabBar shared.
 * **Removed Features** *(May 2026 — cleanup pass)*:
   * **Blog system:** public `/blog/:id` route, admin manager, news articles data, backend `/api/blog/*` routes, `blog_posts` table — all removed (zero adoption, see `2026_05_26_drop_blog` migration).
   * **Centro Cirúrgico:** 18 web components, 17 mobile components/screens, 9 DB tables (`surgical_cases`, `surgical_events`, `surgical_outcomes`, `surgical_templates`, `surgical_materials`, `surgical_checklists`, `drug_administrations`, `vital_signs`, `anesthesia_alerts`), `/api/surgical/*` router, ASA calculator, anesthesia monitoring — all removed (0 cases ever created, see `2026_05_27_drop_surg` migration).
   * **Modo Plantão (Emergency On-Call):** Quick Doses + Clinical Protocols mobile/web tabs — removed (no backend state, no usage data, redundant with Copilot for the legitimate post-shift handoff/quick-reference cases).
 * **Not Yet Implemented:**
-  * Google Play Billing integration (actual payments — currently gated with Coming Soon).

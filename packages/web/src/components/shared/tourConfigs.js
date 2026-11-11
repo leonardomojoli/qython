@@ -50,7 +50,6 @@ export const profileTourSteps = [
     { id: 'welcome', target: null, titleKey: 'tourProfileWelcomeTitle', descKey: 'tourProfileWelcomeDesc', position: 'center' },
     { id: 'stats', target: '[data-tour="profile-stats"]', titleKey: 'tourProfileStatsTitle', descKey: 'tourProfileStatsDesc', position: 'bottom', tab: 'perfil' },
     { id: 'personalInfo', target: '[data-tour="profile-personal-info"]', titleKey: 'tourProfileInfoTitle', descKey: 'tourProfileInfoDesc', position: 'top', tab: 'perfil' },
-    { id: 'billing', target: '[data-tour="profile-billing"]', titleKey: 'tourProfileBillingTitle', descKey: 'tourProfileBillingDesc', position: 'left', tab: 'faturamento' },
     { id: 'reset', target: '[data-tour="profile-reset-tour"]', titleKey: 'tourProfileResetTitle', descKey: 'tourProfileResetDesc', position: 'top', tab: 'configuracoes' },
     { id: 'finish', target: null, titleKey: 'tourProfileFinishTitle', descKey: 'tourProfileFinishDesc', position: 'center' }
 ];

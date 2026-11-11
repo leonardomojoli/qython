@@ -17,7 +17,7 @@ import {
     faThumbsUp,
     faThumbsDown
 } from '@fortawesome/free-solid-svg-icons';
-import { createPrescription, getPrescriptionPdf, createDocument, getDocumentPdf, submitFeedback } from '../../api';
+import { createPrescription, getPrescriptionPdf, createDocument, getDocumentPdf } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import PatientPickerModal from './PatientPickerModal';
 
@@ -33,9 +33,7 @@ function ReceituarioTab({ isEmbedded = false, defaultIcdCodes = [], prefillMedic
     const [isPatientPickerOpen, setIsPatientPickerOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Feedback state (for report & referral)
     const [lastCreatedDoc, setLastCreatedDoc] = useState(null);
-    const [feedbackSent, setFeedbackSent] = useState(false);
 
     // Prescription state
     const [prescriptionType, setPrescriptionType] = useState('simple');
@@ -113,33 +111,6 @@ function ReceituarioTab({ isEmbedded = false, defaultIcdCodes = [], prefillMedic
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // Feedback handler
-    const handleFeedback = async (type) => {
-        if (!lastCreatedDoc || feedbackSent) return;
-
-        try {
-            await submitFeedback({
-                feedback_type: type,
-                content_type: `medical_document_${lastCreatedDoc.type}`,
-                original_content: JSON.stringify(lastCreatedDoc.content),
-                content_id: String(lastCreatedDoc.id),
-                training_data_id: lastCreatedDoc.training_data_id,
-                feedback_text: '',
-                contact_permission: false
-            });
-
-            addNotification(
-                type === 'like'
-                    ? t('feedbackThankYou', 'Obrigado pelo feedback!')
-                    : t('feedbackNoted', 'Feedback registrado. Vamos melhorar!'),
-                'success'
-            );
-            setFeedbackSent(true);
-            setTimeout(() => setLastCreatedDoc(null), 3000);
-        } catch (error) {
-            console.error('Error submitting feedback:', error);
-        }
-    };
 
     // Save prescription
     const handleSavePrescription = async () => {
@@ -245,7 +216,6 @@ function ReceituarioTab({ isEmbedded = false, defaultIcdCodes = [], prefillMedic
             });
 
             setLastCreatedDoc({ id: createdDoc.id, type: activeSubTab, content, training_data_id: createdDoc.training_data_id });
-            setFeedbackSent(false);
         } catch (error) {
             console.error('Error creating document:', error);
             addNotification(t('documentCreateError', 'Erro ao criar documento'), 'error');
@@ -548,30 +518,6 @@ function ReceituarioTab({ isEmbedded = false, defaultIcdCodes = [], prefillMedic
 
             {/* Footer */}
             <div className={styles.footer}>
-                {lastCreatedDoc && !feedbackSent && (
-                    <div className={styles.feedbackSection}>
-                        <span className={styles.feedbackLabel}>{t('documentHelpful', 'Documento ficou bom?')}</span>
-                        <button
-                            className={`${styles.feedbackBtn} ${styles.likeBtn}`}
-                            onClick={() => handleFeedback('like')}
-                            title={t('like', 'Gostei')}
-                        >
-                            <FontAwesomeIcon icon={faThumbsUp} />
-                        </button>
-                        <button
-                            className={`${styles.feedbackBtn} ${styles.dislikeBtn}`}
-                            onClick={() => handleFeedback('dislike')}
-                            title={t('dislike', 'Não gostei')}
-                        >
-                            <FontAwesomeIcon icon={faThumbsDown} />
-                        </button>
-                    </div>
-                )}
-                {feedbackSent && lastCreatedDoc && (
-                    <div className={styles.feedbackThanks}>
-                        {t('thankYou', 'Obrigado!')}
-                    </div>
-                )}
                 <button
                     className={styles.generateButton}
                     onClick={handleGenerate}

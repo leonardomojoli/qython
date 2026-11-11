@@ -1,0 +1,31 @@
+name: Sugerir uma melhoria
+description: Uma ideia, um recurso que faz falta ou algo que poderia ser melhor.
+labels: ["sugestão"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Conte a situação real em que isso faz falta. Ideias nascem de problemas concretos.
+        **Não escreva dados de pacientes.**
+  - type: textarea
+    id: situacao
+    attributes:
+      label: Qual é a situação ou o problema
+      description: Em que momento do atendimento ou do estudo isso aparece?
+    validations:
+      required: true
+  - type: textarea
+    id: ideia
+    attributes:
+      label: O que você imagina que resolveria
+  - type: textarea
+    id: fonte
+    attributes:
+      label: Fonte (se for conteúdo clínico)
+      description: Bula da ANVISA, diretriz do Ministério da Saúde ou de sociedade brasileira, artigo.
+  - type: checkboxes
+    id: contribuir
+    attributes:
+      label: Contribuição
+      options:
+        - label: Posso ajudar a implementar ou a testar.

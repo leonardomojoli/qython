@@ -7,9 +7,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import styles from './Chat.module.css';
-import { sendChatMessage, getChatMessages, submitFeedback, deleteChatSession, getLibraries, API_STATIC_URL } from '../../api';
+import { sendChatMessage, getChatMessages, deleteChatSession, getLibraries, API_STATIC_URL } from '../../api';
 import ConfirmationModal from '../shared/ConfirmationModal';
-import UpgradeModal from '../shared/UpgradeModal';
 import CopilotEmptyState from './CopilotEmptyState';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUser } from '../../contexts/UserContext';
@@ -35,7 +34,6 @@ import {
   faExternalLinkAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { handleShareAsTxt, handleShareAsPdf, convertMarkdownToPlainText, handleShareAsMarkdown } from '../shared/ShareComponent';
-import FeedbackModal from '../shared/FeedbackModal';
 import ConversationNavBar from './ConversationNavBar';
 import LibrarySelectionModal from '../library/LibrarySelectionModal';
 import ConsultationPickerModal from './ConsultationPickerModal';
@@ -112,8 +110,6 @@ function Chat({
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const dropdownRef = useRef(null);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState({ type: '', content: '', id: null });
   const [shareMenu, setShareMenu] = useState({ open: false, messageId: null });
   const [shareState, setShareState] = useState({ step: 'SCOPE', scope: null });
   const abortControllerRef = useRef(null);
@@ -128,9 +124,6 @@ function Chat({
   const [consultationContext, setConsultationContext] = useState(null);
   const [isPatientPickerOpen, setIsPatientPickerOpen] = useState(false);
   const [patientContext, setPatientContext] = useState(null);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [upgradeFeatureMessage, setUpgradeFeatureMessage] = useState('');
-  const [upgradeFeatureType, setUpgradeFeatureType] = useState('premium');
 
   // Defer library fetch until modal is opened (performance optimization)
   const fetchLibrariesIfNeeded = useCallback(async () => {
@@ -381,15 +374,6 @@ function Chat({
         } else {
           addNotification(t('conversationNotCreatedLimitReached'), 'info');
         }
-      } else if (err.response?.data?.detail?.error === 'plan_upgrade_required') {
-        // Plan upgrade required - show friendly upgrade modal
-        // Remove both bot placeholder and user message (with image that triggered the error)
-        setChatHistory(prev => prev.filter(msg =>
-          msg.id !== botMessagePlaceholder.id && msg.id !== userMessageId
-        ));
-        setUpgradeFeatureMessage(err.response.data.detail.message);
-        setUpgradeFeatureType(err.response.data.detail.feature || 'premium');
-        setIsUpgradeModalOpen(true);
       } else if (axios.isCancel(err)) {
         console.log('Geração interrompida pelo usuário.');
         // Remove the loading bot message instead of showing cancelled text
@@ -679,67 +663,8 @@ function Chat({
     right: `${20 + 8}px`,
   };
 
-  const handleLike = async (likedMessage) => {
-    const botMessageIndex = chatHistory.findIndex(m => m.id === likedMessage.id);
-    const userPrompt = botMessageIndex > 0 ? chatHistory[botMessageIndex - 1].text : "N/A";
-    const conversationContext = chatHistory.slice(0, botMessageIndex + 1).map(m => ({ sender: m.sender, text: m.text }));
 
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: 'chat_response',
-        content_id: likedMessage.id,
-        training_data_id: likedMessage.training_data_id,
-        original_content: likedMessage.fullBotResponse || likedMessage.text,
-        user_prompt: userPrompt,
-        conversation_context: conversationContext,
-        feedback_text: '',
-        contact_permission: false,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit like feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleDislike = (dislikedMessage) => {
-    const botMessageIndex = chatHistory.findIndex(m => m.id === dislikedMessage.id);
-    const userPrompt = botMessageIndex > 0 ? chatHistory[botMessageIndex - 1].text : "N/A";
-    const conversationContext = chatHistory.slice(0, botMessageIndex + 1).map(m => ({ sender: m.sender, text: m.text }));
-
-    setCurrentFeedback({
-      type: 'dislike',
-      content: dislikedMessage.fullBotResponse || dislikedMessage.text,
-      id: dislikedMessage.id,
-      training_data_id: dislikedMessage.training_data_id,
-      user_prompt: userPrompt,
-      conversation_context: conversationContext,
-    });
-    setIsFeedbackModalOpen(true);
-  };
-
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    try {
-      await submitFeedback({
-        feedback_type: currentFeedback.type,
-        content_type: 'chat_response',
-        content_id: currentFeedback.id,
-        training_data_id: currentFeedback.training_data_id,
-        original_content: currentFeedback.content,
-        user_prompt: currentFeedback.user_prompt,
-        conversation_context: currentFeedback.conversation_context,
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-    }
-  };
 
   const handleCopy = (markdownText, messageId) => {
     const plainText = convertMarkdownToPlainText(markdownText);
@@ -1074,8 +999,6 @@ function Chat({
 
               {msg.sender === 'bot' && !msg.isLoading && msg.fullBotResponse && msg.text.length >= msg.fullBotResponse.length && (
                 <div className={styles.messageActions}>
-                  <button onClick={() => handleLike(msg)} title={t('like')}><FontAwesomeIcon icon={faThumbsUp} /></button>
-                  <button onClick={() => handleDislike(msg)} title={t('dislike')}><FontAwesomeIcon icon={faThumbsDown} /></button>
                   <button onClick={() => handleCopy(msg.text, msg.id)} title={t('copy')}>
                     {actionSuccess.id === msg.id && actionSuccess.type === 'copy' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faCopy} />}
                   </button>
@@ -1283,12 +1206,6 @@ function Chat({
         </div>
         <div className={styles.chatInfoText}>{t('bibliographicalReferencesHealthNote')}</div>
       </div>
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-        feedbackType={currentFeedback.type}
-      />
       <ConfirmationModal
         isOpen={isLimitModalOpen}
         onClose={handleCancelDeleteOldest}
@@ -1315,17 +1232,6 @@ function Chat({
         isOpen={isPatientPickerOpen}
         onClose={() => setIsPatientPickerOpen(false)}
         onSelect={(patient) => setPatientContext({ id: patient.id, full_name: patient.full_name })}
-      />
-      {/* Upgrade Modal for plan-restricted features */}
-      <UpgradeModal
-        isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        onUpgrade={() => {
-          setIsUpgradeModalOpen(false);
-          navigate('/pricing');
-        }}
-        feature={upgradeFeatureType}
-        message={upgradeFeatureMessage}
       />
     </div>
   );

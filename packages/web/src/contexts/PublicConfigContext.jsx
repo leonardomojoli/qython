@@ -9,7 +9,6 @@ import { API_URL } from '../config';
 // Se alguma trava estiver ligada, o backend recusa o cadastro e diz o que faltou.
 const FALLBACK = {
   edition: 'local',
-  billing_enabled: false,
   setup_required: false,
   registration: {
     enabled: true,

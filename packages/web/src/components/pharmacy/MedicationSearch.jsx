@@ -5,10 +5,9 @@ import styles from './MedicationSearch.module.css';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faFilter, faPills, faCheck, faTimes, faExclamationTriangle, faThumbsUp, faThumbsDown, faChevronDown, faInfoCircle, faFilePrescription } from '@fortawesome/free-solid-svg-icons';
-import { searchMedications, submitFeedback } from '../../api';
+import { searchMedications } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUser } from '../../contexts/UserContext';
-import FeedbackModal from '../shared/FeedbackModal';
 
 function FilterDropdown({ options, value, onChange, placeholder, className }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -121,9 +120,6 @@ function MedicationSearch() {
   const [controlledType, setControlledType] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedMed, setSelectedMed] = useState(null);
-  const [feedbackSent, setFeedbackSent] = useState({});
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedbackMed, setCurrentFeedbackMed] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const debounceRef = useRef(null);
@@ -230,50 +226,8 @@ function MedicationSearch() {
     return parts.join(' | ');
   };
 
-  const handleMedLike = async (med) => {
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: 'medication_detail',
-        content_id: String(med.id),
-        original_content: buildMedContent(med),
-        feedback_text: '',
-        contact_permission: false,
-      });
-      setFeedbackSent(prev => ({ ...prev, [med.id]: 'like' }));
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error('Failed to submit medication like:', error);
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleMedDislike = (med) => {
-    setCurrentFeedbackMed(med);
-    setIsFeedbackModalOpen(true);
-  };
 
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    if (!currentFeedbackMed) return;
-    try {
-      await submitFeedback({
-        feedback_type: 'dislike',
-        content_type: 'medication_detail',
-        content_id: String(currentFeedbackMed.id),
-        original_content: buildMedContent(currentFeedbackMed),
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      setFeedbackSent(prev => ({ ...prev, [currentFeedbackMed.id]: 'dislike' }));
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error('Failed to submit medication dislike:', error);
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-      setCurrentFeedbackMed(null);
-    }
-  };
 
   const handleTakeToRx = (med) => {
     navigate('/consultation-manager', {
@@ -589,41 +543,11 @@ function MedicationSearch() {
                 <span>{t('takeToRx')}</span>
               </button>
 
-              {/* Feedback buttons */}
-              <div className={styles.feedbackSection}>
-                <span className={styles.feedbackLabel}>{t('medDataCorrect')}</span>
-                <div className={styles.feedbackButtons}>
-                  <button
-                    className={`${styles.feedbackBtn} ${feedbackSent[selectedMed.id] === 'like' ? styles.feedbackBtnActive : ''}`}
-                    onClick={() => handleMedLike(selectedMed)}
-                    disabled={!!feedbackSent[selectedMed.id]}
-                    title={t('like')}
-                  >
-                    <FontAwesomeIcon icon={faThumbsUp} />
-                  </button>
-                  <button
-                    className={`${styles.feedbackBtn} ${styles.feedbackBtnDislike} ${feedbackSent[selectedMed.id] === 'dislike' ? styles.feedbackBtnActive : ''}`}
-                    onClick={() => handleMedDislike(selectedMed)}
-                    disabled={!!feedbackSent[selectedMed.id]}
-                    title={t('dislike')}
-                  >
-                    <FontAwesomeIcon icon={faThumbsDown} />
-                  </button>
-                </div>
-                {feedbackSent[selectedMed.id] && (
-                  <span className={styles.feedbackThanks}>{t('medFeedbackThanks')}</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => { setIsFeedbackModalOpen(false); setCurrentFeedbackMed(null); }}
-        onSubmit={handleFeedbackSubmit}
-      />
     </div>
   );
 }

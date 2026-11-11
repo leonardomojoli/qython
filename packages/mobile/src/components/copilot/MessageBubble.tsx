@@ -9,18 +9,16 @@ import { spacing, borderRadius } from '../../theme/spacing';
 import type { ChatMessage } from '../../services/copilot';
 import MarkdownRenderer from './MarkdownRenderer';
 import SourcesSection from './SourcesSection';
-import FeedbackButtons from './FeedbackButtons';
 
 interface Props {
   message: ChatMessage;
   isTyping?: boolean;
-  onFeedback: (messageId: number, feedback: 'like' | 'dislike') => void;
   onEdit?: (messageId: number, newText: string) => void;
   onRegenerate?: (botMessageId: number) => void;
   onShareConversation?: (upToMessageId: number, format: 'txt' | 'md') => void;
 }
 
-export default function MessageBubble({ message, isTyping, onFeedback, onEdit, onRegenerate, onShareConversation }: Props) {
+export default function MessageBubble({ message, isTyping, onEdit, onRegenerate, onShareConversation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const isUser = message.role === 'user';
@@ -265,11 +263,6 @@ export default function MessageBubble({ message, isTyping, onFeedback, onEdit, o
         {/* Action buttons for bot messages */}
         {!isUser && typingComplete && (
           <View style={styles.actionsRow}>
-            <FeedbackButtons
-              messageId={message.id}
-              currentFeedback={message.feedback || null}
-              onFeedback={onFeedback}
-            />
             <View style={styles.messageActions}>
               {onRegenerate && (
                 <TouchableOpacity

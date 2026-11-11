@@ -28,7 +28,6 @@ import AchievementsSection from '../../components/profile/AchievementsSection';
 import StatisticsSection from '../../components/profile/StatisticsSection';
 import VerificationSection from '../../components/profile/VerificationSection';
 import PersonalTab from './PersonalTab';
-import BillingTab from './BillingTab';
 import SettingsTab from './SettingsTab';
 
 interface Props {
@@ -120,7 +119,6 @@ export default function ProfileScreen({ onLogout }: Props) {
   const tabs = [
     { key: 'personal', label: t('profile', 'Perfil') },
     { key: 'stats', label: t('statsTab', 'Estatisticas') },
-    { key: 'billing', label: t('billingTab', 'Faturamento') },
     { key: 'settings', label: t('settingsTab', 'Config') },
   ];
 
@@ -215,7 +213,6 @@ export default function ProfileScreen({ onLogout }: Props) {
             <StatisticsSection />
           </>
         )}
-        {activeTab === 'billing' && <BillingTab />}
         {activeTab === 'settings' && <SettingsTab onLogout={handleLogout} />}
       </View>
 

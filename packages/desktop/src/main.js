@@ -168,6 +168,7 @@ function buildMenu() {
       { label: 'Escolher a IA…', click: () => { openWizard(); } },
       { label: 'Baixar a transcrição de áudio e vídeo (1,6 GB)', click: () => { downloadWhisper(); } },
       { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
+      { label: 'Reportar um problema…', click: () => shell.openExternal('https://github.com/leonardomojoli/qython/issues/new?template=problema.yml') },
       { label: 'Código-fonte e documentação', click: () => shell.openExternal('https://github.com/leonardomojoli/qython') },
     ] },
   ];

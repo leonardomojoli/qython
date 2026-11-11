@@ -21,11 +21,10 @@ import {
     faThumbsUp,
     faThumbsDown
 } from '@fortawesome/free-solid-svg-icons';
-import { createOrientation, generateOrientation, getOrientationPdf, submitFeedback } from '../../api';
+import { createOrientation, generateOrientation, getOrientationPdf } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import PatientPickerModal from './PatientPickerModal';
-import FeedbackModal from '../shared/FeedbackModal';
 
 // Template definitions (matching backend orientation_templates.py)
 const TEMPLATES = [
@@ -97,10 +96,7 @@ function OrientacoesTab({ isEmbedded = false }) {
     const [aiPrompt, setAiPrompt] = useState('');
     const [aiSpecialty, setAiSpecialty] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
-    // Feedback da orientação gerada por IA (alimenta o flywheel)
     const [aiTrainingDataId, setAiTrainingDataId] = useState(null);
-    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-    const [feedbackGiven, setFeedbackGiven] = useState(false);
 
     // Shared state
     const [selectedPatient, setSelectedPatient] = useState(null);
@@ -161,7 +157,6 @@ function OrientacoesTab({ isEmbedded = false }) {
             setEditableContent(result.content);
             setSelectedTemplate('__ai_generated__');
             setAiTrainingDataId(result.training_data_id || null);
-            setFeedbackGiven(false);
             addNotification(t('orientationGenerated', 'Material gerado com sucesso!'), 'success');
 
             // Download PDF automatically
@@ -356,9 +351,6 @@ function OrientacoesTab({ isEmbedded = false }) {
                     <>
                         <FontAwesomeIcon icon={faWandMagicSparkles} />
                         {t('orientationAiGenerate', 'Gerar com IA')}
-                        {config?.billing_enabled && (
-                            <span className={styles.costBadge}>{t('orientationCost', '5 dracmas')}</span>
-                        )}
                     </>
                 )}
             </button>
@@ -390,14 +382,6 @@ function OrientacoesTab({ isEmbedded = false }) {
                     {aiTrainingDataId && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
                             <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{t('rateThisMaterial', 'Avalie este material:')}</span>
-                            <button type="button" disabled={feedbackGiven} onClick={handleOrientationLike} title={t('like', 'Gostei')}
-                                style={{ cursor: feedbackGiven ? 'default' : 'pointer', opacity: feedbackGiven ? 0.4 : 1, background: 'none', border: 'none', fontSize: '1.1rem', color: 'inherit' }}>
-                                <FontAwesomeIcon icon={faThumbsUp} />
-                            </button>
-                            <button type="button" disabled={feedbackGiven} onClick={() => setIsFeedbackModalOpen(true)} title={t('dislike', 'Não gostei')}
-                                style={{ cursor: feedbackGiven ? 'default' : 'pointer', opacity: feedbackGiven ? 0.4 : 1, background: 'none', border: 'none', fontSize: '1.1rem', color: 'inherit' }}>
-                                <FontAwesomeIcon icon={faThumbsDown} />
-                            </button>
                         </div>
                     )}
                 </div>
@@ -405,43 +389,7 @@ function OrientacoesTab({ isEmbedded = false }) {
         </div>
     );
 
-    const handleOrientationLike = async () => {
-        try {
-            await submitFeedback({
-                feedback_type: 'like',
-                content_type: 'patient_orientation',
-                training_data_id: aiTrainingDataId,
-                original_content: editableContent,
-                user_prompt: aiPrompt,
-                feedback_text: '',
-                contact_permission: false,
-            });
-            setFeedbackGiven(true);
-            addNotification(t('feedbackSentSuccess', 'Feedback enviado!'), 'success');
-        } catch (error) {
-            addNotification(t('feedbackSentError', 'Erro ao enviar feedback'), 'error');
-        }
-    };
 
-    const handleOrientationFeedbackSubmit = async (comment) => {
-        try {
-            await submitFeedback({
-                feedback_type: 'dislike',
-                content_type: 'patient_orientation',
-                training_data_id: aiTrainingDataId,
-                original_content: editableContent,
-                user_prompt: aiPrompt,
-                feedback_text: comment,
-                contact_permission: false,
-            });
-            setFeedbackGiven(true);
-            addNotification(t('feedbackSentSuccess', 'Feedback enviado!'), 'success');
-        } catch (error) {
-            addNotification(t('feedbackSentError', 'Erro ao enviar feedback'), 'error');
-        } finally {
-            setIsFeedbackModalOpen(false);
-        }
-    };
 
     return (
         <div className={styles.container}>
@@ -501,12 +449,6 @@ function OrientacoesTab({ isEmbedded = false }) {
                 onSelect={handlePatientSelect}
             />
 
-            <FeedbackModal
-                isOpen={isFeedbackModalOpen}
-                onClose={() => setIsFeedbackModalOpen(false)}
-                onSubmit={handleOrientationFeedbackSubmit}
-                feedbackType="dislike"
-            />
         </div>
     );
 }

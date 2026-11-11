@@ -22,7 +22,6 @@ import { QYTHON_SITE_URL } from '../../config/env';
 import {
   sendMessage,
   getSessionMessages,
-  submitFeedback,
   type ChatMessage,
   type ChatResponse,
   type ConsultationContext,
@@ -228,23 +227,6 @@ export default function CopilotScreen() {
     setLastBotMessageId(null);
   }, []);
 
-  const handleFeedback = useCallback(
-    async (messageId: number, feedback: 'like' | 'dislike') => {
-      if (!sessionId) {
-        return;
-      }
-      try {
-        await submitFeedback({ messageId, feedback, sessionId });
-        setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, feedback } : m)),
-        );
-      } catch {
-        // Silent fail for feedback
-      }
-    },
-    [sessionId],
-  );
-
   const handleSelectLibrary = useCallback((library: Library | null) => {
     setSelectedLibrary(library);
   }, []);
@@ -259,13 +241,12 @@ export default function CopilotScreen() {
       <MessageBubble
         message={item}
         isTyping={item.id === lastBotMessageId}
-        onFeedback={handleFeedback}
         onEdit={!loading ? handleEditMessage : undefined}
         onRegenerate={!loading ? handleRegenerate : undefined}
         onShareConversation={handleShareConversation}
       />
     ),
-    [lastBotMessageId, handleFeedback, handleEditMessage, handleRegenerate, loading, handleShareConversation],
+    [lastBotMessageId, handleEditMessage, handleRegenerate, loading, handleShareConversation],
   );
 
   const renderEmpty = () => {

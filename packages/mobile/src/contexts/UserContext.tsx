@@ -9,12 +9,10 @@ interface UserInfo {
   plan: string;
   country: string;
   avatar_url: string | null;
-  dracma_balance: number;
   specialty: string | null;
   treatment: string | null;
   crm: string | null;
   university: string | null;
-  training_data_enabled: boolean;
   // Verificação (verdade do Latreo) × acesso (política do Qython) — ver utils/access.ts.
   occupation?: string;
   verification_status?: string | null;

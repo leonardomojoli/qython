@@ -302,22 +302,6 @@ const AnalyticsDashboard = () => {
                             <div className={styles.emptyState}>Sem dados de features</div>
                         )}
                     </div>
-
-                    {/* Dracma consumption summary */}
-                    <div className={styles.chartCard}>
-                        <h3 className={styles.chartTitle}>
-                            <FaCoins /> Consumo de Dracmas
-                        </h3>
-                        <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                            <div className={styles.metricValue} style={{ fontSize: '2.5rem', marginBottom: '8px' }}>
-                                {aiUsage ? Math.round(aiUsage.total_dracmas_consumed).toLocaleString() : '0'}
-                            </div>
-                            <div className={styles.metricLabel}>
-                                dracmas consumidos nos ultimos {aiUsage?.period_days || 30} dias
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </AdminLayout>
