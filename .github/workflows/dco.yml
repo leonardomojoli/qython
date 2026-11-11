@@ -1,0 +1,38 @@
+name: DCO
+
+# Confere que todo commit de um pull request leva "Signed-off-by" (git commit -s), conforme o
+# CONTRIBUTING.md. Commits de merge e os de bots ficam de fora.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  assinatura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Todo commit tem Signed-off-by
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          faltando=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            autor=$(git log -1 --format='%an' "$c")
+            case "$autor" in *"[bot]"*) continue;; esac
+            if ! git log -1 --format='%B' "$c" | grep -qiE '^Signed-off-by: .+ <.+@.+>[[:space:]]*$'; then
+              echo "::error::o commit $(git log -1 --format='%h %s' "$c") não tem Signed-off-by"
+              faltando=$((faltando + 1))
+            fi
+          done
+          if [ "$faltando" -gt 0 ]; then
+            echo "Assine os commits com 'git commit -s' (ou 'git rebase --signoff main' nos que já existem)."
+            echo "O que isso significa: https://developercertificate.org/"
+            exit 1
+          fi
+          echo "todos os commits têm Signed-off-by"
