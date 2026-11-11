@@ -63,7 +63,10 @@ computador ao celular pela câmera, fora da rede. O celular recusa qualquer cert
 dela, inclusive um válido de outra autoridade.
 
 A porta da rede local não serve o app web nem as rotas de login por senha: só `claim`, `token`,
-`health` e a API com o acesso do aparelho. Gerar código e administrar aparelhos só vale pela
+`health`, a configuração pública e a API com o acesso do aparelho. Esse acesso é **conferido na própria
+porta antes de chegar ao backend** (assinatura HS256 com a chave do backend, validade e a claim `device_id`):
+um Bearer inventado, ou o acesso do login por senha da janela do computador, não passa nem para as rotas que
+dispensam login. O backend ainda confere a cada requisição se o aparelho não foi revogado. Gerar código e administrar aparelhos só vale pela
 própria janela do computador.
 
 ## Onde cada peça está

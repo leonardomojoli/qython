@@ -64,17 +64,22 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      # O torch do PyPI vem na build CUDA, com gigabytes de nvidia-* inúteis sem
-      # GPU. O Dockerfile instala a build CPU; isto impede a regressão silenciosa.
-      - name: Imagem do backend sem bibliotecas CUDA
+      # A busca da biblioteca roda em ONNX (serviço embedder). O torch voltar à imagem custaria alguns GB
+      # sem ninguém perceber: o lock é gerado por quem mexe em requirements.txt, e um pacote novo pode
+      # arrastá-lo (ou as bibliotecas nvidia-*) de volta.
+      - name: Imagem do backend sem torch
         run: |
           IMG="$REGISTRY/qython-backend:${{ steps.v.outputs.version }}"
-          if docker run --rm --entrypoint pip "$IMG" list 2>/dev/null | grep -qi '^nvidia-'; then
-            docker run --rm --entrypoint pip "$IMG" list 2>/dev/null | grep -i '^nvidia-'
-            echo "::error::bibliotecas CUDA na imagem — o torch não veio do índice CPU"
+          docker run --rm --entrypoint pip "$IMG" list 2>/dev/null > pip-list.txt
+          if grep -qiE '^(torch|nvidia-|sentence-transformers|transformers|spacy|presidio|firebase-admin) ' pip-list.txt; then
+            grep -iE '^(torch|nvidia-|sentence-transformers|transformers|spacy|presidio|firebase-admin) ' pip-list.txt
+            echo "::error::pacotes pesados voltaram à imagem do backend (veja a lista acima)"
             exit 1
           fi
           docker image ls --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep qython
+          # Camada por camada (maiores primeiro): mostra onde o tamanho da imagem está, para o próximo corte.
+          echo "--- camadas da imagem do backend ---"
+          docker history --format '{{.Size}}\t{{.CreatedBy}}' --no-trunc=false "$IMG" | sort -hr | head -8
 
       - name: Sobe a stack com as imagens recém-construídas
         env:
@@ -96,6 +101,13 @@ jobs:
 
           curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
           echo "SPA: ok"
+          # O WebSocket de notificações leva o token na URL (?token=); o log de acesso do contêiner não pode guardá-lo.
+          curl -fsS "http://localhost:8080/api/health?token=SEGREDO-NA-QUERY" >/dev/null
+          sleep 1
+          if docker compose logs backend 2>&1 | grep -q 'SEGREDO-NA-QUERY'; then
+            echo "::error::o log de acesso do backend guardou a query string (o token iria junto)"; exit 1
+          fi
+          echo "log de acesso sem query string: ok"
           # Servir o HTML não prova que o React renderiza: o app passou semanas em
           # tela branca (Firebase quebrando no import) com o <title> acima intacto.
           # O Chrome do runner executa o JS e devolve o DOM já montado.
@@ -183,6 +195,21 @@ jobs:
           texto = o.ocr_imagem(Image.frombytes('RGB', [pix.width, pix.height], pix.samples))
           print('ocr:', o.modelo_em_uso(), repr(texto))
           assert o.modelo_em_uso() == 'medio' and 'amoxicilina' in texto.lower() and 'pressão' in texto.lower()"
+
+          # Busca da biblioteca: o serviço embedder (e5 + reranker em ONNX, sem torch) vem na imagem; indexa
+          # dois trechos no Chroma de verdade e pergunta, como o backend faz ao processar um documento.
+          docker compose exec -T backend python -c "
+          from backend.services.academic_services import vector_db_service as v, embedding_client as ec
+          assert ec.is_v2_enabled(), 'EMBED_SERVER_URL não chegou ao backend'
+          trechos = {1: 'Amoxicilina na otite média aguda em crianças: 80 a 90 mg/kg/dia por 10 dias.',
+                     2: 'Dipirona 500 mg: analgésico e antitérmico, até 4 vezes ao dia.'}
+          for i, t in trechos.items():
+              v.process_and_store_document(t, 9999, i, pages=[(1, t)], doc_title=f'Doc {i}')
+          achados = v.query_library('Qual a dose de amoxicilina na otite?', 9999, 2, with_metadata=True)
+          print('busca:', [m.get('document_id') for _, m in achados])
+          v.delete_library_collection(9999)
+          assert achados and achados[0][1]['document_id'] == 1, achados"
+          curl -fsS http://localhost:8080/api/health >/dev/null   # o backend segue de pé
 
           # Criptografia dos campos (nome, CPF, notas): sem QYTHON_FIELD_KEK no .env, o backend gera
           # as chaves e as guarda no volume. Cifra num processo e abre noutro: prova que as chaves

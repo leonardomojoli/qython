@@ -94,3 +94,10 @@ test('endereços da rede local: sem loopback, sem link-local, os mais comuns pri
   assert.deepEqual(lanAddresses(ifaces), ['192.168.1.20', '10.0.0.7', '172.17.0.1', '100.64.0.2']);
   assert.deepEqual(lanAddresses({}), []);
 });
+
+test('a decisão devolve o acesso que a rota exige (para quem chama conferir), e nada nas rotas abertas', () => {
+  assert.equal(d('GET', '/api/user/info', { authorization: 'Bearer abc.def.ghi' }).token, 'abc.def.ghi');
+  assert.equal(d('GET', '/api/notifications/ws?token=t0k', {}, true).token, 't0k');
+  assert.equal(d('GET', '/api/health').token, undefined);
+  assert.equal(d('POST', '/api/pairing/claim').token, undefined);
+});

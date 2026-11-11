@@ -231,7 +231,8 @@ exportação por paciente (LGPD), que já existe no Qython. A API para o front �
 A porta da rede local (`src/lan.js`) fica **fechada por padrão**: o médico a liga em *Perfil → Configurações →
 Conectar o celular* (`window.qythonDesktop.lan.setEnabled(true)`). Ligada, é um servidor HTTPS que repassa ao
 backend local só o que a política deixa (`src/lan-policy.js`): `GET /api/health`, `GET /api/public/config`,
-`POST /api/pairing/claim|token` sem login, e o resto de `/api/*` apenas com `Authorization: Bearer`. O app web,
+`POST /api/pairing/claim|token` sem login, e o resto de `/api/*` apenas com o acesso de um aparelho pareado
+(`Authorization: Bearer`, conferido na porta: assinatura, validade e `device_id`, ver `src/device-token.js`). O app web,
 `/api/auth*`, `/api/admin*`, `/api/pairing/start` e `/api/pairing/devices*` nunca passam (só valem pela janela do
 computador), e os endereços são decididos sobre o caminho já decodificado (nada de `%2F` para furar). `claim` e
 `token` têm limite de tentativas por origem na própria porta, além do que o backend já aplica.
