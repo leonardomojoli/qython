@@ -11,11 +11,8 @@
 #   docker compose up -d --build
 #
 # A transcrição de áudio roda na máquina (whisper), sem serviço pago: o modelo é
-# baixado e carregado só na primeira transcrição. O embedder da busca híbrida
-# (e5 + reranker) fica atrás de um profile; sem ele a biblioteca usa o pipeline de
-# embeddings local mais leve.
-#
-#   docker compose --profile ml up -d     # sobe também o embedder
+# baixado e carregado só na primeira transcrição. A busca da biblioteca (e5 + BM25 +
+# reranker) roda no serviço embedder, em ONNX e sem torch, com os modelos já dentro da imagem.
 
 services:
   db:
@@ -61,6 +58,8 @@ services:
         condition: service_healthy
       chroma:
         condition: service_started
+      embedder:
+        condition: service_started
     env_file: .env
     # Alcança uma IA local rodando fora do Docker (llama-server, Ollama) pelo nome
     # host.docker.internal, que no Linux só existe declarado assim.
@@ -72,6 +71,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-qython}:${POSTGRES_PASSWORD:-qython}@db:5432/${POSTGRES_DB:-qython}
       CHROMA_SERVER_HOST: chroma
       CHROMA_SERVER_PORT: "8000"
+      # Busca da biblioteca: vetores e5 e rerank pelo serviço embedder abaixo.
+      EMBED_SERVER_URL: http://embedder:8003
       # Transcrição local pelo serviço whisper abaixo (o único caminho: não há transcrição em nuvem).
       WHISPER_SERVER_URL: ${WHISPER_SERVER_URL-http://whisper:8002}
       # IA local pelo serviço llm abaixo: o único caminho (o Qython não usa IA em nuvem).
@@ -145,16 +146,12 @@ services:
     volumes:
       - models:/root/.cache/huggingface
 
-  # --- perfil "ml": busca híbrida da biblioteca, opcional ---
-
+  # Busca da biblioteca: embeddings multilíngues (multilingual-e5-base) e reranker, em ONNX (sem torch).
+  # Os modelos vêm dentro da imagem; ~1 GB de RAM.
   embedder:
-    profiles: ["ml"]
     image: ghcr.io/leonardomojoli/qython-backend:${QYTHON_VERSION:-latest}
     restart: unless-stopped
-    env_file: .env
-    command: uvicorn backend.embed_server:app --host 0.0.0.0 --port 8003 --timeout-keep-alive 75
-    volumes:
-      - models:/root/.cache/huggingface
+    command: uvicorn --factory backend.embed_onnx:build_app --host 0.0.0.0 --port 8003 --timeout-keep-alive 75
 
 volumes:
   pgdata:

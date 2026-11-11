@@ -102,17 +102,16 @@ senha" não tem como mandar o link; a senha se redefine pelo terminal:
 docker compose exec backend python -m backend.scripts.reset_password voce@exemplo.com
 ```
 
-### Modelos locais (opcional)
+### Modelos locais
 
-A transcrição de áudio e vídeo roda no `faster-whisper` local (nada vai a terceiros) e a
-busca usa embeddings locais leves. Para o embedder completo da busca:
+A transcrição de áudio e vídeo roda no `faster-whisper` local e a busca da biblioteca no serviço
+`embedder` (`multilingual-e5-base` + reranker, em ONNX, sem torch); nada vai a terceiros. Os modelos
+da busca já vêm dentro da imagem (~410 MB); o do whisper baixa na primeira transcrição. Quem vem de
+uma versão anterior (que buscava com um modelo menor) precisa reindexar as bibliotecas uma vez:
 
 ```bash
-docker compose --profile ml up -d
+docker compose exec backend python -m backend.scripts.reindex_to_v2
 ```
-
-Isso sobe o serviço de embeddings (`multilingual-e5-base` + reranker). Baixa alguns GB
-de modelo no primeiro start e pede uns 8 GB de RAM. Sem esse perfil, 4 GB bastam.
 
 ### Ingestão de arquivos Office
 
@@ -138,7 +137,7 @@ WITH_LIBREOFFICE=true docker compose build backend
         │ postgres  │              │   chroma    │  índice vetorial
         └───────────┘              └─────────────┘
                             │
-              ┌─────────────┴─────────────┐   (perfil "ml", opcional)
+              ┌─────────────┴─────────────┐
         ┌─────▼─────┐              ┌──────▼──────┐
         │  whisper  │              │  embedder   │
         └───────────┘              └─────────────┘
