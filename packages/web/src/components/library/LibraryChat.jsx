@@ -12,9 +12,8 @@ import {
   faShieldAlt,
   faLightbulb
 } from '@fortawesome/free-solid-svg-icons';
-import { sendLibraryChatMessage, submitFeedback } from '../../api';
+import { sendLibraryChatMessage } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
-import FeedbackModal from '../shared/FeedbackModal';
 import styles from './LibraryChat.module.css';
 
 const LibraryChat = ({ library, onBack }) => {
@@ -23,8 +22,6 @@ const LibraryChat = ({ library, onBack }) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState({ type: '', content: '', id: null });
   const [showWelcome, setShowWelcome] = useState(true);
   const chatHistoryRef = useRef(null);
   const textareaRef = useRef(null);
@@ -99,68 +96,8 @@ const LibraryChat = ({ library, onBack }) => {
     }
   };
 
-  // --- Feedback Handlers ---
-  const handleLike = async (msgIndex) => {
-    const likedMessage = chatHistory[msgIndex];
-    const userPrompt = msgIndex > 0 ? chatHistory[msgIndex - 1].content : "N/A";
-    const conversationContext = chatHistory.slice(0, msgIndex + 1).map(m => ({ sender: m.sender, content: m.content }));
 
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: 'library_rag_chat',
-        content_id: `lib_${library.id}_msg_${msgIndex}`,
-        training_data_id: likedMessage.training_data_id,
-        original_content: likedMessage.content,
-        user_prompt: userPrompt,
-        conversation_context: conversationContext,
-        feedback_text: '',
-        contact_permission: false,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit like feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleDislike = (msgIndex) => {
-    const dislikedMessage = chatHistory[msgIndex];
-    const userPrompt = msgIndex > 0 ? chatHistory[msgIndex - 1].content : "N/A";
-    const conversationContext = chatHistory.slice(0, msgIndex + 1).map(m => ({ sender: m.sender, content: m.content }));
-
-    setCurrentFeedback({
-      type: 'dislike',
-      content: dislikedMessage.content,
-      id: `lib_${library.id}_msg_${msgIndex}`,
-      training_data_id: dislikedMessage.training_data_id,
-      user_prompt: userPrompt,
-      conversation_context: conversationContext,
-    });
-    setIsFeedbackModalOpen(true);
-  };
-
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    try {
-      await submitFeedback({
-        feedback_type: currentFeedback.type,
-        content_type: 'library_rag_chat',
-        content_id: currentFeedback.id,
-        training_data_id: currentFeedback.training_data_id,
-        original_content: currentFeedback.content,
-        user_prompt: currentFeedback.user_prompt,
-        conversation_context: currentFeedback.conversation_context,
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-    }
-  };
 
   return (
     <div className={styles.chatContainer}>
@@ -225,12 +162,6 @@ const LibraryChat = ({ library, onBack }) => {
             </div>
             {msg.sender === 'bot' && (
               <div className={styles.messageActions}>
-                <button onClick={() => handleLike(index)} title={t('like')} className={styles.feedbackBtn}>
-                  <FontAwesomeIcon icon={faThumbsUp} />
-                </button>
-                <button onClick={() => handleDislike(index)} title={t('dislike')} className={styles.feedbackBtn}>
-                  <FontAwesomeIcon icon={faThumbsDown} />
-                </button>
               </div>
             )}
           </div>
@@ -278,12 +209,6 @@ const LibraryChat = ({ library, onBack }) => {
         </div>
       </div>
 
-      {/* Feedback Modal */}
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-      />
     </div>
   );
 };

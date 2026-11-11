@@ -17,7 +17,6 @@ import type {
   CreateOrientationPayload,
   GenerateOrientationPayload,
   GenerateOrientationResponse,
-  FeedbackPayload,
   Icd10Code,
 } from '../types/ambulatory';
 
@@ -306,14 +305,6 @@ export async function createOrientation(
   return response.data;
 }
 
-// ─── Feedback ──────────────────────────────────────────────
-
-export async function submitFeedback(
-  data: FeedbackPayload,
-): Promise<void> {
-  await api.post('/feedback', data);
-}
-
 // ─── PDF Download & Share ──────────────────────────────────
 
 export async function downloadAndSharePdf(
@@ -350,9 +341,3 @@ export async function downloadAndSharePdf(
   }
 }
 
-// ─── Balance ───────────────────────────────────────────────
-
-export async function getUserBalance(): Promise<{ balance: number }> {
-  const response = await api.get<{ balance: number }>('/billing/balance');
-  return response.data;
-}

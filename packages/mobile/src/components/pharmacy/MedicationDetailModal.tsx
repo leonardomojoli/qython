@@ -14,7 +14,6 @@ import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import GovProgramBadge from './GovProgramBadge';
 import ControlledBadge from './ControlledBadge';
-import { submitMedicationFeedback } from '../../services/pharmacy';
 import type { Medication } from '../../types/pharmacy';
 
 interface Props {
@@ -38,7 +37,6 @@ export default function MedicationDetailModal({
 }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const [feedbackSent, setFeedbackSent] = useState<'like' | 'dislike' | null>(null);
 
   if (!medication) return null;
 
@@ -51,19 +49,6 @@ export default function MedicationDetailModal({
     if (medication.common_indications) parts.push(`Indicações: ${medication.common_indications}`);
     if (medication.pregnancy_category) parts.push(`Gestação: ${medication.pregnancy_category}`);
     return parts.join(' | ');
-  };
-
-  const handleFeedback = async (type: 'like' | 'dislike') => {
-    try {
-      await submitMedicationFeedback({
-        feedbackType: type,
-        contentId: String(medication.id),
-        originalContent: buildContent(),
-      });
-      setFeedbackSent(type);
-    } catch {
-      Alert.alert('', t('feedbackSentError', 'Erro ao enviar feedback'));
-    }
   };
 
   const pregColor = PREGNANCY_COLORS[medication.pregnancy_category || ''] || theme.textMuted;
@@ -187,49 +172,6 @@ export default function MedicationDetailModal({
                 </View>
               )}
 
-              {/* Feedback */}
-              <View style={[styles.feedbackSection, { borderTopColor: theme.surfaceBorder }]}>
-                <Text style={[styles.feedbackLabel, { color: theme.textSecondary }]}>
-                  {t('medDataCorrect')}
-                </Text>
-                <View style={styles.feedbackButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.feedbackBtn,
-                      feedbackSent === 'like' && { backgroundColor: '#27ae6030' },
-                    ]}
-                    onPress={() => handleFeedback('like')}
-                    disabled={!!feedbackSent}>
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        opacity: feedbackSent && feedbackSent !== 'like' ? 0.3 : 1,
-                      }}>
-                      👍
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.feedbackBtn,
-                      feedbackSent === 'dislike' && { backgroundColor: '#e74c3c30' },
-                    ]}
-                    onPress={() => handleFeedback('dislike')}
-                    disabled={!!feedbackSent}>
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        opacity: feedbackSent && feedbackSent !== 'dislike' ? 0.3 : 1,
-                      }}>
-                      👎
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {feedbackSent && (
-                  <Text style={[styles.feedbackThanks, { color: theme.success }]}>
-                    {t('medFeedbackThanks')}
-                  </Text>
-                )}
-              </View>
             </ScrollView>
           </TouchableOpacity>
         </View>
@@ -385,29 +327,5 @@ const styles = StyleSheet.create({
   ceafDesc: {
     ...typography.caption,
     lineHeight: 18,
-  },
-  feedbackSection: {
-    borderTopWidth: 1,
-    paddingTop: spacing.md,
-    alignItems: 'center',
-  },
-  feedbackLabel: {
-    ...typography.bodySmall,
-    marginBottom: spacing.sm,
-  },
-  feedbackButtons: {
-    flexDirection: 'row',
-    gap: spacing.base,
-  },
-  feedbackBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedbackThanks: {
-    ...typography.caption,
-    marginTop: spacing.sm,
   },
 });

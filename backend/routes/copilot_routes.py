@@ -14,15 +14,11 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from ..database import get_db
-from ..models import User, ChatSession, ChatMessage, TrainingData, Patient, CopilotPrompt
+from ..models import User, ChatSession, ChatMessage, Patient, CopilotPrompt
 from ..security import get_current_active_user
 from ..services import llm_services
 from ..services.academic_services import file_processing_service
 from ..services.llm_services import generate_title_from_content
-from ..services.billing_service import debit_dracmas_for_feature
-from ..services.data_collector_service import collect_data
-from ..services.preference_service import collect_regeneration_pair
-from ..services.citation_collector import collect_citation_grounded_data
 from ..config import Config
 from ..services.activity_service import track_activity
 
@@ -75,7 +71,6 @@ class ChatResponse(BaseModel):
     new_title: Optional[str] = None
     sources: Optional[List[SourceItem]] = None
     supports: Optional[List[GroundingSupportItem]] = None
-    training_data_id: Optional[int] = None  # id do TrainingData desta resposta (match de feedback à prova de balas)
 
 class ChatPayload(BaseModel):
     message: str
@@ -111,7 +106,7 @@ async def get_suggested_prompts(db: AsyncSession = Depends(get_db), current_user
 
 @router.post("/suggested-prompts/{slug}/click")
 async def record_suggested_prompt_click(slug: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    """Sinal de uso p/ o flywheel: quais pílulas o usuário realmente escolhe. Incrementa
+    """Sinal de uso: quais pílulas o usuário realmente escolhe. Incrementa
     usage_count e registra um UserActivity. Fire-and-forget — nunca quebra o fluxo do chat."""
     result = await db.execute(select(CopilotPrompt).filter(CopilotPrompt.slug == slug))
     prompt = result.scalars().first()
@@ -396,14 +391,6 @@ async def handle_chat_message(
         # economics, etc.) and added an LLM call per message.
         effective_language = language or current_user.language_preference or 'pt'
 
-        # Debit for the message before processing (3 tiers: texto, documento, imagem)
-        if has_images:
-            await debit_dracmas_for_feature(current_user, "chat_message_with_image", db)
-        elif text_extractions:
-            await debit_dracmas_for_feature(current_user, "chat_message_with_document", db)
-        else:
-            await debit_dracmas_for_feature(current_user, "chat_message", db)
-
         # If a session_id is provided, find it. Otherwise, create a new one.
         if session_id:
             result_session = await db.execute(
@@ -428,7 +415,6 @@ async def handle_chat_message(
         # resposta anterior (par DPO) e a REMOVE antes de montar o contexto — assim (1) não
         # duplica o par pergunta/resposta ao reabrir a conversa e (2) o modelo não recebe a
         # própria resposta que está sendo refeita como contexto. ---
-        previous_response_for_dpo = None
         if is_regeneration:
             result_prev_msg = await db.execute(
                 select(ChatMessage)
@@ -438,24 +424,8 @@ async def handle_chat_message(
             )
             prev_bot_msg = result_prev_msg.scalars().first()
             if prev_bot_msg:
-                previous_response_for_dpo = prev_bot_msg.content
                 await db.delete(prev_bot_msg)
-                logger.info(f"[DPO] Resposta anterior capturada ({len(previous_response_for_dpo)} chars) e removida para regeneração")
-
-            # Marca a entrada antiga de TrainingData como dislike (compatibilidade com o flywheel)
-            result_prev_td = await db.execute(
-                select(TrainingData)
-                .filter(TrainingData.user_id == current_user.id, TrainingData.source_type == "chat_interaction")
-                .order_by(TrainingData.created_at.desc())
-                .limit(1)
-            )
-            prev_entry = result_prev_td.scalars().first()
-            if prev_entry:
-                prev_entry.quality_score = -1
-                meta = prev_entry.metadata_info or {}
-                meta['regenerated'] = True
-                prev_entry.metadata_info = meta
-                logger.info(f"[DATA FLYWHEEL] Regeneração marcou entrada anterior como dislike")
+                logger.info("Resposta anterior removida para regeneração")
 
         # Save the user's message — em regeneração o turno do usuário já está salvo, então NÃO
         # criamos outro (era o que duplicava a pergunta no reload).
@@ -527,88 +497,6 @@ async def handle_chat_message(
         )
         db.add(bot_message)
 
-        # --- DATA FLYWHEEL: Salvar par de conversa com contexto rico ---
-        if include_reasoning:
-            flywheel_source_type = "chat_clinical_discussion"
-            flywheel_quality = 0  # Pending until explicit like
-        else:
-            flywheel_source_type = "chat_interaction"
-            flywheel_quality = 0  # Pending until explicit like
-
-        # Contexto conversacional: últimas 4 trocas para treinar modelos de chat
-        rich_input = json.dumps({
-            "ctx": history_for_llm[-4:] if history_for_llm else [],
-            "q": message
-        }, ensure_ascii=False)
-
-        # grounding_sources já contém referências UNIFICADAS (Google Grounding + PubMed lookup)
-        # vindas do process_references() em llm_services.py
-        # Estas são referências verificadas anti-alucinação, valiosas para treinamento
-        unified_refs = grounding_sources if grounding_sources else []
-
-        # Contar por fonte para logging
-        grounding_count = len([r for r in unified_refs if r.get('source') == 'grounding'])
-        pubmed_count = len([r for r in unified_refs if r.get('source') == 'pubmed_lookup'])
-        if not is_off_topic:
-            logger.info(f"[DATA FLYWHEEL] Salvando {len(unified_refs)} referências para treinamento ({grounding_count} grounding, {pubmed_count} PubMed)")
-        else:
-            logger.info(f"[DATA FLYWHEEL] Salvando interação off-topic para treinamento de rejeição")
-
-        training_data_id = await collect_data(
-            db, current_user.id, flywheel_source_type,
-            rich_input, response_text,
-            {
-                "reasoning": include_reasoning,
-                "lib_id": library_id,
-                "model": model_used,
-                "has_image": bool(image_data_list),
-                "off_topic": is_off_topic,
-                "ref_count": len(unified_refs),
-                "grounding_refs": grounding_count,
-                "pubmed_refs": pubmed_count
-            },
-            quality=flywheel_quality,
-            image_bytes=image_data_list[0]['bytes'] if image_data_list else None,
-            lang=current_user.language_preference,
-            references=unified_refs
-        )
-
-        # --- Citation-grounded training data (for teaching models to cite) ---
-        # Skip for off-topic (no citations in off-topic responses)
-        if unified_refs and not is_off_topic:
-            try:
-                await collect_citation_grounded_data(
-                    db=db,
-                    user_id=current_user.id,
-                    question=message,
-                    response_with_citations=response_text,
-                    references=unified_refs,
-                    specialty=None,
-                    lang=current_user.language_preference or 'pt-BR',
-                )
-            except Exception:
-                pass  # Citation collection must never block the response
-
-        # --- DPO: Salvar par de preferência se foi regeneração ---
-        if is_regeneration and previous_response_for_dpo and not is_off_topic:
-            await collect_regeneration_pair(
-                db=db,
-                user_id=current_user.id,
-                prompt=message,
-                original_response=previous_response_for_dpo,
-                new_response=response_text,
-                source_type="chat_regeneration",
-                use_llm_judge=True,
-                metadata={
-                    "reasoning": include_reasoning,
-                    "lib_id": library_id,
-                    "model": model_used,
-                    "session_id": session_id
-                },
-                language=current_user.language_preference or 'pt-BR'
-            )
-            logger.info(f"[DPO] Par de preferência salvo para regeneração")
-
         await track_activity(db, current_user.id, 'copilot', 'chat')
         await db.commit()
 
@@ -616,8 +504,6 @@ async def handle_chat_message(
         new_title = None
         if is_new_session:  # Always generate for new sessions
             try:
-                # Cobrar pela geração de título (1 dracma)
-                await debit_dracmas_for_feature(current_user, "generate_chat_title", db)
                 has_image = saved_image_url is not None
                 generated_title = await asyncio.to_thread(generate_title_from_content, message, current_user.language_preference, has_image)
                 session.title = generated_title
@@ -635,7 +521,6 @@ async def handle_chat_message(
             new_title=new_title,
             sources=grounding_sources,
             supports=grounding_supports,
-            training_data_id=training_data_id
         )
 
     except HTTPException:

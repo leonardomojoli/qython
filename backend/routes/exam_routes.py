@@ -17,7 +17,6 @@ from ..database import get_db
 from ..models import ExamOrder, Patient, User
 from ..security import get_current_active_user
 from ..services.pdf_service import render_exam_order_pdf
-from ..services.data_collector_service import collect_data
 
 import logging
 import io
@@ -151,30 +150,6 @@ async def create_exam_order(
 
     logger.info(f"Exam order {order.id} created by doctor {current_user.id}")
     
-    # DATA FLYWHEEL: Coletar dados para treinamento
-    try:
-        # Input: lista de exames solicitados
-        exam_names = ", ".join([exam.name for exam in data.exams])
-        input_text = f"Pedido de exames: {exam_names}"
-        
-        # Output: indicação clínica (campo mais valioso)
-        output_text = data.clinical_indication or "Sem indicação clínica especificada"
-        
-        await collect_data(
-            db=db,
-            user_id=current_user.id,
-            source_type="exam_order",
-            input_data=input_text,
-            output_data=output_text,
-            meta={
-                "num_exams": len(data.exams),
-                "urgency": data.urgency,
-                "order_id": order.id
-            },
-            quality=0  # Neutro
-        )
-    except Exception as e:
-        logger.warning(f"[DATA FLYWHEEL] Falha ao coletar pedido de exames: {e}")
     
     return ExamOrderResponse(
         id=order.id,

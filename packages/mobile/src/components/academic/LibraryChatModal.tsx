@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
-import { sendLibraryChat, submitChatFeedback } from '../../services/academic';
+import { sendLibraryChat } from '../../services/academic';
 import type { Library, ChatMessage as ChatMessageType } from '../../types/academic';
 import ChatMessage from './ChatMessage';
 
@@ -69,32 +69,6 @@ export default function LibraryChatModal({ visible, library, onClose }: Props) {
     },
     [messages, loading, library.id, t],
   );
-
-  const handleLike = (msgIndex: number) => {
-    const likedMsg = messages[msgIndex];
-    const userPrompt = msgIndex > 0 ? messages[msgIndex - 1].content : '';
-    submitChatFeedback({
-      feedbackType: 'like',
-      contentId: `lib_${library.id}_msg_${msgIndex}`,
-      originalContent: likedMsg.content,
-      userPrompt,
-      conversationContext: messages.slice(0, msgIndex + 1),
-    }).catch(() => {});
-    Alert.alert('', t('feedbackSentSuccess', 'Feedback enviado!'));
-  };
-
-  const handleDislike = (msgIndex: number) => {
-    const dislikedMsg = messages[msgIndex];
-    const userPrompt = msgIndex > 0 ? messages[msgIndex - 1].content : '';
-    submitChatFeedback({
-      feedbackType: 'dislike',
-      contentId: `lib_${library.id}_msg_${msgIndex}`,
-      originalContent: dislikedMsg.content,
-      userPrompt,
-      conversationContext: messages.slice(0, msgIndex + 1),
-    }).catch(() => {});
-    Alert.alert('', t('feedbackSentSuccess', 'Feedback enviado!'));
-  };
 
   const handleClose = () => {
     setMessages([]);
@@ -174,16 +148,6 @@ export default function LibraryChatModal({ visible, library, onClose }: Props) {
                   sender={item.sender}
                   content={item.content}
                   isLoading={isLoadingMsg}
-                  onLike={
-                    item.sender === 'bot' && !isLoadingMsg
-                      ? () => handleLike(realIndex)
-                      : undefined
-                  }
-                  onDislike={
-                    item.sender === 'bot' && !isLoadingMsg
-                      ? () => handleDislike(realIndex)
-                      : undefined
-                  }
                 />
               );
             }}

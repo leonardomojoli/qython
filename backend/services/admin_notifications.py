@@ -51,8 +51,6 @@ class AdminNotificationService:
 
             # Human-readable setting names
             setting_names = {
-                "payment_gateway_stripe_enabled": "Gateway Stripe",
-                "payment_gateway_binance_enabled": "Gateway Binance Pay",
                 "server_maintenance_level": "Nível de Manutenção",
                 "new_registrations_enabled": "Novos Cadastros",
                 "rate_limit_enabled": "Rate Limiting",

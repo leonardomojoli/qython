@@ -13,7 +13,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import GovProgramBadge from './GovProgramBadge';
-import { submitMedicationFeedback } from '../../services/pharmacy';
 import type { Medication } from '../../types/pharmacy';
 
 interface Props {
@@ -25,7 +24,6 @@ interface Props {
 export default function SupplyDetailModal({ supply, selectedCountry, onClose }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const [feedbackSent, setFeedbackSent] = useState<'like' | 'dislike' | null>(null);
 
   if (!supply) return null;
 
@@ -35,19 +33,6 @@ export default function SupplyDetailModal({ supply, selectedCountry, onClose }: 
     if (supply.therapeutic_class) parts.push(`Categoria: ${supply.therapeutic_class}`);
     if (supply.common_indications) parts.push(`Indicações: ${supply.common_indications}`);
     return parts.join(' | ');
-  };
-
-  const handleFeedback = async (type: 'like' | 'dislike') => {
-    try {
-      await submitMedicationFeedback({
-        feedbackType: type,
-        contentId: String(supply.id),
-        originalContent: buildContent(),
-      });
-      setFeedbackSent(type);
-    } catch {
-      Alert.alert('', t('feedbackSentError', 'Erro ao enviar feedback'));
-    }
   };
 
   return (
@@ -145,49 +130,6 @@ export default function SupplyDetailModal({ supply, selectedCountry, onClose }: 
                   </View>
                 )}
 
-              {/* Feedback */}
-              <View style={[styles.feedbackSection, { borderTopColor: theme.surfaceBorder }]}>
-                <Text style={[styles.feedbackLabel, { color: theme.textSecondary }]}>
-                  {t('medDataCorrect')}
-                </Text>
-                <View style={styles.feedbackButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.feedbackBtn,
-                      feedbackSent === 'like' && { backgroundColor: '#27ae6030' },
-                    ]}
-                    onPress={() => handleFeedback('like')}
-                    disabled={!!feedbackSent}>
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        opacity: feedbackSent && feedbackSent !== 'like' ? 0.3 : 1,
-                      }}>
-                      👍
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.feedbackBtn,
-                      feedbackSent === 'dislike' && { backgroundColor: '#e74c3c30' },
-                    ]}
-                    onPress={() => handleFeedback('dislike')}
-                    disabled={!!feedbackSent}>
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        opacity: feedbackSent && feedbackSent !== 'dislike' ? 0.3 : 1,
-                      }}>
-                      👎
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {feedbackSent && (
-                  <Text style={[styles.feedbackThanks, { color: theme.success }]}>
-                    {t('medFeedbackThanks')}
-                  </Text>
-                )}
-              </View>
             </ScrollView>
           </TouchableOpacity>
         </View>
@@ -291,29 +233,5 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     fontWeight: '500',
     color: '#3498db',
-  },
-  feedbackSection: {
-    borderTopWidth: 1,
-    paddingTop: spacing.md,
-    alignItems: 'center',
-  },
-  feedbackLabel: {
-    ...typography.bodySmall,
-    marginBottom: spacing.sm,
-  },
-  feedbackButtons: {
-    flexDirection: 'row',
-    gap: spacing.base,
-  },
-  feedbackBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedbackThanks: {
-    ...typography.caption,
-    marginTop: spacing.sm,
   },
 });

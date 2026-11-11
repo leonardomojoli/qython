@@ -48,8 +48,9 @@ function open(): MMKV {
   }
   if (!hasNativeSecurity()) {
     // iOS e testes: sem cofre, abre direto (como sempre foi).
-    instance = createMMKV({ id: MMKV_ID, encryptionKey: LEGACY_KEY });
-    return instance;
+    const created = createMMKV({ id: MMKV_ID, encryptionKey: LEGACY_KEY });
+    instance = created;
+    return created;
   }
   throw new Error('O armazenamento ainda não foi aberto (initStorage).');
 }

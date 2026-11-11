@@ -169,9 +169,3 @@ export async function changePassword(
     new_password: newPassword,
   });
 }
-
-export async function updateTrainingDataPreference(
-  optOut: boolean,
-): Promise<void> {
-  await api.put('/user/training-data-preference', { opt_out: optOut });
-}

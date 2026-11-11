@@ -23,7 +23,6 @@ import ErrorBoundary from './components/shared/ErrorBoundary';
 import OfflineBanner from './components/common/OfflineBanner';
 
 // Core routes (loaded eagerly for fast initial load)
-import LandingPage from './components/landing/LandingPage';
 import Login from './components/user/Login';
 import Register from './components/user/Register';
 import TermsAcceptance from './components/user/TermsAcceptance';
@@ -36,14 +35,11 @@ const Chat = lazy(() => import('./components/copilot/Chat'));
 const AcademicManager = lazy(() => import('./components/academic/AcademicManager'));
 const PharmacyManager = lazy(() => import('./components/pharmacy/PharmacyManager'));
 const Profile = lazy(() => import('./components/user/Profile'));
-const DracmaPurchase = lazy(() => import('./components/billing/DracmaPurchase'));
-const PricingPage = lazy(() => import('./components/billing/PricingPage'));
 const VerificationStatus = lazy(() => import('./components/user/VerificationStatus'));
 const WaitlistPage = lazy(() => import('./components/user/WaitlistPage'));
 const OnboardingPage = lazy(() => import('./components/user/OnboardingPage'));
 
 // Public pages (no auth)
-const PublicPrescription = lazy(() => import('./components/pharmacy/PublicPrescription'));
 
 // Legal pages (rarely visited)
 const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy'));
@@ -66,7 +62,6 @@ const AdminSettings = lazy(() => import('./components/admin/AdminSettings'));
 const AdminAiSettings = lazy(() => import('./components/admin/AdminAiSettings'));
 const UserManager = lazy(() => import('./components/admin/UserManager'));
 const AdminConsultations = lazy(() => import('./components/admin/AdminConsultations'));
-const AdminFinance = lazy(() => import('./components/admin/AdminFinance'));
 const ProfileUpdateManager = lazy(() => import('./components/admin/ProfileUpdateManager'));
 const PharmacyAdmin = lazy(() => import('./components/admin/PharmacyAdmin'));
 const AnalyticsDashboard = lazy(() => import('./components/admin/AnalyticsDashboard'));
@@ -105,7 +100,7 @@ const ProtectedRoute = ({ isLoggedIn, initialCheckComplete, children }) => {
   // ativação na waitlist OU convite pelo admin, que entra já 'active'). Só dispara com
   // `false` EXPLÍCITO do backend — payloads antigos sem o campo (undefined) não disparam,
   // evitando loop de redirect. As próprias páginas do fluxo passam direto.
-  const onboardingPaths = ['/onboarding', '/pricing'];
+  const onboardingPaths = ['/onboarding'];
   if (
     user?.status === 'active' &&
     user?.onboarding_completed === false &&
@@ -202,7 +197,6 @@ const AppLayoutAndRoutes = () => {
   const { config: publicConfig } = usePublicConfig();
   const editionKnown = publicConfig !== null;
   const isHosted = publicConfig?.edition === 'hosted';
-  const billingEnabled = Boolean(publicConfig?.billing_enabled);
   const onlyIf = (allowed, element, fallback) => (
     !editionKnown ? <PageLoader /> : allowed ? element : <Navigate to={fallback} replace />
   );
@@ -273,7 +267,7 @@ const AppLayoutAndRoutes = () => {
         <QythonTour
           tourId="profile"
           route="/profile"
-          steps={billingEnabled ? profileTourSteps : profileTourSteps.filter(step => step.id !== 'billing')}
+          steps={profileTourSteps}
           onStepChange={handleProfileStepChange}
         />
       )}
@@ -297,7 +291,7 @@ const AppLayoutAndRoutes = () => {
                   path="/"
                   element={(!editionKnown || !initialCheckComplete)
                     ? <PageLoader />
-                    : isHosted ? <LandingPage /> : <Navigate to={isLoggedIn ? '/copilot' : '/login'} replace />}
+                    : <Navigate to={isLoggedIn ? '/copilot' : '/login'} replace />}
                 />
                 <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
                 <Route path="/register" element={<Register setIsLoggedIn={setIsLoggedIn} />} />
@@ -313,13 +307,11 @@ const AppLayoutAndRoutes = () => {
                 <Route path="/contact" element={onlyIf(isHosted, <Contact />, '/')} />
                 <Route path="/careers" element={onlyIf(isHosted, <Careers />, '/')} />
                 <Route path="/benchmark" element={onlyIf(isHosted, <BenchmarkPage />, '/')} />
-                <Route path="/receita/:token" element={<PublicPrescription />} />
 
                 {/* Admin Routes (lazy) */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                 <Route path="/admin/users" element={<AdminRoute><UserManager /></AdminRoute>} />
                 <Route path="/admin/consultations" element={<AdminRoute><AdminConsultations /></AdminRoute>} />
-                <Route path="/admin/finance" element={onlyIf(billingEnabled, <AdminRoute><AdminFinance /></AdminRoute>, '/admin')} />
                 <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
                 <Route path="/admin/ai" element={<AdminRoute><AdminAiSettings /></AdminRoute>} />
                 <Route path="/admin/profile-updates" element={<AdminRoute><ProfileUpdateManager /></AdminRoute>} />
@@ -398,22 +390,6 @@ const AppLayoutAndRoutes = () => {
                       </VerificationStatus>
                     </ProtectedRoute>
                   }
-                />
-                <Route
-                  path="/pricing"
-                  element={onlyIf(billingEnabled, (
-                    <ProtectedRoute isLoggedIn={isLoggedIn} initialCheckComplete={initialCheckComplete}>
-                      <PricingPage />
-                    </ProtectedRoute>
-                  ), '/copilot')}
-                />
-                <Route
-                  path="/dracma-purchase"
-                  element={onlyIf(billingEnabled, (
-                    <ProtectedRoute isLoggedIn={isLoggedIn} initialCheckComplete={initialCheckComplete}>
-                      <DracmaPurchase />
-                    </ProtectedRoute>
-                  ), '/copilot')}
                 />
                 <Route
                   path="/profile"

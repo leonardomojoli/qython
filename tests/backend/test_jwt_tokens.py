@@ -50,18 +50,15 @@ def test_algoritmo_none_e_outros_nao_valem():
 
 
 def test_tokens_de_outros_usos_nao_servem_de_acesso():
-    # Reset de senha e descadastro compartilham o segredo mas não trazem user_id.
+    # O de reset de senha compartilha o segredo mas não traz user_id.
     assert security.verify_access_token(security.create_password_reset_token("a@b.com")) is None
-    assert security.verify_access_token(security.create_unsubscribe_token(5)) is None
-    # E o de acesso não serve de descadastro nem de reset.
+    # E o de acesso não serve de reset.
     access = security.create_access_token({"sub": "a@b.com", "user_id": 7})
-    assert security.verify_unsubscribe_token(access) is None
     assert security.verify_password_reset_token(access) is None
 
 
-def test_reset_e_descadastro_ida_e_volta():
+def test_reset_ida_e_volta():
     assert security.verify_password_reset_token(security.create_password_reset_token("a@b.com")) == "a@b.com"
-    assert security.verify_unsubscribe_token(security.create_unsubscribe_token(5)) == 5
 
 
 if __name__ == "__main__":

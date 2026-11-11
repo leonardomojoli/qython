@@ -20,6 +20,9 @@ const DEV_DEFAULT_SERVER = 'http://10.0.2.2:8000';
 // address means nothing to whoever receives the text, and shouldn't leak.
 export const QYTHON_SITE_URL = 'https://qython.ai';
 
+// Código-fonte, problemas e sugestões (o Qython é de código aberto).
+export const QYTHON_REPO_URL = 'https://github.com/leonardomojoli/qython';
+
 export interface ServerUrlChange {
   /** O endereço mudou dentro do mesmo pareamento (o computador trocou de IP): a sessão continua valendo. */
   keepSession: boolean;
