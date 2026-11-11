@@ -105,7 +105,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgbm1 libnss3 libgtk-3-0 libasound2t64 libxss1 libxtst6
+          # Inclui as dependências do .deb (libappindicator3-1, libnotify4, libsecret-1-0): o passo que
+          # instala o .deb mais adiante não conseguia resolver o DNS dos espelhos do Ubuntu 26.04 e falhava
+          # sem relação com o código. Com elas já instaladas aqui, ele não precisa de rede.
+          sudo apt-get install -y xvfb libgbm1 libnss3 libgtk-3-0 libasound2t64 libxss1 libxtst6 \
+            libappindicator3-1 libnotify4 libsecret-1-0
 
       - name: Dependências do monorepo
         run: npm ci
