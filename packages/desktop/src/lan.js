@@ -10,6 +10,7 @@ import https from 'node:https';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { decide, Throttle, throttleKey, lanAddresses } from './lan-policy.js';
+import { verifyDeviceToken } from './device-token.js';
 import { isPortFree, randomFreePort } from './ports.js';
 import { processCommand } from './stack-command.js';
 
@@ -27,12 +28,15 @@ export class LanServer extends EventEmitter {
   /**
    * @param {object} o
    * @param {() => number} o.backendPort porta do backend em 127.0.0.1
+   * @param {(token:string) => Promise<boolean>|boolean} [o.verifyToken] confere o acesso do aparelho antes de
+   *   repassar a requisição (sem ele, qualquer Bearer passa; só os testes dispensam)
    * @param {{info:Function, warn:Function, error:Function}} o.logger
    * @param {() => number} [o.now]
    */
-  constructor({ backendPort, logger, now = () => Date.now() }) {
+  constructor({ backendPort, logger, verifyToken = null, now = () => Date.now() }) {
     super();
     this.backendPort = backendPort;
+    this.verifyToken = verifyToken;
     this.log = logger;
     this.server = null;
     this.port = null;
@@ -46,8 +50,15 @@ export class LanServer extends EventEmitter {
 
   async start({ port, host = '0.0.0.0', cert, key }) {
     if (this.server) await this.stop();
-    const server = https.createServer({ cert, key, minVersion: 'TLSv1.2' }, (req, res) => this._handle(req, res));
-    server.on('upgrade', (req, socket, head) => this._upgrade(req, socket, head));
+    const server = https.createServer(
+      { cert, key, minVersion: 'TLSv1.2', handshakeTimeout: 10_000 },
+      (req, res) => { this._handle(req, res).catch((err) => this._fail(res, err)); },
+    );
+    // Quem está na rede não pode segurar a porta aberta sem falar nada nem lotá-la de conexões ociosas.
+    server.headersTimeout = 15_000;
+    server.keepAliveTimeout = 5_000;
+    server.maxConnections = 256;
+    server.on('upgrade', (req, socket, head) => { this._upgrade(req, socket, head).catch(() => socket.destroy()); });
     server.on('tlsClientError', () => {}); // celular com certificado errado, sondas: nada a registrar
     await new Promise((resolve, reject) => {
       server.once('error', reject);
@@ -79,9 +90,29 @@ export class LanServer extends EventEmitter {
     return (req.socket.remoteAddress || 'desconhecido').replace(/^::ffff:/, '');
   }
 
-  _handle(req, res) {
+  _fail(res, err) {
+    this.log.error(`Porta da rede local: ${err.message}`);
+    if (!res.headersSent) reply(res, 500, 'Erro interno.');
+    else res.destroy();
+  }
+
+  /** O acesso do aparelho é de verdade (assinado, válido, de pareamento)? Sem conferente, só exige que exista. */
+  async _authorized(token) {
+    if (token === undefined || !this.verifyToken) return true;
+    try {
+      return !!(await this.verifyToken(token));
+    } catch (err) {
+      this.log.warn(`Porta da rede local: falha ao conferir o acesso (${err.message}).`);
+      return false;
+    }
+  }
+
+  async _handle(req, res) {
     const verdict = decide({ method: req.method, url: req.url, headers: req.headers });
     if (!verdict.ok) return reply(res, verdict.status, verdict.message);
+    if (!(await this._authorized(verdict.token))) {
+      return reply(res, 401, 'Acesso do aparelho inválido ou vencido. Pareie o celular de novo.');
+    }
     const kind = throttleKey(req.method, verdict.path);
     if (kind && !this.throttles[kind].allow(`${kind}:${this._remote(req)}`)) {
       return reply(res, 429, 'Tentativas demais. Espere um minuto.');
@@ -102,10 +133,14 @@ export class LanServer extends EventEmitter {
     req.pipe(upstream);
   }
 
-  _upgrade(req, socket, head) {
+  async _upgrade(req, socket, head) {
     const verdict = decide({ method: req.method, url: req.url, headers: req.headers, upgrade: true });
     if (!verdict.ok) {
       socket.end(`HTTP/1.1 ${verdict.status} ${http.STATUS_CODES[verdict.status] ?? 'Erro'}\r\nConnection: close\r\n\r\n`);
+      return;
+    }
+    if (!(await this._authorized(verdict.token))) {
+      socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
       return;
     }
     const port = this.backendPort();
@@ -176,12 +211,27 @@ export class LanAccess extends EventEmitter {
     });
     this.makeCertificate = o.makeCertificate ?? (() => runBackendJson(this.resources, ['gencert']));
     this.addresses = o.addresses ?? (() => lanAddresses());
-    this.server = new LanServer({ backendPort: o.backendPort, logger: o.logger });
+    this.jwtSecret = null;
+    this.server = new LanServer({
+      backendPort: o.backendPort, logger: o.logger,
+      verifyToken: async (token) => verifyDeviceToken(token, await this._secret()),
+    });
     this.lastError = null;
   }
 
   get enabled() {
     return this.settings.get('lanEnabled', false) === true;
+  }
+
+  /** A chave que assina o acesso dos aparelhos (a do backend). Guardada em memória; ver invalidate(). */
+  async _secret() {
+    if (!this.jwtSecret) this.jwtSecret = (await this.secrets.load(['JWT_SECRET_KEY'])).JWT_SECRET_KEY;
+    return this.jwtSecret;
+  }
+
+  /** As chaves do app mudaram (restauração de backup): relê a chave de assinatura na próxima conferência. */
+  invalidate() {
+    this.jwtSecret = null;
   }
 
   /** Certificado desta instalação: cria na primeira vez e reaproveita depois (o pareamento depende dele). */
