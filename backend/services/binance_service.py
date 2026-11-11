@@ -78,6 +78,11 @@ def verify_binance_webhook(headers, body_str):
     """
     Verifica a assinatura do webhook da Binance com proteção contra replay attacks.
     """
+    # Sem chave configurada (ou configurada vazia, como no .env copiado do exemplo) qualquer um calcularia
+    # o HMAC com chave vazia e forjaria um pagamento: sem chave, nada é aceito.
+    if not Config.BINANCE_PAY_SECRET_KEY:
+        logger.warning("Webhook Binance recebido sem BINANCE_PAY_SECRET_KEY configurada. Rejeitando.")
+        return False
     try:
         timestamp = headers.get("BinancePay-Timestamp")
         nonce = headers.get("BinancePay-Nonce")

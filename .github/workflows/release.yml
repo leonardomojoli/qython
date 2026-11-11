@@ -101,6 +101,13 @@ jobs:
 
           curl -fsS http://localhost:8080/ | grep -q '<title>Qython</title>'
           echo "SPA: ok"
+          # O WebSocket de notificações leva o token na URL (?token=); o log de acesso do contêiner não pode guardá-lo.
+          curl -fsS "http://localhost:8080/api/health?token=SEGREDO-NA-QUERY" >/dev/null
+          sleep 1
+          if docker compose logs backend 2>&1 | grep -q 'SEGREDO-NA-QUERY'; then
+            echo "::error::o log de acesso do backend guardou a query string (o token iria junto)"; exit 1
+          fi
+          echo "log de acesso sem query string: ok"
           # Servir o HTML não prova que o React renderiza: o app passou semanas em
           # tela branca (Firebase quebrando no import) com o <title> acima intacto.
           # O Chrome do runner executa o JS e devolve o DOM já montado.

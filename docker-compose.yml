@@ -99,7 +99,7 @@ services:
     # Todas as continuações ficam na mesma coluna de propósito.
     command: >
       sh -c "python -m backend.bootstrap_db &&
-      gunicorn --workers 2 --worker-class uvicorn.workers.UvicornWorker
+      gunicorn -c backend/gunicorn_conf.py --workers 2 --worker-class uvicorn.workers.UvicornWorker
       --bind 0.0.0.0:8000 --timeout 600
       --access-logfile - --error-logfile - backend.main:app"
 

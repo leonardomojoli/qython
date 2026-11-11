@@ -27,7 +27,7 @@ av<19  # o faster-whisper 1.2.1 chama av.open(metadata_errors=...), removido no 
 rank-bm25  # BM25 esparso (import rank_bm25) p/ recuperação híbrida — vector_db_service
 
 # Segurança e Autenticação
-python-jose
+PyJWT  # tokens de acesso (HS256). Trocou o python-jose, abandonado, que trazia ecdsa/rsa/pyasn1 sem uso
 bcrypt>=5  # usado direto em security.py; o passlib (abandonado) quebrava com bcrypt>=4.1
 cryptography>=50  # Fernet field-level encryption (encryption_service.py). O piso protege a
 # biblioteca que cifra dado de paciente.
