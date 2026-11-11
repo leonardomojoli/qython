@@ -1,7 +1,7 @@
 // frontend/src/components/user/Profile.js
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { api, getUserInfo, generateAvatar as apiGenerateAvatar, getUserAchievements, uploadDoctorLogo, deleteDoctorLogo, updateTrainingDataPreference } from '../../api';
+import { api, getUserInfo, generateAvatar as apiGenerateAvatar, getUserAchievements, uploadDoctorLogo, deleteDoctorLogo } from '../../api';
 import styles from './Profile.module.css';
 import { useUser } from '../../contexts/UserContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import ProfileHeader from './ProfileHeader';
 import PersonalInformationSection from './PersonalInformationSection';
 import GeneralSettingsSection from './GeneralSettingsSection';
-import BillingSection from '../billing/BillingSection';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import ConnectorsSection from '../connectors/ConnectorsSection';
 import SecuritySection from './SecuritySection';
@@ -26,9 +25,11 @@ import defaultAvatar from '../../assets/default-profile.png';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { resetQythonTour } from '../shared/QythonTour';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRoute, faCertificate, faImage, faStamp, faUpload, faTrash, faShieldAlt } from '@fortawesome/free-solid-svg-icons';
+import { faRoute, faCertificate, faImage, faStamp, faUpload, faTrash, faShieldAlt, faLifeRing } from '@fortawesome/free-solid-svg-icons';
 
 import { WEB_URL as BASE_URL } from '../../config';
+
+const REPO_URL = 'https://github.com/leonardomojoli/qython';
 
 // Componente para a aba de Conquistas (pode ser movido para seu próprio arquivo)
 const AchievementsSection = ({ achievements }) => {
@@ -67,7 +68,6 @@ function Profile({ isSidebarOpen }) {
   // Nova estrutura de abas. Faturamento só existe com cobrança (edição hosted).
   const [activeTab, setActiveTab] = useState('perfil');
   const { config: publicConfig } = usePublicConfig();
-  const billingEnabled = Boolean(publicConfig?.billing_enabled);
 
   // Estados para os dados
   const [achievements, setAchievements] = useState([]);
@@ -82,10 +82,6 @@ function Profile({ isSidebarOpen }) {
   const [presets, setPresets] = useState([]); // Presets para combinar com histórico
   const [avatarToDelete, setAvatarToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // Training Data Opt-Out state
-  const [trainingDataOptOut, setTrainingDataOptOut] = useState(user?.training_data_opt_out || false);
-  const [isUpdatingTrainingPref, setIsUpdatingTrainingPref] = useState(false);
 
   // Doctor Logo states
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -132,31 +128,6 @@ function Profile({ isSidebarOpen }) {
       setPreview(defaultAvatar);
     }
   }, [user?.profile_picture]);
-
-  // Sync training data opt-out state when user data changes
-  useEffect(() => {
-    if (user) {
-      setTrainingDataOptOut(user.training_data_opt_out || false);
-    }
-  }, [user?.training_data_opt_out]);
-
-  // Training data preference toggle handler
-  const handleTrainingDataToggle = async () => {
-    const newOptOut = !trainingDataOptOut;
-    setIsUpdatingTrainingPref(true);
-    try {
-      await updateTrainingDataPreference(newOptOut);
-      setTrainingDataOptOut(newOptOut);
-      addNotification(
-        newOptOut ? t('trainingDataOptOutEnabled') : t('trainingDataOptOutDisabled'),
-        'success'
-      );
-    } catch (err) {
-      addNotification(err.message || t('errorUpdatingPreference'), 'error');
-    } finally {
-      setIsUpdatingTrainingPref(false);
-    }
-  };
 
   // Funções do Modal de Avatar (movidas para cá)
   const handleGenerateAvatar = async () => {
@@ -301,13 +272,6 @@ function Profile({ isSidebarOpen }) {
             </ErrorBoundary>
           </div>
         );
-      case 'faturamento':
-        // Wrap BillingSection directly to better control tour highlight area
-        return (
-          <div data-tour="profile-billing" style={{ display: 'inline-block', width: '100%' }}>
-            <BillingSection user={user} balance={user?.dracmas} />
-          </div>
-        );
       case 'configuracoes':
         return (
           <>
@@ -377,6 +341,30 @@ function Profile({ isSidebarOpen }) {
                   )}
                   <span className={styles.logoHint}>{t('logoMaxSize')}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Ajuda: o Qython é de código aberto; problemas e sugestões vão para o GitHub */}
+            <div className={styles.settingsBlock}>
+              <h4 className={styles.sectionHeader}>
+                <FontAwesomeIcon icon={faLifeRing} className={styles.sectionIcon} />
+                Ajuda e sugestões
+              </h4>
+              <p className={styles.sectionDescription}>
+                O Qython é um projeto de código aberto. Problemas e ideias são registrados no GitHub, onde qualquer
+                pessoa pode acompanhar e contribuir. Não escreva nomes, documentos nem dados de pacientes no relato:
+                ele fica público.
+              </p>
+              <div className={styles.logoActions}>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/issues/new?template=problema.yml`} target="_blank" rel="noopener noreferrer">
+                  Reportar um problema
+                </a>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/issues/new?template=sugestao.yml`} target="_blank" rel="noopener noreferrer">
+                  Sugerir uma melhoria
+                </a>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noopener noreferrer">
+                  Como contribuir
+                </a>
               </div>
             </div>
 
@@ -545,9 +533,6 @@ function Profile({ isSidebarOpen }) {
         <div className={styles.tabContainer} data-tour="profile-tabs">
           <button data-tour="profile-tab-perfil" className={activeTab === 'perfil' ? styles.activeTab : ''} onClick={() => setActiveTab('perfil')}>{t('profile')}</button>
           <button data-tour="profile-tab-estatisticas" className={activeTab === 'estatisticas' ? styles.activeTab : ''} onClick={() => setActiveTab('estatisticas')}>{t('usageStatistics')}</button>
-          {billingEnabled && (
-            <button data-tour="profile-tab-faturamento" className={activeTab === 'faturamento' ? styles.activeTab : ''} onClick={() => setActiveTab('faturamento')}>{t('billing')}</button>
-          )}
           <button data-tour="profile-tab-configuracoes" className={activeTab === 'configuracoes' ? styles.activeTab : ''} onClick={() => setActiveTab('configuracoes')}>{t('settings')}</button>
         </div>
 

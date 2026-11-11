@@ -15,7 +15,6 @@ import {
 } from '../../api';
 import { useNavigate } from 'react-router-dom';
 import LibraryDropdown from './LibraryDropdown';
-import UpgradeModal from '../shared/UpgradeModal';
 import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -44,9 +43,6 @@ function MaterialProducer({ isSidebarOpen }) {
   // "Tem acesso às features" — verificado no Latreo OU acesso concedido pelo Qython.
   const isVerified = hasPlatformAccess(user);
 
-  // Upgrade modal state
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeFeature, setUpgradeFeature] = useState('premium_content');
 
   const [file, setFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
@@ -252,14 +248,7 @@ function MaterialProducer({ isSidebarOpen }) {
       // não há .response aqui. Trata cada caso com uma mensagem clara em vez do genérico.
       const httpStatus = error?.status ?? error?.response?.status;
       const errorCode = error?.code;
-      if (httpStatus === 403) {
-        // Restrição de plano → modal de upgrade
-        const featureMap = {
-          'mind_map': 'premium_content'
-        };
-        setUpgradeFeature(featureMap[materialType] || 'premium_content');
-        setShowUpgradeModal(true);
-      } else if (errorCode === 'LIBRARY_EMPTY') {
+      if (errorCode === 'LIBRARY_EMPTY') {
         addNotification(t('libraryEmptyForMaterial', { name: selectedLibrary?.name || '' }), 'warning');
       } else if (errorCode === 'LIBRARY_PROCESSING') {
         addNotification(t('libraryProcessingForMaterial'), 'info');
@@ -484,16 +473,6 @@ function MaterialProducer({ isSidebarOpen }) {
           </div>
         </div>
       )}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        onUpgrade={() => {
-          setShowUpgradeModal(false);
-          navigate('/pricing');
-        }}
-        feature={upgradeFeature}
-        message={t('mindMapUpgradeMessage', 'Mapas Mentais com IA estão disponíveis a partir do Plano Residente.')}
-      />
     </div>
   );
 }

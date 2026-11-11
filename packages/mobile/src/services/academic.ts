@@ -457,23 +457,3 @@ export async function submitChallengeScore(
 
 // ─── Feedback ────────────────────────────────────────────────
 
-export async function submitChatFeedback(params: {
-  feedbackType: 'like' | 'dislike';
-  contentId: string;
-  originalContent: string;
-  userPrompt?: string;
-  conversationContext?: ChatMessage[];
-  feedbackText?: string;
-  contactPermission?: boolean;
-}): Promise<void> {
-  await api.post('/feedback', {
-    feedback_type: params.feedbackType,
-    content_type: 'library_rag_chat',
-    content_id: params.contentId,
-    original_content: params.originalContent,
-    user_prompt: params.userPrompt || '',
-    conversation_context: params.conversationContext || [],
-    feedback_text: params.feedbackText || '',
-    contact_permission: params.contactPermission || false,
-  });
-}

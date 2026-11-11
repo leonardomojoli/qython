@@ -20,7 +20,6 @@ import {
   getDraftConsultation,
   getSummary,
   createConsultation,
-  submitFeedback,
   extractPatientUpdates,
   applyPatientUpdates,
   getAnamnesisTemplates,
@@ -33,7 +32,6 @@ import ConsultationTimer from '../../components/ambulatory/ConsultationTimer';
 import VoiceRecorderButton from '../../components/ambulatory/VoiceRecorderButton';
 import QuickInsertBar from '../../components/ambulatory/QuickInsertBar';
 import SubtemplateSheet from '../../components/ambulatory/SubtemplateSheet';
-import FeedbackButtons from '../../components/ambulatory/FeedbackButtons';
 import PatientUpdateSheet from '../../components/ambulatory/PatientUpdateSheet';
 import { useConsultationTimer } from '../../hooks/useConsultationTimer';
 import { useNetwork } from '../../contexts/NetworkContext';
@@ -667,7 +665,6 @@ export default function ConsultationTab() {
               multiline
               textAlignVertical="top"
             />
-            <FeedbackButtons contentType="improved_notes" />
 
             {/* Summary Button */}
             <OfflineFeatureGate>
@@ -709,7 +706,6 @@ export default function ConsultationTab() {
               multiline
               textAlignVertical="top"
             />
-            <FeedbackButtons contentType="summary" />
           </>
         )}
 

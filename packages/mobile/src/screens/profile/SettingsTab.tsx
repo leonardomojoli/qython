@@ -16,13 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { updateTrainingDataPreference } from '../../services/auth';
 import { getPairing } from '../../services/pairing';
 import { uploadDoctorLogo, deleteDoctorLogo } from '../../services/profile';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
 import i18n from '../../i18n';
 import { Alert } from 'react-native';
+import { QYTHON_REPO_URL } from '../../config/env';
 import { resetQythonTour } from '../../components/common/QythonTour';
 
 const LANGUAGES = [
@@ -41,27 +41,6 @@ export default function SettingsTab({ onLogout }: Props) {
   const { user, refreshUser } = useUser();
   const navigation = useNavigation<any>();
   const sync = useSyncStatus();
-
-  const [trainingDataEnabled, setTrainingDataEnabled] = useState(
-    user?.training_data_enabled ?? false,
-  );
-
-  useEffect(() => {
-    if (user) {
-      setTrainingDataEnabled(user.training_data_enabled ?? false);
-    }
-  }, [user]);
-
-  const handleToggleTrainingData = async (value: boolean) => {
-    setTrainingDataEnabled(value);
-    try {
-      await updateTrainingDataPreference(!value);
-      await refreshUser();
-    } catch {
-      setTrainingDataEnabled(!value);
-      Alert.alert('', t('error', 'Erro'));
-    }
-  };
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -147,24 +126,30 @@ export default function SettingsTab({ onLogout }: Props) {
     <ScrollView
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
-      {/* Training Data Toggle */}
+      {/* Ajuda: o Qython é de código aberto, e problemas e sugestões vão para o GitHub */}
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-        <View style={styles.cardRow}>
-          <View style={styles.trainingDataLabel}>
-            <Text style={[styles.cardLabel, { color: theme.text }]}>
-              {t('trainingDataTitle', 'Dados para Treinamento de IA')}
-            </Text>
-            <Text style={[styles.trainingDataDesc, { color: theme.textMuted }]}>
-              {t('trainingDataDescription', 'Permitir uso anonimizado de interacoes para melhorar os modelos de IA')}
-            </Text>
-          </View>
-          <Switch
-            value={trainingDataEnabled}
-            onValueChange={handleToggleTrainingData}
-            trackColor={{ false: theme.surfaceBorder, true: theme.primary + '50' }}
-            thumbColor={trainingDataEnabled ? theme.primary : '#ccc'}
-          />
-        </View>
+        <TouchableOpacity
+          style={styles.cardRow}
+          activeOpacity={0.7}
+          onPress={() => Linking.openURL(`${QYTHON_REPO_URL}/issues/new?template=problema.yml`).catch(() => {})}>
+          <Text style={[styles.cardLabel, { color: theme.text }]}>
+            {t('reportProblem', 'Reportar um problema')}
+          </Text>
+          <Text style={[styles.chevron, { color: theme.textMuted }]}>{'›'}</Text>
+        </TouchableOpacity>
+        <View style={[styles.legalDivider, { borderTopColor: theme.surfaceBorder }]} />
+        <TouchableOpacity
+          style={styles.cardRow}
+          activeOpacity={0.7}
+          onPress={() => Linking.openURL(`${QYTHON_REPO_URL}/issues/new?template=sugestao.yml`).catch(() => {})}>
+          <Text style={[styles.cardLabel, { color: theme.text }]}>
+            {t('suggestImprovement', 'Sugerir uma melhoria')}
+          </Text>
+          <Text style={[styles.chevron, { color: theme.textMuted }]}>{'›'}</Text>
+        </TouchableOpacity>
+        <Text style={[styles.trainingDataDesc, { color: theme.textMuted, marginTop: spacing.sm }]}>
+          {t('reportNoPatientData', 'Não escreva nomes, documentos nem dados de pacientes no relato: ele fica público.')}
+        </Text>
       </View>
 
       {/* Theme Toggle */}

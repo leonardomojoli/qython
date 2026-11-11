@@ -133,14 +133,3 @@ export async function updateSessionTitle(
   return response.data;
 }
 
-export async function submitFeedback(params: {
-  messageId: number;
-  feedback: 'like' | 'dislike';
-  sessionId: number;
-}): Promise<void> {
-  await api.post('/copilot/feedback', {
-    message_id: params.messageId,
-    feedback: params.feedback,
-    session_id: params.sessionId,
-  });
-}

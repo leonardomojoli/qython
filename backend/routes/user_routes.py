@@ -56,11 +56,9 @@ class UserInfoResponse(BaseModel):
     identifier_number: Optional[str]
     referral_source: Optional[str]
     status: str
-    dracmas: float
     profile_picture: Optional[str]
     doctor_logo: Optional[str] = None
     autosave_consultation_drafts: bool
-    training_data_opt_out: bool = False
     # KYC/Verification fields
     country: Optional[str] = None
     verification_status: Optional[str] = None
@@ -475,23 +473,6 @@ async def update_user_profile(
 
     logger.info(f"Perfil do usuário {current_user.email} atualizado. Campos: {', '.join(update_data.keys())}")
     return await _user_info(db, current_user)
-
-@router.put("/training-data-preference", status_code=status.HTTP_200_OK)
-async def update_training_data_preference(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Toggle training data collection opt-out (LGPD Art. 18(IV) compliance)."""
-    data = await request.json()
-    opt_out = data.get("opt_out", False)
-
-    current_user.training_data_opt_out = bool(opt_out)
-    await db.commit()
-
-    logger.info(f"Training data opt-out updated for {current_user.email}: opt_out={current_user.training_data_opt_out}")
-    return {"training_data_opt_out": current_user.training_data_opt_out}
-
 
 @router.get("/history/usage", response_model=List[HistoryItem])
 async def get_usage_history(

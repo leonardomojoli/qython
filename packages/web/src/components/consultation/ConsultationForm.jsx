@@ -6,7 +6,6 @@ import {
   getSummary,
   createConsultation,
   getAnamnesisTemplates,
-  submitFeedback,
   updatePatient,
   extractPatientUpdates,
   applyPatientUpdates,
@@ -52,7 +51,6 @@ import {
   faRotateLeft
 } from '@fortawesome/free-solid-svg-icons';
 import { handleShareAsTxt, handleShareAsPdf, convertMarkdownToPlainText, handleShareAsMarkdown } from '../shared/ShareComponent';
-import FeedbackModal from '../shared/FeedbackModal';
 import PatientUpdateModal from './PatientUpdateModal';
 import VoiceRecorder from './VoiceRecorder';
 import QuickInsertBar from './QuickInsertBar';
@@ -102,8 +100,6 @@ function ConsultationForm({ consultation, onSave }) {
   const [extractingPatientUpdates, setExtractingPatientUpdates] = useState(false);
   const pendingSaveCleanupRef = React.useRef(null);
 
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState({ type: '', content: '', contentType: '' });
   const [shareMenu, setShareMenu] = useState({ open: false, target: null });
   const [actionSuccess, setActionSuccess] = useState({ target: null, type: null });
   const shareMenuRef = useRef(null);
@@ -215,42 +211,8 @@ function ConsultationForm({ consultation, onSave }) {
     }
   }, [specialty, isFirstConsultation, isLoadingTemplates, userAnamnesisTemplates, templateLoadReason, rawNotes, updateRawNotesBasedOnTemplate]);
 
-  const openFeedbackModal = (type, content, contentType) => {
-    setCurrentFeedback({ type, content, contentType });
-    setIsFeedbackModalOpen(true);
-  };
 
-  const handleLike = async (content, contentType) => {
-    try {
-      await submitFeedback({
-        feedback_type: 'like',
-        content_type: contentType,
-        original_content: content,
-        feedback_text: '',
-        contact_permission: false
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (err) {
-      addNotification(t('feedbackSentError'), 'error');
-    }
-  };
 
-  const handleFeedbackSubmit = async (comment, contactPermission) => {
-    try {
-      await submitFeedback({
-        feedback_type: 'dislike',
-        content_type: currentFeedback.contentType,
-        original_content: currentFeedback.content,
-        feedback_text: comment,
-        contact_permission: contactPermission,
-      });
-      addNotification(t('feedbackSentSuccess'), 'success');
-    } catch (error) {
-      addNotification(t('feedbackSentError'), 'error');
-    } finally {
-      setIsFeedbackModalOpen(false);
-    }
-  };
 
   const handleCopy = (markdownText, target) => {
     if (!markdownText) return;
@@ -296,48 +258,11 @@ function ConsultationForm({ consultation, onSave }) {
     };
   }, [shareMenu]);
 
-  const checkBalanceAndProceed = async (action, costEndpoint, loadingSetter, actionCost = null) => {
+  // Roda a ação mostrando o estado de carregamento e avisando se falhar.
+  const runWithLoading = async (action, loadingSetter) => {
     try {
       loadingSetter(true);
-      if (user && user.is_admin) {
-        await action();
-        return;
-      }
-      const authToken = localStorage.getItem('authToken');
-      const authHeaders = {
-        'Content-Type': 'application/json',
-        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-      };
-      let cost = actionCost;
-      if (cost === null && costEndpoint) {
-        const costResponse = await fetch(`${API_BASE_URL}${costEndpoint}`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: authHeaders,
-          body: JSON.stringify({ rawNotes, improvedNotes, specialty: specialty || "" })
-        });
-        if (!costResponse.ok) {
-          const errorData = await costResponse.json();
-          throw new Error(errorData.error || `Erro ao obter custo: ${costResponse.status}`);
-        }
-        const costData = await costResponse.json();
-        cost = costData.cost;
-      }
-      const balanceResponse = await fetch(`${API_BASE_URL}/billing/balance`, {
-        credentials: 'include',
-        headers: authHeaders,
-      });
-      if (!balanceResponse.ok) {
-        const errorData = await balanceResponse.json();
-        throw new Error(errorData.error || `Erro ao obter saldo: ${balanceResponse.status}`);
-      }
-      const balanceData = await balanceResponse.json();
-      const balance = balanceData.balance;
-      if (cost === null || balance === 'infinito' || parseFloat(balance) >= parseFloat(cost)) {
-        await action();
-      } else {
-        addNotification(t('insufficientBalance', { cost, balance }), 'error');
-      }
+      await action();
     } catch (error) {
       addNotification(`${t('error')}: ${error.message}`, 'error');
     } finally {
@@ -359,7 +284,7 @@ function ConsultationForm({ consultation, onSave }) {
     setSummary('');
     setOriginalSummary('');
 
-    await checkBalanceAndProceed(
+    await runWithLoading(
       async () => {
         try {
           const payload = {
@@ -402,7 +327,6 @@ function ConsultationForm({ consultation, onSave }) {
           addNotification(`${t('errorGeneratingDraft')}: ${error.message}`, 'error');
         }
       },
-      '/consultations/draft/cost',
       setLoadingDraft
     );
   }, [rawNotes, specialty, isFirstConsultation, improvedNotes, isImproved, selectedPatient, addNotification, t]);
@@ -423,7 +347,7 @@ function ConsultationForm({ consultation, onSave }) {
     const isRegeneration = summary.trim() !== '';
     const previousResponse = isRegeneration ? summary : null;
 
-    await checkBalanceAndProceed(
+    await runWithLoading(
       async () => {
         try {
           const response = await getSummary(improvedNotes, {
@@ -445,7 +369,6 @@ function ConsultationForm({ consultation, onSave }) {
           addNotification(`${t('errorGeneratingSummary')}: ${error.message}`, 'error');
         }
       },
-      '/consultations/summary/cost',
       setLoadingSummary
     );
   }, [improvedNotes, summary, addNotification, t]);
@@ -520,7 +443,7 @@ function ConsultationForm({ consultation, onSave }) {
     // Get duration from timer before stopping
     const durationMinutes = timer.isRunning ? timer.durationMinutes : null;
 
-    await checkBalanceAndProceed(
+    await runWithLoading(
       async () => {
         try {
           // Map fields correctly: rawNotes = doctor's original, improvedNotes = AI-improved (possibly edited)
@@ -613,7 +536,6 @@ function ConsultationForm({ consultation, onSave }) {
           addNotification(`${t('errorSavingConsultation')}: ${error.message}`, 'error');
         }
       },
-      '/consultations/save/cost',
       setLoadingSave,
       null
     );
@@ -942,12 +864,6 @@ function ConsultationForm({ consultation, onSave }) {
 
         {isImproved && (
           <>
-            <button onClick={() => handleLike(improvedNotes, 'improved_notes')} title={t('like')}>
-              <FontAwesomeIcon icon={faThumbsUp} />
-            </button>
-            <button onClick={() => openFeedbackModal('dislike', improvedNotes, 'improved_notes')} title={t('dislike')}>
-              <FontAwesomeIcon icon={faThumbsDown} />
-            </button>
             <button onClick={handleUndoImprovement} title={t('undoImprovement')}>
               <FontAwesomeIcon icon={faRotateLeft} />
             </button>
@@ -1038,8 +954,6 @@ function ConsultationForm({ consultation, onSave }) {
             enableAutosaveRestore={false}
           />
           <div className={styles.contentActions}>
-            <button onClick={() => handleLike(summary, 'summary')} title={t('like')}><FontAwesomeIcon icon={faThumbsUp} /></button>
-            <button onClick={() => openFeedbackModal('dislike', summary, 'summary')} title={t('dislike')}><FontAwesomeIcon icon={faThumbsDown} /></button>
             <button onClick={() => handleCopy(summary, 'summary')} title={t('copy')}>
               {actionSuccess.target === 'summary' && actionSuccess.type === 'copy' ? <FontAwesomeIcon icon={faCheck} className={styles.successIcon} /> : <FontAwesomeIcon icon={faCopy} />}
             </button>
@@ -1071,11 +985,6 @@ function ConsultationForm({ consultation, onSave }) {
           {loadingSave ? t('saving') : extractingPatientUpdates ? t('analyzingPatientUpdates', 'Analisando cadastro...') : confirmSaveWithoutEnhance ? t('confirmSaveWithoutEnhance') : t('saveConsultation')}
         </button>
       </div>
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-      />
 
       {/* Patient Picker Modal */}
       <PatientPickerModal

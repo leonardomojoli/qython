@@ -29,7 +29,6 @@ import {
 } from '../../services/academic';
 import type { ArenaExam, Season, JobStatus, XpProfile, RankingEntry } from '../../types/academic';
 import { QYTHON_SITE_URL } from '../../config/env';
-import { ARENA_ALLOWED_PLANS } from '../../types/academic';
 import SeasonBanner from '../../components/academic/SeasonBanner';
 import ExamCard from '../../components/academic/ExamCard';
 import RankingList from '../../components/academic/RankingList';
@@ -166,8 +165,7 @@ export default function ArenaTab() {
   const [challengePrefill, setChallengePrefill] = useState<{ examCode: string; opponent?: string; ts: number } | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
-  const hasAccess =
-    ARENA_ALLOWED_PLANS.includes(user?.plan || '') || false;
+  const hasAccess = true;
   const currentUserDisplay = user?.username ? `@${user.username}` : user?.full_name || '';
 
   const fetchData = useCallback(async () => {
@@ -251,32 +249,6 @@ export default function ArenaTab() {
       // User cancelled share
     }
   };
-
-  // Upgrade screen for plans without access
-  if (!hasAccess) {
-    return (
-      <View style={styles.upgradeContainer}>
-        <Text style={styles.upgradeIcon}>🏆</Text>
-        <Text style={[styles.upgradeTitle, { color: theme.text }]}>
-          {t('arenaUpgradeTitle', 'Arena Qython')}
-        </Text>
-        <Text style={[styles.upgradeDesc, { color: theme.textMuted }]}>
-          {t('arenaUpgradeDesc', 'Compete nos rankings nacionais de residência médica! Disponível a partir do Plano Residente.')}
-        </Text>
-        <View style={styles.upgradeBenefits}>
-          <Text style={[styles.benefitText, { color: theme.text }]}>
-            🏆 {t('arenaFeature1', 'Rankings nacionais por prova')}
-          </Text>
-          <Text style={[styles.benefitText, { color: theme.text }]}>
-            📊 {t('arenaFeature2', 'Simulados com questões reais')}
-          </Text>
-          <Text style={[styles.benefitText, { color: theme.text }]}>
-            🎯 {t('arenaFeature3', 'Compare seu desempenho com milhares')}
-          </Text>
-        </View>
-      </View>
-    );
-  }
 
   if (loading) {
     return (
