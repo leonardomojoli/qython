@@ -287,7 +287,7 @@ export default function SettingsTab({ onLogout }: Props) {
         <Text style={[styles.trainingDataDesc, { color: theme.textMuted, marginBottom: spacing.sm }]}>
           {t(
             'aboutQythonNotice',
-            'Qython é software livre sob a licença GNU AGPL-3.0 (somente a versão 3). Copyright © 2024–2026 Leonardo Mojoli. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não substitui o julgamento clínico.',
+            'Qython é software livre sob a licença GNU AGPL-3.0 (somente a versão 3). Copyright © 2024–2026 Leonardo de Abreu. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não substitui o julgamento clínico.',
           )}
         </Text>
         {[

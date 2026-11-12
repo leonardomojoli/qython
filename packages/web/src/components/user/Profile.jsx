@@ -373,7 +373,7 @@ function Profile({ isSidebarOpen }) {
               </h4>
               <p className={styles.infoDescription}>
                 Qython é software livre sob a licença GNU AGPL-3.0 (somente a versão 3). Copyright © 2024–2026
-                Leonardo Mojoli. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não
+                Leonardo de Abreu. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não
                 substitui o julgamento clínico.
               </p>
               <div className={styles.logoActions}>
