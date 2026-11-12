@@ -184,14 +184,15 @@ Testes: `pytest tests/` e `npm test`.
 O mobile tem instruções próprias em [`docs/ANDROID_DEV_SETUP.md`](docs/ANDROID_DEV_SETUP.md)
 e [`docs/IOS_BUILD.md`](docs/IOS_BUILD.md).
 
-## Contribuindo
+## Problemas e sugestões
 
-Issues e pull requests são bem-vindos. Não há processo formal: abra uma issue
-descrevendo o que pretende antes de investir tempo em algo grande, para não
-duplicar esforço.
+O Qython é software livre, escrito e mantido por uma única pessoa. **Não aceita
+pull requests**; problemas, ideias e relatos de uso vão por
+[issues](https://github.com/leonardomojoli/qython/issues/new/choose) (veja
+[`CONTRIBUTING.md`](CONTRIBUTING.md)). A licença continua permitindo usar,
+estudar, modificar e redistribuir o código, inclusive num fork.
 
-Este projeto é mantido em ritmo de tempo livre. Respostas podem demorar, e um PR
-sem resposta não é desinteresse — é fila.
+Respostas podem demorar: o projeto é mantido por uma pessoa.
 
 ## Aviso clínico
 

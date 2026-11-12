@@ -351,9 +351,9 @@ function Profile({ isSidebarOpen }) {
                 Ajuda e sugestões
               </h4>
               <p className={styles.sectionDescription}>
-                O Qython é um projeto de código aberto. Problemas e ideias são registrados no GitHub, onde qualquer
-                pessoa pode acompanhar e contribuir. Não escreva nomes, documentos nem dados de pacientes no relato:
-                ele fica público.
+                O Qython é um projeto de código aberto, mantido por uma pessoa. Problemas e ideias são registrados
+                no GitHub, onde qualquer pessoa pode acompanhar. Não escreva nomes, documentos nem dados de pacientes
+                no relato: ele fica público.
               </p>
               <div className={styles.logoActions}>
                 <a className={styles.logoUploadButton} href={`${REPO_URL}/issues/new?template=problema.yml`} target="_blank" rel="noopener noreferrer">
@@ -361,9 +361,6 @@ function Profile({ isSidebarOpen }) {
                 </a>
                 <a className={styles.logoUploadButton} href={`${REPO_URL}/issues/new?template=sugestao.yml`} target="_blank" rel="noopener noreferrer">
                   Sugerir uma melhoria
-                </a>
-                <a className={styles.logoUploadButton} href={`${REPO_URL}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noopener noreferrer">
-                  Como contribuir
                 </a>
               </div>
             </div>
