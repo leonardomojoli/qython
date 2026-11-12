@@ -13,7 +13,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from ..database import get_db
-from ..models import Consultation, User, Transaction, Patient
+from ..models import Consultation, User, Patient
 from ..services.llm_services import improve_consultation_notes, generate_case_summary, extract_icd10_from_notes
 from ..services import audit_service
 from ..security import get_current_active_user

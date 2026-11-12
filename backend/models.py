@@ -320,7 +320,6 @@ class Consultation(Base):
         return f"<Consultation {self.id} - Specialty: {self.specialty} - User: {self.user_id}>"
 
 
-
 class Prescription(Base):
     """Digital prescriptions created by doctors"""
     __tablename__ = 'prescriptions'
@@ -508,10 +507,8 @@ class User(Base):
 
     consultations = relationship('Consultation', back_populates='user', cascade="all, delete-orphan")
     patients = relationship('Patient', back_populates='doctor', cascade="all, delete-orphan")
-    transactions = relationship('Transaction', back_populates='user', cascade="all, delete-orphan")
     avatar_history = relationship('AvatarHistory', back_populates='user', cascade="all, delete-orphan")
     anamnesis_templates = relationship('UserAnamnesisTemplate', back_populates='user', cascade="all, delete-orphan")
-    feedback = relationship('Feedback', back_populates='user', cascade="all, delete-orphan")
     chat_sessions = relationship('ChatSession', back_populates='user', cascade="all, delete-orphan")
     academic_libraries = relationship('AcademicLibrary', back_populates='user', cascade="all, delete-orphan")
     stats = relationship('UserStats', back_populates='user', uselist=False, cascade="all, delete-orphan")
@@ -549,85 +546,6 @@ class Invitation(Base):
     def __repr__(self):
         return f"<Invitation {self.token} - Used: {self.is_used}>"
 
-class Transaction(Base):
-    __tablename__ = 'transactions'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    amount = Column(Float, nullable=False)
-    currency = Column(String(10), default='USD')
-    provider = Column(String(20), default='stripe')
-    provider_tx_id = Column(String(255), nullable=True)
-    status = Column(String(20), default='completed')
-
-    description = Column(String(255))
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    user = relationship('User', back_populates='transactions')
-
-    def __repr__(self):
-        return f"<Transaction {self.id} - {self.provider} - {self.amount} {self.currency}>"
-
-class DracmaLedger(Base):
-    """
-    Ledger para tracking granular de dracmas com expiração.
-    Cada entrada representa um "lote" de dracmas que foi adquirido.
-    Consumo usa FIFO (First In, First Out) - dracmas mais antigos são consumidos primeiro.
-    """
-    __tablename__ = 'dracma_ledger'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-
-    # Quantidade original e restante
-    amount = Column(Float, nullable=False)  # Quantidade original
-    remaining = Column(Float, nullable=False)  # Quantidade restante (decrementada conforme uso)
-
-    # Fonte do dracma
-    # 'purchase' - compra avulsa via Stripe/Binance
-    # 'subscription' - crédito mensal de plano pago
-    # 'internal_plan' - crédito mensal do plano interno (free)
-    # 'student_bonus' - bônus mensal de estudante
-    # 'registration' - bônus inicial no registro
-    # 'promo' - promoções/campanhas
-    # 'admin' - crédito manual por admin
-    # 'migration' - migração de saldo existente
-    source = Column(String(30), nullable=False, index=True)
-
-    # Referência à transação original (se aplicável)
-    transaction_id = Column(Integer, ForeignKey('transactions.id'), nullable=True)
-
-    # Datas importantes
-    acquired_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
-
-    # Status: 'active', 'consumed', 'expired', 'cancelled'
-    status = Column(String(20), default='active', nullable=False, index=True)
-
-    # Data de consumo total (quando remaining chegou a 0)
-    consumed_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Descrição opcional
-    description = Column(String(255), nullable=True)
-
-    # Tracking de notificações de expiração enviadas
-    expiration_notified_30d = Column(Boolean, default=False)  # Notificado 30 dias antes
-    expiration_notified_7d = Column(Boolean, default=False)   # Notificado 7 dias antes
-    expiration_notified_1d = Column(Boolean, default=False)   # Notificado 1 dia antes
-
-    # Relacionamentos
-    user = relationship('User', backref='dracma_ledger')
-    transaction = relationship('Transaction', backref='dracma_ledger_entries')
-
-    # Índices para queries frequentes
-    __table_args__ = (
-        Index('ix_dracma_ledger_user_active', 'user_id', 'status'),
-        Index('ix_dracma_ledger_expiration', 'expires_at', 'status'),
-    )
-
-    def __repr__(self):
-        return f"<DracmaLedger {self.id} - {self.remaining}/{self.amount} {self.source} - {self.status}>"
-
 
 class AvatarHistory(Base):
     __tablename__ = 'avatar_history'
@@ -660,26 +578,6 @@ class UserAnamnesisTemplate(Base):
     def __repr__(self):
         return f"<UserAnamnesisTemplate {self.id} - User: {self.user_id} - Specialty: {self.specialty} - Type: {self.consultation_type}>"
 
-class Feedback(Base):
-    __tablename__ = 'feedback'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    user_occupation = Column(String(50), nullable=True)
-    user_prompt = Column(Text, nullable=True)
-    feedback_type = Column(String(10), nullable=False)
-    content_type = Column(String(50), nullable=False)
-    content_id = Column(String(255), nullable=True)
-    original_content = Column(Text, nullable=False)
-    conversation_context = Column(JSON, nullable=True)
-    feedback_text = Column(Text, nullable=True)
-    contact_permission = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    user = relationship('User', back_populates='feedback')
-
-    def __repr__(self):
-        return f"<Feedback {self.id} - User: {self.user_id} - Type: {self.feedback_type}>"
 
 class ChatSession(Base):
     __tablename__ = 'chat_sessions'
@@ -940,237 +838,6 @@ class AcademicMaterial(Base):
         return f"<AcademicMaterial {self.id} - Type: {self.material_type} - User: {self.user_id}>"
 
 
-# === DATA FLYWHEEL: Dados para Treinamento do Qython-1 ===
-class TrainingData(Base):
-    __tablename__ = 'training_data'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # Pode ser nulo se deletarmos o user
-
-    # Fonte: 'consultation', 'chat', 'podcast_script', 'exam_question', 'summary', 'image_diagnosis'
-    source_type = Column(String(50), nullable=False, index=True)
-
-    # O contexto de entrada (ex: Anotações brutas, Pergunta do Chat)
-    input_data = Column(Text, nullable=False)
-
-    # O resultado da IA (ex: Anamnese perfeita, Resposta do Chat)
-    output_data = Column(Text, nullable=False)
-
-    # Metadados para filtragem (ex: {"specialty": "Cardiologia", "has_image": true})
-    metadata_info = Column(JSON, nullable=True)
-
-    # Referências bibliográficas citadas (ex: [{"url": "...", "pmid": "12345", "title": "..."}])
-    references = Column(JSON, nullable=True)
-
-    # Qualidade (0 = neutro, 1 = like/salvo, -1 = dislike, 2 = gold, 3 = platinum)
-    quality_score = Column(Integer, default=0)
-
-    # Hash MD5 do conteúdo para evitar duplicatas
-    content_hash = Column(String(32), nullable=True, index=True, unique=True)
-
-    # Flags de processamento
-    is_anonymized = Column(Boolean, default=False)
-    ready_for_training = Column(Boolean, default=False)
-
-    # === NOVOS CAMPOS (2026 Best Practices) ===
-
-    # Curriculum Learning: dificuldade estimada do exemplo (0.0=fácil, 1.0=difícil)
-    # Útil para treinamento progressivo (exemplos fáceis primeiro)
-    difficulty_score = Column(Float, nullable=True)
-
-    # Métricas de engajamento do usuário
-    # regeneration_count: quantas vezes o usuário pediu nova resposta
-    regeneration_count = Column(Integer, default=0)
-    # time_to_first_edit_ms: tempo até o usuário começar a editar (null = não editou)
-    time_to_first_edit_ms = Column(Integer, nullable=True)
-    # total_edit_time_ms: tempo total de edição antes de salvar
-    total_edit_time_ms = Column(Integer, nullable=True)
-    # accepted_without_edit: True se usuário aceitou sem modificar
-    accepted_without_edit = Column(Boolean, nullable=True)
-
-    # === ML PIPELINE COLUMNS (2026-02 Enhancements) ===
-
-    # How the data was created: 'human', 'ai_generated', 'hybrid' (user edited AI output)
-    creation_method = Column(String(20), nullable=True, index=True)
-
-    # Data provenance: 0=human, 1=first AI generation, N+1=model trained on gen N
-    generation_number = Column(Integer, default=0)
-
-    # Bloom's taxonomy level for curriculum learning
-    bloom_level = Column(String(20), nullable=True, index=True)
-
-    # Held-out evaluation set (NEVER used for training, only benchmarking)
-    is_evaluation_holdout = Column(Boolean, default=False, index=True)
-
-    # PII detection flag (set by pii_detector, reviewed during export)
-    pii_detected = Column(Boolean, default=False, index=True)
-
-    # LGPD: ties this entry to the consent that authorized its capture for training.
-    # NULL is allowed for legacy entries — pre-export validator handles those separately.
-    consent_id = Column(Integer, ForeignKey('user_consents.id', ondelete='SET NULL'),
-                        nullable=True, index=True)
-
-    # 'pseudo' = identifiers tokenized via QYTHON_TOKEN_KEK (reversible inside Qython)
-    # 'anon'   = irreversibly anonymized; out of LGPD scope per Art. 12
-    # NULL     = legacy entry, needs reprocessing
-    anonymization_level = Column(String(10), nullable=True, index=True)
-
-    # Marks entries removed from training pool due to user revocation. Kept for audit
-    # but never exported. Cron sets this when consent.revoked event fires.
-    excluded_due_to_revocation = Column(Boolean, default=False, nullable=False, index=True)
-
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    user = relationship('User', backref='training_data')
-    consent = relationship('UserConsent', foreign_keys=[consent_id])
-
-    def __repr__(self):
-        return f"<TrainingData {self.id} - {self.source_type}>"
-
-
-# === PREFERENCE DATA: Dados para DPO/RLHF do Qython-1 ===
-class PreferenceData(Base):
-    """
-    Armazena pares de preferência (chosen/rejected) para Direct Preference Optimization (DPO).
-    Este é o formato padrão da indústria em 2026 para fine-tuning de LLMs.
-
-    Referências:
-    - https://huggingface.co/blog/pref-tuning
-    - https://pytorch.org/torchtune/0.3/basics/preference_datasets.html
-    """
-    __tablename__ = 'preference_data'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
-
-    # Prompt/contexto que gerou as respostas
-    prompt = Column(Text, nullable=False)
-
-    # Resposta preferida (escolhida pelo usuário ou LLM-as-judge)
-    chosen = Column(Text, nullable=False)
-
-    # Resposta rejeitada (a que o usuário não gostou ou regenerou)
-    rejected = Column(Text, nullable=False)
-
-    # Fonte: 'chat', 'consultation_draft', 'consultation_summary', 'icd10', 'library_rag', etc.
-    source_type = Column(String(50), nullable=False, index=True)
-
-    # Metadados adicionais (specialty, model_used, etc.)
-    metadata_info = Column(JSON, nullable=True)
-
-    # Origem da preferência: 'human' (usuário), 'llm_judge' (LLM-as-judge), 'implicit' (regeneração)
-    preference_source = Column(String(20), default='human', nullable=False)
-
-    # Confiança do julgamento (0.0-1.0, útil para LLM-as-judge)
-    confidence_score = Column(Float, default=1.0)
-
-    # Idioma do conteúdo
-    language = Column(String(10), default='pt-BR')
-
-    # Hash para evitar duplicatas
-    content_hash = Column(String(32), nullable=True, index=True, unique=True)
-
-    # Flag de processamento
-    ready_for_export = Column(Boolean, default=True)
-
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    user = relationship('User', backref='preference_data')
-
-    def __repr__(self):
-        return f"<PreferenceData {self.id} - {self.source_type} - {self.preference_source}>"
-
-    def to_dpo_format(self):
-        """Converte para o formato padrão DPO usado por frameworks como TRL/TorchTune."""
-        return {
-            "prompt": self.prompt,
-            "chosen": self.chosen,
-            "rejected": self.rejected,
-            "source_type": self.source_type,
-            "language": self.language,
-            "metadata": self.metadata_info
-        }
-
-
-# === QUALITY DECAY DETECTION: Snapshots for model collapse monitoring ===
-class QualitySnapshot(Base):
-    """
-    Periodic snapshot of training data quality metrics.
-    Used to detect quality decay / model collapse over time.
-    Computed weekly by scheduler, viewable via admin endpoints.
-    """
-    __tablename__ = 'quality_snapshots'
-
-    id = Column(Integer, primary_key=True)
-    snapshot_data = Column(JSON, nullable=False)  # Full metrics snapshot
-    alerts = Column(JSON, nullable=True)  # List of triggered alerts
-    health_status = Column(String(20), default='healthy')  # healthy/warning/critical
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    def __repr__(self):
-        return f"<QualitySnapshot {self.id} - {self.health_status}>"
-
-
-# === ITERATIVE REFINEMENT TRACKING: Chain of refinements for training ===
-class RefinementChain(Base):
-    """
-    Tracks iterative refinement chains: original → refined → re-refined.
-    Each entry links a refined TrainingData to its predecessor, capturing
-    the improvement delta so models can learn to self-improve.
-    """
-    __tablename__ = 'refinement_chains'
-
-    id = Column(Integer, primary_key=True)
-
-    # The original (source) training data entry
-    original_id = Column(Integer, ForeignKey('training_data.id'), nullable=False, index=True)
-
-    # The refined (improved) training data entry
-    refined_id = Column(Integer, ForeignKey('training_data.id'), nullable=False, index=True)
-
-    # Step in the chain (1 = first refinement, 2 = second, etc.)
-    step = Column(Integer, default=1, nullable=False)
-
-    # What triggered the refinement
-    refinement_type = Column(String(30), nullable=False)
-    # Values: 'self_critique' (auto-refined by self-critique service),
-    #         'user_edit' (physician edited AI output),
-    #         'regeneration' (user requested new response),
-    #         'rlaif_judge' (AI judge flagged + re-generated)
-
-    # Refinement metadata: critique scores, diff summary, etc.
-    refinement_metadata = Column(JSON, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    original = relationship('TrainingData', foreign_keys=[original_id], backref='refinements_from')
-    refined = relationship('TrainingData', foreign_keys=[refined_id], backref='refinements_to')
-
-    __table_args__ = (
-        UniqueConstraint('original_id', 'refined_id', name='uq_refinement_pair'),
-    )
-
-    def __repr__(self):
-        return f"<RefinementChain {self.original_id} → {self.refined_id} step={self.step}>"
-
-
-# =============================================================================
-# PAYMENT WAITLIST (Coming Soon)
-# =============================================================================
-
-class PaymentWaitlist(Base):
-    """Email waitlist for users interested in premium plans before payment integration is ready"""
-    __tablename__ = 'payment_waitlist'
-
-    id = Column(Integer, primary_key=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    notified = Column(Boolean, default=False)  # True when notified that payments are live
-
-    def __repr__(self):
-        return f"<PaymentWaitlist {self.email}>"
-
-
 # =============================================================================
 # PROFILE UPDATE REQUESTS
 # =============================================================================
@@ -1275,22 +942,6 @@ class RateLimitEntry(Base):
 
     def __repr__(self):
         return f"<RateLimitEntry {self.ip_address} - {self.endpoint}>"
-
-
-class ServerMetrics(Base):
-    """Server performance metrics for monitoring and auto-maintenance triggers"""
-    __tablename__ = 'server_metrics'
-
-    id = Column(Integer, primary_key=True)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    cpu_percent = Column(Float, nullable=True)
-    memory_percent = Column(Float, nullable=True)
-    disk_percent = Column(Float, nullable=True)
-    active_connections = Column(Integer, nullable=True)
-    requests_per_minute = Column(Integer, nullable=True)
-
-    def __repr__(self):
-        return f"<ServerMetrics CPU:{self.cpu_percent}% RAM:{self.memory_percent}%>"
 
 
 # =============================================================================
@@ -1916,7 +1567,6 @@ class AuditLog(Base):
         return f"<AuditLog {self.action} target={self.target_type}:{self.target_id} at={self.occurred_at}>"
 
 
-
 # Trigger append-only do audit_log (LGPD Art. 37). Fica atrelado ao CREATE da
 # tabela para que o create_all de uma instalação nova o crie junto; antes ele só
 # existia na migration lgpd_core, que instalações novas não executam. Bancos
@@ -1936,40 +1586,6 @@ event.listen(AuditLog.__table__, "after_create", DDL("""
     BEFORE UPDATE OR DELETE ON audit_log
     FOR EACH ROW EXECUTE FUNCTION audit_log_reject_modify();
 """).execute_if(dialect="postgresql"))
-
-class DatasetExportLog(Base):
-    """Proof of minimization for each ML dataset export.
-
-    Records WHICH consents authorized WHICH records at the time of export.
-    Defense against ANPD audit: 'show me the consent for record X'.
-    """
-    __tablename__ = 'dataset_export_logs'
-
-    id = Column(Integer, primary_key=True)
-    exported_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-                         nullable=False, index=True)
-    exported_by_user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'),
-                                 nullable=True)
-    export_type = Column(String(40), nullable=False)  # 'sft_jsonl', 'dpo_jsonl', 'dpo_parquet'
-    dataset_hash = Column(String(64), nullable=False, index=True)  # SHA-256 of the exported file
-    entry_count = Column(Integer, nullable=False)
-    anonymization_level = Column(String(20), nullable=False)  # 'pseudo', 'anon', 'mixed'
-
-    # Snapshot of which consents were ACTIVE at export time. Format:
-    # {"<user_id>": ["ml_training_general", "ml_training_feedback"], ...}
-    consent_snapshot = Column(JSONB, nullable=True)
-
-    # Number of entries excluded due to consent revocation or expiry
-    excluded_due_to_revocation = Column(Integer, default=0, nullable=False)
-    excluded_due_to_expiry = Column(Integer, default=0, nullable=False)
-
-    # Free-form metadata (filters used, model target, etc.)
-    metadata_info = Column(JSONB, nullable=True)
-
-    exporter = relationship('User', foreign_keys=[exported_by_user_id])
-
-    def __repr__(self):
-        return f"<DatasetExportLog {self.export_type} {self.entry_count} entries at={self.exported_at}>"
 
 
 class UserCloudConnection(Base):
