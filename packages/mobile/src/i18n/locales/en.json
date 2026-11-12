@@ -2981,5 +2981,11 @@
   "serverOk": "Connected to Qython",
   "serverUnreachable": "The server did not respond. Check the address and that the phone is on the same network.",
   "serverNotQython": "Something answered at this address, but it is not a Qython server.",
-  "serverRequired": "Enter the address of your Qython server."
+  "serverRequired": "Enter the address of your Qython server.",
+  "dictation": "Dictation",
+  "dictationFailed": "Dictation is not available right now.",
+  "dictationNoSpeech": "I didn't hear any speech. Speak closer to the microphone.",
+  "dictationRecording": "Recording",
+  "dictationStop": "Stop and transcribe",
+  "dictationStart": "Dictate"
 }

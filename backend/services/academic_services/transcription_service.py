@@ -127,3 +127,50 @@ def _transcribe_audio_local(original_file_path):
         raise RuntimeError(f"whisper.service retornou transcrição vazia para {original_file_path}.")
     logger.info(f"Transcrição local concluída para {original_file_path}: {len(texto)} chars.")
     return texto
+
+
+# --- Ditado (trechos curtos de voz vindos do celular ou do navegador) ---
+DICTATION_TIMEOUT = int(os.getenv("DICTATION_REQUEST_TIMEOUT", "180"))
+
+
+class DictationUnavailable(RuntimeError):
+    """O ditado não pode ser atendido agora. A mensagem é para o usuário: diz o que falta."""
+
+
+def transcribe_dictation(audio_path, language=None):
+    """Transcreve um trecho curto de voz pelo mesmo whisper local da biblioteca.
+
+    Diferente de `transcribe_audio`, que serve a documentos e re-tenta depois, o ditado tem uma pessoa
+    esperando: qualquer falha do serviço vira DictationUnavailable com um texto que ela entende, e
+    silêncio (sem fala) devolve "" em vez de erro.
+    """
+    if not WHISPER_SERVER_URL:
+        raise DictationUnavailable(
+            "O ditado usa o serviço de transcrição (whisper) desta instalação, que não está configurado."
+        )
+    url = WHISPER_SERVER_URL.rstrip("/") + "/transcribe"
+    try:
+        with open(audio_path, "rb") as audio_file:
+            files = {"file": (os.path.basename(audio_path), audio_file, "application/octet-stream")}
+            response = requests.post(
+                url, files=files, data={"language": language} if language else None,
+                timeout=DICTATION_TIMEOUT,
+            )
+    except requests.exceptions.RequestException as exc:
+        logger.warning("Ditado: serviço de transcrição inacessível: %s", exc)
+        raise DictationUnavailable(
+            "Não consegui falar com o serviço de transcrição do computador. Tente de novo em instantes."
+        ) from exc
+
+    if response.status_code != 200:
+        # O app desktop responde 503 com {"error": {"message": ...}} quando falta baixar o modelo.
+        reason = None
+        try:
+            reason = ((response.json() or {}).get("error") or {}).get("message")
+        except ValueError:
+            pass
+        logger.warning("Ditado: whisper respondeu %s (%s)", response.status_code, reason)
+        raise DictationUnavailable(
+            reason or "O serviço de transcrição não conseguiu processar este áudio. Tente de novo."
+        )
+    return (response.json().get("text") or "").strip()

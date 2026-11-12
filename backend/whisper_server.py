@@ -8,7 +8,7 @@ OOM the box). The backend posts audio here from transcription_service
 
 Endpoints:
   GET  /health      -> {"status": "ok", "model": ...}
-  POST /transcribe  -> multipart 'file' (any audio/video container) -> {"text": ...}
+  POST /transcribe  -> multipart 'file' (any audio/video container) + 'language' opcional -> {"text": ...}
 
 faster-whisper decodes the container itself (via PyAV) and handles long audio with its
 internal 30s windowing + VAD, so no client-side ffmpeg chunking is needed. The blocking
@@ -30,7 +30,7 @@ import asyncio
 import logging
 import tempfile
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from faster_whisper import WhisperModel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -64,12 +64,16 @@ def get_model() -> WhisperModel:
     return _model
 
 
-def _run_transcribe(tmp_path: str):
-    """Blocking transcription (roda numa thread via asyncio.to_thread)."""
+def _run_transcribe(tmp_path: str, language: str | None = None):
+    """Blocking transcription (roda numa thread via asyncio.to_thread).
+
+    `language` (ex.: 'pt') vem do pedido e vale mais que o WHISPER_LANGUAGE do ambiente. Dizer o
+    idioma de um trecho curto, como um ditado, poupa a detecção automática, que erra justamente nele.
+    """
     model = get_model()
     segments, info = model.transcribe(
         tmp_path,
-        language=LANGUAGE,
+        language=language or LANGUAGE,
         beam_size=BEAM_SIZE,
         vad_filter=VAD_FILTER,
     )
@@ -90,7 +94,10 @@ def health():
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...)):
+async def transcribe(file: UploadFile = File(...), language: str | None = Form(None)):
+    language = (language or "").strip().lower() or None
+    if language and not (2 <= len(language) <= 3 and language.isalpha()):
+        raise HTTPException(status_code=400, detail="idioma inválido")
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="arquivo vazio")
@@ -104,7 +111,7 @@ async def transcribe(file: UploadFile = File(...)):
 
         logger.info("Transcrevendo %s (%d bytes)...", file.filename, len(data))
         async with _transcribe_lock:
-            text, lang, dur = await asyncio.to_thread(_run_transcribe, tmp_path)
+            text, lang, dur = await asyncio.to_thread(_run_transcribe, tmp_path, language)
         logger.info("Concluído: lang=%s dur=%.1fs chars=%d", lang, dur, len(text))
         return {"text": text, "language": lang, "duration": dur}
     except Exception as e:
