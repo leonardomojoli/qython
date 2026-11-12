@@ -33,7 +33,6 @@ function Register({ setIsLoggedIn }) {
   // backend/services/edition_service.py). Numa instalação local típica nenhuma vale.
   const { config, refresh: refreshPublicConfig } = usePublicConfig();
   const reg = config?.registration || {};
-  const isHosted = config?.edition === 'hosted';
   const needsCaptcha = !!reg.captcha;
   const needsPhoneVerification = !!reg.phone_verification;
   const lastreoAvailable = !!reg.professional_verification;
@@ -58,8 +57,6 @@ function Register({ setIsLoggedIn }) {
     referral_source_option: '', referral_source_other: ''
   });
 
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [marketingConsent, setMarketingConsent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaError, setCaptchaError] = useState('');
   const [inviteToken, setInviteToken] = useState('');
@@ -155,7 +152,6 @@ function Register({ setIsLoggedIn }) {
   const isStep1Valid = () => {
     const basicValid = formData.full_name && formData.email && formData.occupation
       && (!needsPhoneVerification || (formData.phone_number && isPhoneVerified))
-      && (!isHosted || termsAccepted)
       && (!needsCaptcha || captchaToken);
     const passwordValid = Object.values(passwordCriteria).every(Boolean);
     let conditionalValid = true;
@@ -193,7 +189,6 @@ function Register({ setIsLoggedIn }) {
       if (!formData.phone_number) m.push(t('phone', 'telefone'));
       else if (!isPhoneVerified) m.push(t('missingPhoneVerify', 'verificar o telefone por SMS'));
     }
-    if (isHosted && !termsAccepted) m.push(t('missingTerms', 'aceitar os termos'));
     if (needsCaptcha && !captchaToken) m.push(t('missingCaptcha', 'a verificação de segurança'));
     return m;
   };
@@ -264,7 +259,6 @@ function Register({ setIsLoggedIn }) {
     if (latreoSessionId) dataToSend.append('latreo_session_id', latreoSessionId);
 
     if (googleIdToken) dataToSend.append('google_id_token', googleIdToken);
-    dataToSend.append('marketing_consent', marketingConsent);
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register/step1`, {
@@ -635,41 +629,7 @@ function Register({ setIsLoggedIn }) {
                   </div>
                 )}
 
-                {/* SEÇÃO DE CONSENTIMENTOS — só no SaaS. Na instalação local o termo de uso
-                    é aceito na primeira tela depois do cadastro, com o texto completo. */}
-                {isHosted && (
-                <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-                  {/* CHECKBOX DE MARKETING */}
-                  <div className={styles.marketingGroup}>
-                    <input
-                      type="checkbox"
-                      id="marketing"
-                      checked={marketingConsent}
-                      onChange={(e) => setMarketingConsent(e.target.checked)}
-                    />
-                    <label htmlFor="marketing">
-                      {t('marketingConsentLabel')}
-                    </label>
-                  </div>
-
-                  {/* CHECKBOX DE TERMOS E PRIVACIDADE */}
-                  <div className={styles.termsGroup}>
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      required
-                    />
-                    <label htmlFor="terms">
-                      {t('iAcceptThe')} <a href="/terms-of-use" target="_blank" rel="noopener noreferrer">{t('termsOfUse')}</a> {t('andThe')} <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">{t('privacyPolicy')}</a>.
-                    </label>
-                  </div>
-                </div>
-
-                )}
-
-                {needsCaptcha && (termsAccepted || !isHosted) && (
+                {needsCaptcha && (
                   <div style={{ marginBottom: '20px', marginTop: '20px' }}>
                     <Turnstile
                       sitekey={reg.captcha_site_key || import.meta.env.VITE_CLOUDFLARE_SITE_KEY}

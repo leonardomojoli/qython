@@ -1,4 +1,4 @@
-// Configuração pública da instalação (GET /api/public/config): a edição e quais
+// Configuração pública da instalação (GET /api/public/config): quais
 // travas do cadastro valem aqui (captcha, SMS, e-mail, Lastreo). Lida ao abrir o app,
 // antes de qualquer login; `refresh` relê depois do cadastro do dono, quando
 // `setup_required` deixa de valer.
@@ -8,7 +8,6 @@ import { API_URL } from '../config';
 // Sem resposta do backend, assume a instalação local sem travas, que é o padrão.
 // Se alguma trava estiver ligada, o backend recusa o cadastro e diz o que faltou.
 const FALLBACK = {
-  edition: 'local',
   setup_required: false,
   registration: {
     enabled: true,
