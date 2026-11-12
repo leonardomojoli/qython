@@ -25,7 +25,7 @@ import defaultAvatar from '../../assets/default-profile.png';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { resetQythonTour } from '../shared/QythonTour';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRoute, faCertificate, faImage, faStamp, faUpload, faTrash, faShieldAlt, faLifeRing } from '@fortawesome/free-solid-svg-icons';
+import { faRoute, faCertificate, faImage, faStamp, faUpload, faTrash, faShieldAlt, faLifeRing, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 
 import { WEB_URL as BASE_URL } from '../../config';
 
@@ -346,11 +346,11 @@ function Profile({ isSidebarOpen }) {
 
             {/* Ajuda: o Qython é de código aberto; problemas e sugestões vão para o GitHub */}
             <div className={styles.settingsBlock}>
-              <h4 className={styles.sectionHeader}>
+              <h4 className={styles.infoHeader}>
                 <FontAwesomeIcon icon={faLifeRing} className={styles.sectionIcon} />
                 Ajuda e sugestões
               </h4>
-              <p className={styles.sectionDescription}>
+              <p className={styles.infoDescription}>
                 O Qython é um projeto de código aberto, mantido por uma pessoa. Problemas e ideias são registrados
                 no GitHub, onde qualquer pessoa pode acompanhar. Não escreva nomes, documentos nem dados de pacientes
                 no relato: ele fica público.
@@ -361,6 +361,33 @@ function Profile({ isSidebarOpen }) {
                 </a>
                 <a className={styles.logoUploadButton} href={`${REPO_URL}/issues/new?template=sugestao.yml`} target="_blank" rel="noopener noreferrer">
                   Sugerir uma melhoria
+                </a>
+              </div>
+            </div>
+
+            {/* Sobre: os avisos legais que a AGPL-3.0 (seção 5d) e os termos adicionais pedem na interface */}
+            <div className={styles.settingsBlock}>
+              <h4 className={styles.infoHeader}>
+                <FontAwesomeIcon icon={faCircleInfo} className={styles.sectionIcon} />
+                Sobre o Qython
+              </h4>
+              <p className={styles.infoDescription}>
+                Qython é software livre sob a licença GNU AGPL-3.0 (somente a versão 3). Copyright © 2024–2026
+                Leonardo Mojoli. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não
+                substitui o julgamento clínico.
+              </p>
+              <div className={styles.logoActions}>
+                <a className={styles.logoUploadButton} href={REPO_URL} target="_blank" rel="noopener noreferrer">
+                  Código-fonte
+                </a>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer">
+                  Licença
+                </a>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/blob/main/TERMOS-ADICIONAIS.md`} target="_blank" rel="noopener noreferrer">
+                  Termos adicionais
+                </a>
+                <a className={styles.logoUploadButton} href={`${REPO_URL}/blob/main/TRADEMARKS.md`} target="_blank" rel="noopener noreferrer">
+                  Nome e logotipo
                 </a>
               </div>
             </div>

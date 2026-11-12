@@ -217,7 +217,9 @@ quem opera o sistema.
   software clínico continuam abertas, em vez de virarem cópias fechadas.
 - **Sem garantia.** O software é fornecido "como está" (seções 15 e 16).
 - **A licença cobre o código, não o nome.** Versões modificadas não podem se
-  apresentar como "Qython".
+  apresentar como "Qython" e devem manter os avisos de autoria e a frase "Baseado
+  no Qython" ([termos adicionais](TERMOS-ADICIONAIS.md), [política de
+  marca](TRADEMARKS.md)).
 
 Até o commit `e673b26` (24/out/2026) o projeto foi publicado sob Apache-2.0, e
 cópias obtidas naquelas condições continuam sob elas. Veja [NOTICE](NOTICE) para
