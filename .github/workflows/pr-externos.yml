@@ -1,0 +1,26 @@
+name: Pull requests de fora
+
+# O Qython tem um único autor e não aceita pull requests de terceiros (CONTRIBUTING.md). Quem não é o dono
+# nem colaborador do repositório recebe uma explicação e o PR é fechado.
+#
+# pull_request_target roda o workflow da branch principal, com permissão de escrita, e por isso este
+# arquivo NÃO faz checkout do código do PR nem executa nada que venha dele: só fecha e comenta.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fechar:
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fecha com uma explicação
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr close "$PR" --repo "$REPO" --comment "Obrigado pelo interesse no Qython. O projeto é escrito e mantido por uma única pessoa e não aceita pull requests, então este foi fechado automaticamente; não é nada pessoal com a sua mudança. Se você encontrou um problema ou tem uma ideia, conte numa issue (https://github.com/$REPO/issues/new/choose) com o comportamento esperado e como reproduzir. A licença (AGPL-3.0-only) continua permitindo que você use e modifique o código no seu próprio fork. Detalhes em CONTRIBUTING.md."
