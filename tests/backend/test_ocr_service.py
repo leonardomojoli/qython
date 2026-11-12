@@ -29,6 +29,7 @@ def load(name, relpath):
 
 
 ocr = load('ocr_service', 'backend/services/ocr_service.py')
+pdf_engine = load('pdf_engine', 'backend/services/pdf_engine.py')
 
 
 def caixa(x0, y0, x1, y1, texto):
@@ -117,18 +118,18 @@ def _imagem(linhas, largura=1000, passo=70, tamanho=44, x=30, y=30):
 
 
 def _pagina_de_pdf(linhas, tamanho=22):
-    """Página gerada pelo PyMuPDF e rasterizada como o backend faz com PDF escaneado. A fonte
-    padrão do Pillow não tem ç nem ã (desenha caixinhas), a Helvetica do PDF tem."""
-    import fitz
-    from PIL import Image
+    """Página de PDF (gerada pelo fpdf2) rasterizada pelo pdf_engine, como o backend faz com PDF
+    escaneado. A fonte padrão do Pillow não tem ç nem ã (desenha caixinhas), a Helvetica do PDF tem."""
+    from fpdf import FPDF
 
-    doc = fitz.open()
-    pagina = doc.new_page(width=595, height=842)
+    pdf = FPDF(unit='pt', format=(595, 842))
+    pdf.add_page()
+    pdf.set_font('Helvetica', size=tamanho)
     for i, t in enumerate(linhas):
-        pagina.insert_text((50, 80 + i * 40), t, fontname='helv', fontsize=tamanho)
-    pix = pagina.get_pixmap(dpi=200)
-    doc.close()
-    return Image.frombytes('RGB', [pix.width, pix.height], pix.samples)
+        pdf.set_xy(50, 60 + i * 40)
+        pdf.cell(0, tamanho + 6, t)
+    with pdf_engine.PdfFile(bytes(pdf.output())) as doc:
+        return doc.render(0, dpi=200)
 
 
 def test_ocr_le_texto_clinico_em_portugues():

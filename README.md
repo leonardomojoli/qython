@@ -221,5 +221,4 @@ quem opera o sistema.
 
 Até o commit `e673b26` (24/out/2026) o projeto foi publicado sob Apache-2.0, e
 cópias obtidas naquelas condições continuam sob elas. Veja [NOTICE](NOTICE) para
-o histórico e para as dependências de terceiros, que têm licenças próprias —
-entre elas o PyMuPDF, também AGPL-3.0.
+o histórico e para as dependências de terceiros, que têm licenças próprias.

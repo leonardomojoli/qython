@@ -56,7 +56,8 @@ terms and are NOT covered by this license:
   - Firebase Authentication (optional)
 
 Bundled and downloaded components keep their own licenses, among them
-PyMuPDF (AGPL-3.0), and model weights downloaded at runtime
+PDFium and pypdfium2 (BSD-3-Clause / Apache-2.0; PDF reading and rendering),
+and model weights downloaded at runtime
 (faster-whisper large-v3-turbo, intfloat/multilingual-e5-base,
 cross-encoder/mmarco-mMiniLMv2-L12-H384-v1, and local language models such as
 Gemma or MedGemma), each under its upstream license.

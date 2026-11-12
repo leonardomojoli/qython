@@ -23,7 +23,7 @@ O Qython utiliza uma estratégia de retenção chamada "Soft Block" para usuári
 Pipeline multimodal em duas fases para extrair e descrever imagens médicas de PDFs da biblioteca:
 
 **Fase 1 — Durante upload (sem custo, imediata):**
-- `file_processing_service.extract_images_from_pdf()` usa PyMuPDF (`page.get_images()` + `doc.extract_image()`)
+- `file_processing_service.extract_images_from_pdf()` usa o PDFium (`pdf_engine.PdfFile.images()`, que lê os objetos de imagem que a página realmente desenha)
 - Filtro heurístico local (`_is_likely_medical_image()`) descarta logos, gradientes, ícones — analisa variância de cor, aspect ratio, tamanho mínimo (250px, 5KB)
 - Imagens salvas em `/static/uploads/document_images/{document_id}/`
 - Registros `DocumentImage` criados com `vision_status='pending'`
@@ -46,7 +46,7 @@ Pipeline multimodal em duas fases para extrair e descrever imagens médicas de P
 
 ### Otimização de Processamento de PDFs (Março 2026)
 
-O processamento de documentos tenta **extração direta de texto** (PyMuPDF `page.get_text()`) antes de recorrer ao OCR:
+O processamento de documentos tenta **extração direta de texto** (PDFium, `pdf_engine.PdfFile.text()`) antes de recorrer ao OCR:
 
 1. `extract_text_direct(filepath)` — instantâneo, zero temp files
 2. Se < 100 chars extraídos → PDF escaneado → fallback para OCR local (`services/ocr_service.py`: RapidOCR com PP-OCRv6 em ONNX, sem binário nem download; lê página com duas colunas na ordem certa; cerca de 5 s por página em CPU)

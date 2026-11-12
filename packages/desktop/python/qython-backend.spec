@@ -73,15 +73,16 @@ for _conf in ("fonts-win32.conf", "fonts-darwin.conf"):
 # --- dependências com arquivos de dados ou importações dinâmicas ---------------------
 binaries = []
 hiddenimports = []
-# pymupdf: o pacote "pymupdf-layout" instala os modelos ONNX dentro de pymupdf/layout.
+# pypdfium2 e pypdfium2_raw: o PDFium é uma biblioteca nativa (pdfium.dll, libpdfium.so, libpdfium.dylib) dentro
+# da roda; sem coletar os dois pacotes inteiros o executável sobe e só o PDF falha (o selftest confere).
 # tokenizers e onnxruntime: o servidor de embeddings (modo `embed`) os importa dentro de função,
 # então a análise estática do PyInstaller não os enxerga.
 # faster_whisper, ctranslate2 e av: o modo `whisper` (transcrição) os importa dentro de função;
 # o faster-whisper tem o VAD (silero_vad_*.onnx) como arquivo de dados.
 # rapidocr: os modelos .onnx (PP-OCRv6) e os .yaml de configuração são arquivos de dados do pacote;
 # o cv2 e o shapely trazem bibliotecas nativas.
-for pkg in ("rapidocr", "cv2", "shapely", "pyclipper", "omegaconf", "colorlog", "faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pymupdf",
-            "pymupdf4llm", "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
+for pkg in ("rapidocr", "cv2", "shapely", "pyclipper", "omegaconf", "colorlog", "faster_whisper", "ctranslate2", "av", "tokenizers", "onnxruntime", "chromadb", "tiktoken_ext", "tldextract", "weasyprint", "pptx", "pypdfium2", "pypdfium2_raw",
+            "langchain_text_splitters", "fpdf", "pyphen", "tinycss2",
             "cssselect2", "certifi", "email_validator", "slowapi", "limits"):
     try:
         d, b, h = collect_all(pkg)
