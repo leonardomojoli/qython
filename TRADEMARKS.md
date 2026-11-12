@@ -2,7 +2,7 @@
 
 > **Rascunho para revisão.** Vale a partir da versão que a incluir.
 
-*Qython* e os logotipos do projeto identificam o software mantido por Leonardo Mojoli em
+*Qython* e os logotipos do projeto identificam o software mantido por Leonardo de Abreu em
 <https://github.com/leonardomojoli/qython>. A licença do código (AGPL-3.0 e [termos adicionais](TERMOS-ADICIONAIS.md))
 deixa você usar, modificar e redistribuir o código; **não** transfere o nome nem o logotipo.
 
