@@ -4,7 +4,7 @@ name: Publicar site
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", ".github/workflows/pages.yml", "backend/seeds/terms_of_use.py", "scripts/gerar_termos_site.py", "tests/backend/test_site_terms.py"]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      # O termo de uso do site é gerado do texto que o app mostra, e a política de privacidade afirma que o
+      # site não carrega nada de terceiros: se algo disso quebrar, a publicação para aqui.
+      - name: Confere as páginas legais
+        run: python3 tests/backend/test_site_terms.py
 
       # enablement liga o Pages na primeira execucao usando o GITHUB_TOKEN do
       # proprio workflow; um PAT comum nao tem escopo para isso pela API.
