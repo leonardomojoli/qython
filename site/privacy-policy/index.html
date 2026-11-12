@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidade · Qython</title>
+<meta name="description" content="Política de privacidade do Qython: o que fica no seu computador, quando o programa fala com a internet e quais são os seus direitos.">
+<link rel="icon" href="/favicon.png">
+<meta name="theme-color" content="#0d0d12">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+  <header><a href="/"><img src="/logo.png" alt="Qython"></a></header>
+  <main>
+    <h1>Política de Privacidade</h1>
+    <p class="meta">Versão 1 · 12 de novembro de 2026 · vale para o Qython 1.2 em diante</p>
+
+    <div class="resumo">
+      <ul>
+        <li>O Qython é um programa que você instala, não um serviço. Quem o escreve <strong>não tem servidor com os seus dados nem acesso à sua instalação</strong>.</li>
+        <li>Os dados dos pacientes e das consultas ficam no banco de dados do seu computador (ou do servidor da sua instituição), e a inteligência artificial roda lá também.</li>
+        <li>O programa não tem telemetria, análise de uso, anúncios nem rastreadores. Ele só fala com a internet nos casos listados na seção 3.</li>
+      </ul>
+    </div>
+
+    <h2>1. Quem é quem</h2>
+    <p><strong>Controlador dos dados dos pacientes:</strong> você, ou a instituição que opera o Qython (LGPD, Lei 13.709/2018, art. 5º, VI). Os autores do projeto não recebem, não armazenam e não conseguem acessar esses dados; por isso não são controladores nem operadores deles.</p>
+    <p><strong>Titular dos direitos do software e responsável por este site:</strong> Leonardo de Abreu.</p>
+
+    <h2>2. O que fica no seu computador</h2>
+    <ul>
+      <li><strong>Pacientes, consultas, receitas, atestados, pedidos de exame, conversas com o copiloto, biblioteca de estudo e preferências</strong> ficam no banco de dados PostgreSQL da instalação.</li>
+      <li><strong>Cifra no banco:</strong> nome, telefone, e-mail, documento, endereço, histórico clínico, alergias, condições crônicas e medicamentos em uso do paciente, e as anotações, resumos, queixa principal e exame físico das consultas, são cifrados antes de entrar no banco. Receitas, conversas do copiloto e documentos da biblioteca <strong>não</strong> têm essa cifra de campo: proteja o computador com senha e cifra de disco.</li>
+      <li><strong>Chaves de cifra:</strong> no app para computador, ficam no cofre do sistema (Windows, macOS ou Linux). No servidor com Docker, ficam em um volume da instalação, que deve entrar no seu backup. Sem as chaves, esses campos não abrem.</li>
+      <li><strong>Backups</strong> do app para computador (menu <em>Arquivo → Fazer backup</em>) são cifrados.</li>
+      <li><strong>Registros técnicos (logs)</strong> ficam numa pasta do computador (menu <em>Ajuda → Abrir a pasta de logs</em>) e não são enviados a ninguém.</li>
+      <li><strong>Inteligência artificial:</strong> o modelo de linguagem, a transcrição de áudio, o OCR e a busca na biblioteca rodam na própria máquina. O texto das perguntas, das consultas e dos documentos não é enviado a nenhum serviço de IA externo.</li>
+      <li><strong>Ditado de voz:</strong> o áudio é gravado e enviado só ao seu próprio Qython, transcrito lá e apagado em seguida; não é guardado. No celular, ele cruza apenas a sua rede local, até o computador pareado.</li>
+      <li><strong>Celular:</strong> o app não tem servidor próprio; conversa com o Qython do seu computador, por HTTPS que só aceita o certificado daquele computador (fixado pela impressão digital lida no QR code). O cache para uso sem conexão fica no aparelho, cifrado com uma chave aleatória guardada no Android Keystore.</li>
+    </ul>
+
+    <h2>3. Quando o Qython fala com a internet</h2>
+    <ul>
+      <li><strong>Instalar e atualizar:</strong> o app baixa os modelos de IA do Hugging Face e do GitHub (conferidos por SHA-256), e verifica e baixa atualizações pelo GitHub. O GitHub e o Hugging Face enxergam o seu endereço IP e o que você baixa, como em qualquer download.</li>
+      <li><strong>Referências do copiloto (PubMed):</strong> para citar artigos, o copiloto consulta o PubMed (NCBI). Vão os <strong>termos da busca</strong>, derivados da sua pergunta, e não o prontuário; mesmo assim, não escreva nome nem documento de paciente em perguntas ao copiloto. Quem prefere cortar isso (por exemplo, em instalação sem internet) desliga com <code>COPILOT_PUBMED=0</code>.</li>
+      <li><strong>Google Drive (opcional):</strong> só se você conectar. O Qython pede acesso apenas aos arquivos que ele mesmo cria ou que você escolhe abrir (permissão <em>drive.file</em>), e você revoga quando quiser, no Qython ou na sua conta Google.</li>
+      <li><strong>Servidor exposto na internet (opcional):</strong> o administrador pode ligar verificação de segurança (Cloudflare Turnstile), SMS e login com Google (Firebase), e-mail (Resend) e a verificação profissional (Lastreo). Cada um só funciona se configurado e recebe apenas o que o recurso exige, sob os termos do próprio serviço. Na instalação padrão, nenhum deles está ligado.</li>
+      <li><strong>Reportar um problema:</strong> o botão abre o GitHub no navegador, e o relato fica <strong>público</strong>. Nunca escreva dados de paciente nele.</li>
+      <li><strong>Leitor de QR code do celular:</strong> usa o componente do Google Play Services; a imagem da câmera é processada no aparelho. O APK oficial do Qython não vem com o Firebase configurado: não envia notificações push nem usa login do Google.</li>
+    </ul>
+    <p>Fora esses casos, o Qython não envia dados para fora da sua máquina. Antes de ligar um recurso externo, avalie se o envio é compatível com as suas obrigações de sigilo e de proteção de dados.</p>
+
+    <h2>4. Este site</h2>
+    <p>O qython.ai é hospedado no GitHub Pages e é só texto: não usa cookies, scripts, fontes nem imagens de terceiros, e não faz análise de acessos. O GitHub, como hospedeiro, registra os acessos (como o endereço IP) conforme a política dele.</p>
+
+    <h2>5. Direitos dos titulares (LGPD, art. 18)</h2>
+    <p>Como o controlador dos dados de pacientes é o profissional ou a instituição que usa o Qython, o paciente que quiser acessar, corrigir, exportar ou apagar os seus dados deve pedir a quem o atende. Para isso o Qython oferece, em <em>Perfil → Configurações → Privacidade e dados</em>, a exportação dos dados em arquivo e a exclusão da conta. Cada instituição define como atende os pedidos dos pacientes.</p>
+
+    <h2>6. Segurança</h2>
+    <p>A segurança da instalação depende também de quem a opera: senha forte, cifra de disco, computador atualizado, backups (com as chaves de cifra) e acesso restrito. Se você achar uma vulnerabilidade, <strong>não abra uma issue pública</strong>: use o <a href="https://github.com/leonardomojoli/qython/security/advisories/new">relato privado do GitHub</a>.</p>
+
+    <h2>7. Mudanças nesta política</h2>
+    <p>Quando esta política mudar, a nova versão será publicada nesta página, com a data e o número da versão. O histórico completo fica no <a href="https://github.com/leonardomojoli/qython/commits/main/site/privacy-policy/index.html">repositório do projeto</a>.</p>
+
+    <h2>8. Contato</h2>
+    <p>Dúvidas e sugestões sobre esta política: <a href="https://github.com/leonardomojoli/qython/issues/new/choose">abra uma issue</a> (sem dados de pacientes).</p>
+
+    <p class="aviso">O Qython é software livre sob a licença AGPL-3.0 e uma ferramenta de apoio ao estudo e à documentação. Não é dispositivo médico e não substitui o julgamento clínico.</p>
+  </main>
+  <footer>
+    <a href="/">Início</a>
+    <a href="/terms-of-use/">Termo de uso</a>
+    <a href="https://github.com/leonardomojoli/qython/blob/main/LICENSE">Licença AGPL-3.0</a>
+  </footer>
+</body>
+</html>
