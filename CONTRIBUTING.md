@@ -27,6 +27,24 @@ testada entra rápido; mudança grande e sem conversa prévia não**. Por isso:
 5. O PR só é mesclado com os checks do CI verdes e depois de uma revisão. Revisão não é crítica à pessoa:
    é como o código melhora.
 
+## Como o projeto é conduzido
+
+O modelo é o do kernel do Linux, em escala pequena:
+
+- Existe **um mantenedor principal**, que decide o que entra. Cada área tem um responsável que revisa as
+  mudanças dela ([`MAINTAINERS.md`](MAINTAINERS.md)); com o tempo, o mantenedor principal confia mais nas
+  revisões deles e lê menos linhas.
+- **Tudo acontece em público**: discussão, revisão e decisão ficam nas issues e nos pull requests.
+- **A `main` está sempre funcionando.** Só entra mudança com os checks do CI verdes; se algo quebrar, o
+  conserto vem antes de qualquer novidade.
+- **Não se quebra quem já usa.** O que mais pesa aqui é o dado dos pacientes: mudança que mexe no banco
+  (migrations), nos backups, no pareamento ou nas chaves de criptografia precisa de teste, e nunca pode
+  deixar uma instalação existente sem conseguir abrir os seus dados.
+- As **versões** saem quando um conjunto de mudanças está pronto e testado, com notas do que mudou. Só a
+  versão mais recente recebe correções.
+- Todo commit leva `Signed-off-by` (`git commit -s`): é o [DCO](https://developercertificate.org/), e o CI
+  confere.
+
 ## Conteúdo clínico exige fonte
 
 Doses, interações, condutas, CID-10, tabelas e textos de orientação ao paciente são o que mais pesa num
