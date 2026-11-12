@@ -50,7 +50,6 @@ const Subprocessors = lazy(() => import('./components/legal/Subprocessors'));
 const PatientNotice = lazy(() => import('./components/legal/PatientNotice'));
 const Contact = lazy(() => import('./components/contact/Contact'));
 const Careers = lazy(() => import('./components/careers/Careers'));
-const BenchmarkPage = lazy(() => import('./components/benchmark/BenchmarkPage'));
 const TestDNALoading = lazy(() => import('./components/shared/TestDNALoading'));
 const QythonTour = lazy(() => import('./components/shared/QythonTour'));
 import { consultationTourSteps, handleConsultationStepChange, copilotTourSteps, academicTourSteps, profileTourSteps, handleProfileStepChange } from './components/shared/tourConfigs';
@@ -306,7 +305,6 @@ const AppLayoutAndRoutes = () => {
                 <Route path="/paciente" element={onlyIf(isHosted, <PatientNotice />, '/terms-of-use')} />
                 <Route path="/contact" element={onlyIf(isHosted, <Contact />, '/')} />
                 <Route path="/careers" element={onlyIf(isHosted, <Careers />, '/')} />
-                <Route path="/benchmark" element={onlyIf(isHosted, <BenchmarkPage />, '/')} />
 
                 {/* Admin Routes (lazy) */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

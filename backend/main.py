@@ -26,7 +26,7 @@ from .routes import (
     prescription_routes, document_routes, exam_routes, icd10_routes,
     profile_update_routes, orientation_routes,
     medication_routes, pharmacy_routes, public_routes, sync_routes,
-    notification_routes, verification_routes, connector_routes, ai_settings_routes, pairing_routes
+    notification_routes, verification_routes, connector_routes, ai_settings_routes, pairing_routes, dictation_routes
 )
 
 # =============================================================================
@@ -290,6 +290,7 @@ app.include_router(verification_routes.router, prefix="/api", tags=["Verificatio
 app.include_router(connector_routes.router, prefix="/api/connectors", tags=["Connectors"])
 app.include_router(ai_settings_routes.router, prefix="/api/admin/ai", tags=["AI settings"])
 app.include_router(pairing_routes.router, prefix="/api/pairing", tags=["Pairing"])
+app.include_router(dictation_routes.router, prefix="/api/dictation", tags=["Dictation"])
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

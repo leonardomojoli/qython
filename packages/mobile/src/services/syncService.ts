@@ -106,28 +106,51 @@ export async function syncInteractions(): Promise<SyncResult> {
   }
 }
 
+// Consultas por página, e até onde vale guardar no aparelho (as mais recentes). Antes só vinham as 50
+// últimas, o que deixava o histórico de quem atende há mais tempo cortado fora de linha.
+const CONSULTATIONS_PAGE = 100;
+const CONSULTATIONS_MAX = 2000;
+
 export async function syncUserData(): Promise<SyncResult> {
   try {
     const metadata = getMetadata();
-    const params: Record<string, string> = {};
-    if (metadata.lastUserDataSync) params.since = metadata.lastUserDataSync;
-
-    const response = await api.get('/sync/user-data', { params });
-    const { patients, consultations, server_timestamp } = response.data;
     const isFullSync = !metadata.lastUserDataSync;
 
+    const patients: Patient[] = [];
+    const consultations: Consultation[] = [];
+    // O marco da próxima diferença é o instante da PRIMEIRA página: o que for alterado enquanto as outras
+    // páginas descem entra na sincronização seguinte.
+    let serverTimestamp = '';
+
+    for (let offset = 0; offset < CONSULTATIONS_MAX; offset += CONSULTATIONS_PAGE) {
+      const params: Record<string, string | number> = { limit: CONSULTATIONS_PAGE, offset };
+      if (metadata.lastUserDataSync) params.since = metadata.lastUserDataSync;
+
+      const response = await api.get('/sync/user-data', { params });
+      const page = response.data;
+      if (offset === 0) serverTimestamp = page.server_timestamp;
+      patients.push(...(page.patients || []));
+      consultations.push(...(page.consultations || []));
+      if (!page.consultations_has_more) break;
+    }
+
     if (isFullSync) {
-      setObject(STORAGE_KEYS.PATIENTS, patients);
-      setObject(STORAGE_KEYS.CONSULTATIONS, consultations);
+      // Registros criados sem rede e ainda não enviados não existem no servidor: a descarga completa não
+      // pode apagá-los do aparelho.
+      setObject(STORAGE_KEYS.PATIENTS, [...localOnly<Patient>(STORAGE_KEYS.PATIENTS), ...patients]);
+      setObject(
+        STORAGE_KEYS.CONSULTATIONS,
+        newestFirst([...localOnly<Consultation>(STORAGE_KEYS.CONSULTATIONS), ...consultations]),
+      );
     } else {
       const existingPatients = getObject<Patient[]>(STORAGE_KEYS.PATIENTS) || [];
       const existingConsultations = getObject<Consultation[]>(STORAGE_KEYS.CONSULTATIONS) || [];
       setObject(STORAGE_KEYS.PATIENTS, mergeById(existingPatients, patients));
-      setObject(STORAGE_KEYS.CONSULTATIONS, mergeById(existingConsultations, consultations));
+      setObject(STORAGE_KEYS.CONSULTATIONS, newestFirst(mergeById(existingConsultations, consultations)));
     }
 
     updateMetadata({
-      lastUserDataSync: server_timestamp,
+      lastUserDataSync: serverTimestamp,
       patientsCount: (getObject<Patient[]>(STORAGE_KEYS.PATIENTS) || []).length,
       consultationsCount: (getObject<Consultation[]>(STORAGE_KEYS.CONSULTATIONS) || []).length,
     });
@@ -135,7 +158,7 @@ export async function syncUserData(): Promise<SyncResult> {
     return {
       success: true,
       recordsUpdated: patients.length + consultations.length,
-      serverTimestamp: server_timestamp,
+      serverTimestamp,
       isFullSync,
     };
   } catch (err: any) {
@@ -178,6 +201,16 @@ export async function syncAllIfStale(): Promise<void> {
 }
 
 export { getMetadata };
+
+// Mais recentes primeiro, como o servidor entrega (a fusão por diferença acrescentaria as novas no fim).
+function newestFirst<T extends { created_at?: string | null }>(items: T[]): T[] {
+  return [...items].sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
+}
+
+// Registros criados no aparelho e ainda não enviados (id provisório "temp_...").
+function localOnly<T extends { id: number }>(key: string): T[] {
+  return (getObject<T[]>(key) || []).filter((item) => typeof (item as { id: unknown }).id === 'string');
+}
 
 // Merge arrays by ID, updating existing records (upsert)
 function mergeById<T extends { id: number }>(existing: T[], incoming: T[]): T[] {
