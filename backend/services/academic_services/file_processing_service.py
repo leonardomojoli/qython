@@ -9,7 +9,7 @@ import logging # Adicionado logging
 from .transcription_service import transcribe_audio # Importar transcriber
 from ...config import Config # Importar Config
 from ..ocr_service import ocr_imagem  # OCR local (RapidOCR, PP-OCRv6 em ONNX)
-import fitz
+from .. import pdf_engine  # leitura de PDF (pypdfium2)
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def limpar_arquivos_locais(arquivos):
 def converter_para_imagem(file_path, output_dir):
     """
     Converte um arquivo PDF ou PPTX em imagens PNG usando a abordagem mais robusta.
-    - Para PDF: Usa PyMuPDF para renderização direta, sem dependências externas.
+    - Para PDF: renderiza direto pelo PDFium (pdf_engine), sem dependências externas.
     - Para PPTX: Mantém o uso de LibreOffice para converter para PDF primeiro.
     Retorna uma lista de caminhos completos das imagens geradas.
     """
@@ -65,17 +65,14 @@ def converter_para_imagem(file_path, output_dir):
         else:
             raise ValueError(f"Formato de arquivo não suportado para conversão em imagem: {ext}")
 
-        # Processamento do PDF usando PyMuPDF (muito mais robusto)
+        # Renderiza cada página como imagem. Aumentar o DPI melhora a qualidade do OCR.
         if pdf_to_process:
-            doc = fitz.open(pdf_to_process)
-            for i, page in enumerate(doc):
-                # Renderiza a página como uma imagem (pixmap)
-                # Aumentar o DPI melhora a qualidade do OCR
-                pix = page.get_pixmap(dpi=300) 
-                image_path = os.path.join(output_dir, f"{base_name}-page-{i}.png")
-                pix.save(image_path)
-                image_paths.append(image_path)
-            doc.close()
+            os.makedirs(output_dir, exist_ok=True)
+            with pdf_engine.PdfFile(pdf_to_process) as pdf:
+                for i in range(len(pdf)):
+                    image_path = os.path.join(output_dir, f"{base_name}-page-{i}.png")
+                    pdf.save_png(i, image_path, dpi=300)
+                    image_paths.append(image_path)
 
         # Se a origem era um PPTX, remove o PDF intermediário
         if ext == '.pptx' and pdf_to_process and os.path.exists(pdf_to_process):
@@ -97,18 +94,15 @@ def generate_thumbnail(pdf_path: str, document_id: int) -> str:
     Retorna o caminho relativo da thumbnail salva.
     """
     try:
-        doc = fitz.open(pdf_path)
-        page = doc.load_page(0)  # Carrega a primeira página
-        pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))  # Reduz a resolução para thumbnail
-        
         # Garante que o diretório de thumbnails exista
         os.makedirs(Config.THUMBNAIL_FOLDER, exist_ok=True)
-        
+
         thumbnail_filename = f"thumb_{document_id}_{os.path.basename(pdf_path)}.png"
         thumbnail_path = os.path.join(Config.THUMBNAIL_FOLDER, thumbnail_filename)
-        
-        pix.save(thumbnail_path)
-        doc.close()
+
+        # Primeira página, na metade da resolução base (72 dpi): miniatura.
+        with pdf_engine.PdfFile(pdf_path) as pdf:
+            pdf.save_png(0, thumbnail_path, scale=0.5)
         
         logger.info(f"Thumbnail gerada: {thumbnail_path}")
         # Retorna o caminho relativo para ser salvo no banco de dados e usado pelo frontend
@@ -154,16 +148,12 @@ def get_input_data(filepath, ext):
 
 def extract_text_direct(filepath: str) -> str:
     """
-    Extract text directly from PDF using PyMuPDF (no OCR, no temp files).
+    Extract text directly from PDF (no OCR, no temp files).
     Instant for digital PDFs. Returns empty string for scanned PDFs.
     """
     try:
-        doc = fitz.open(filepath)
-        text_parts = []
-        for page in doc:
-            text_parts.append(page.get_text())
-        doc.close()
-        return "\n".join(text_parts).strip()
+        with pdf_engine.PdfFile(filepath) as pdf:
+            return "\n".join(pdf.text(i) for i in range(len(pdf))).strip()
     except Exception as e:
         logger.error(f"Direct text extraction failed for {filepath}: {e}")
         return ""
@@ -173,7 +163,7 @@ def extract_pages_from_pdf(filepath: str, ocr_threshold: int = 100):
     """
     Extrai texto PÁGINA A PÁGINA de um PDF. Retorna [(page_number, text), ...].
 
-    Para cada página tenta o texto nativo (PyMuPDF, instantâneo). Se a página tiver menos
+    Para cada página tenta o texto nativo (instantâneo). Se a página tiver menos
     que `ocr_threshold` chars (página escaneada/imagem), faz OCR só daquela página — então
     PDF MISTO (digital + escaneado) é tratado corretamente, ao contrário do antigo limiar
     global tudo-ou-nada. O número de página vai pra metadata do chunk (habilita citação).
@@ -181,25 +171,23 @@ def extract_pages_from_pdf(filepath: str, ocr_threshold: int = 100):
     pages = []
     tmp_imgs = []
     try:
-        doc = fitz.open(filepath)
-        for i, page in enumerate(doc):
-            text = (page.get_text() or "").strip()
-            if len(text) < ocr_threshold:
-                try:
-                    pix = page.get_pixmap(dpi=300)  # DPI alto melhora o OCR
-                    os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-                    img_path = os.path.join(
-                        Config.UPLOAD_FOLDER, f"_ocr_{os.getpid()}_p{i}.png"
-                    )
-                    pix.save(img_path)
-                    tmp_imgs.append(img_path)
-                    ocr_text = ocr_imagem(img_path).strip()
-                    if len(ocr_text) > len(text):
-                        text = ocr_text
-                except Exception as e_ocr:
-                    logger.warning(f"OCR da página {i + 1} de {filepath} falhou: {e_ocr}")
-            pages.append((i + 1, text))
-        doc.close()
+        with pdf_engine.PdfFile(filepath) as pdf:
+            for i in range(len(pdf)):
+                text = pdf.text(i).strip()
+                if len(text) < ocr_threshold:
+                    try:
+                        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+                        img_path = os.path.join(
+                            Config.UPLOAD_FOLDER, f"_ocr_{os.getpid()}_p{i}.png"
+                        )
+                        pdf.save_png(i, img_path, dpi=300)  # DPI alto melhora o OCR
+                        tmp_imgs.append(img_path)
+                        ocr_text = ocr_imagem(img_path).strip()
+                        if len(ocr_text) > len(text):
+                            text = ocr_text
+                    except Exception as e_ocr:
+                        logger.warning(f"OCR da página {i + 1} de {filepath} falhou: {e_ocr}")
+                pages.append((i + 1, text))
         return pages
     except Exception as e:
         logger.error(f"Falha na extração por página de {filepath}: {e}", exc_info=True)
@@ -212,7 +200,7 @@ def extract_pages_from_pdf(filepath: str, ocr_threshold: int = 100):
 def extract_pages_from_pptx(filepath: str):
     """
     Extrai texto por SLIDE de um PPTX (cada slide vira uma 'página'). Converte para imagens
-    (LibreOffice→PDF→PyMuPDF) e aplica OCR em cada slide. Retorna [(slide_number, text), ...].
+    (LibreOffice→PDF→imagem) e aplica OCR em cada slide. Retorna [(slide_number, text), ...].
     """
     image_paths = []
     try:
@@ -311,7 +299,7 @@ def _is_likely_medical_image(image_bytes: bytes, width: int, height: int) -> boo
 
 def extract_images_from_pdf(pdf_path: str, document_id: int, library_id: int, output_dir: str) -> list:
     """
-    Extract embedded images from a PDF using PyMuPDF.
+    Extract embedded images from a PDF.
     Filters out small images AND non-medical content (solid fills, gradients,
     backgrounds, page captures) using heuristic analysis.
     Returns list of dicts with image metadata for DB insertion.
@@ -324,74 +312,57 @@ def extract_images_from_pdf(pdf_path: str, document_id: int, library_id: int, ou
     skipped_heuristic = 0
     os.makedirs(output_dir, exist_ok=True)
 
+    def _big_enough(width, height):
+        # Filter 1: dimension/area check (antes de decodificar a imagem)
+        return (width >= Config.MIN_IMAGE_DIMENSION and height >= Config.MIN_IMAGE_DIMENSION
+                and width * height >= Config.MIN_IMAGE_AREA)
+
     try:
-        doc = fitz.open(pdf_path)
         image_count = 0
 
-        for page_num in range(len(doc)):
-            if image_count >= Config.MAX_IMAGES_PER_DOCUMENT:
-                logger.info(f"[IMAGES] Document {document_id}: reached max images limit ({Config.MAX_IMAGES_PER_DOCUMENT})")
-                break
-
-            page = doc[page_num]
-            image_list = page.get_images(full=True)
-
-            for img_index, img_info in enumerate(image_list):
+        with pdf_engine.PdfFile(pdf_path) as pdf:
+            for page_num in range(len(pdf)):
                 if image_count >= Config.MAX_IMAGES_PER_DOCUMENT:
+                    logger.info(f"[IMAGES] Document {document_id}: reached max images limit ({Config.MAX_IMAGES_PER_DOCUMENT})")
                     break
 
-                xref = img_info[0]
-                try:
-                    extracted = doc.extract_image(xref)
-                    if not extracted:
+                for img_index, extracted in enumerate(pdf.images(page_num, accept=_big_enough)):
+                    if image_count >= Config.MAX_IMAGES_PER_DOCUMENT:
+                        break
+
+                    try:
+                        width, height = extracted.width, extracted.height
+                        image_bytes = extracted.data
+
+                        # Filter 2: heuristic — reject solid fills, gradients, blank pages
+                        if not _is_likely_medical_image(image_bytes, width, height):
+                            skipped_heuristic += 1
+                            continue
+
+                        # Generate unique filename
+                        short_uuid = _uuid.uuid4().hex[:8]
+                        filename = f"{document_id}_p{page_num}_i{img_index}_{short_uuid}.{extracted.ext}"
+                        filepath = os.path.join(output_dir, filename)
+
+                        with open(filepath, "wb") as f:
+                            f.write(image_bytes)
+
+                        results.append({
+                            "document_id": document_id,
+                            "library_id": library_id,
+                            "image_filename": filename,
+                            "page_number": page_num,
+                            "image_index": img_index,
+                            "width": width,
+                            "height": height,
+                            "file_size_bytes": len(image_bytes),
+                        })
+                        image_count += 1
+
+                    except Exception as e:
+                        logger.warning(f"[IMAGES] Failed to save image {img_index} from page {page_num} of doc {document_id}: {e}")
                         continue
 
-                    width = extracted.get("width", 0)
-                    height = extracted.get("height", 0)
-                    image_bytes = extracted.get("image")
-                    ext_type = extracted.get("ext", "png")
-
-                    if not image_bytes:
-                        continue
-
-                    # Filter 1: dimension/area check
-                    if width < Config.MIN_IMAGE_DIMENSION or height < Config.MIN_IMAGE_DIMENSION:
-                        continue
-                    if width * height < Config.MIN_IMAGE_AREA:
-                        continue
-
-                    # Filter 2: heuristic — reject solid fills, gradients, blank pages
-                    if not _is_likely_medical_image(image_bytes, width, height):
-                        skipped_heuristic += 1
-                        continue
-
-                    # Generate unique filename
-                    short_uuid = _uuid.uuid4().hex[:8]
-                    filename = f"{document_id}_p{page_num}_i{img_index}_{short_uuid}.{ext_type}"
-                    filepath = os.path.join(output_dir, filename)
-
-                    with open(filepath, "wb") as f:
-                        f.write(image_bytes)
-
-                    file_size = len(image_bytes)
-
-                    results.append({
-                        "document_id": document_id,
-                        "library_id": library_id,
-                        "image_filename": filename,
-                        "page_number": page_num,
-                        "image_index": img_index,
-                        "width": width,
-                        "height": height,
-                        "file_size_bytes": file_size,
-                    })
-                    image_count += 1
-
-                except Exception as e:
-                    logger.warning(f"[IMAGES] Failed to extract image xref={xref} from page {page_num} of doc {document_id}: {e}")
-                    continue
-
-        doc.close()
         logger.info(f"[IMAGES] Document {document_id}: extracted {len(results)} images, skipped {skipped_heuristic} by heuristic filter")
 
     except Exception as e:
@@ -404,13 +375,9 @@ def get_input_data_from_bytes(content_bytes: bytes, ext: str) -> str:
     """Extract text content from file bytes. Used by copilot for inline document analysis."""
     try:
         if ext == 'pdf':
-            # Extract text directly from PDF bytes using PyMuPDF
-            doc = fitz.open(stream=content_bytes, filetype="pdf")
-            text_parts = []
-            for page in doc:
-                text_parts.append(page.get_text())
-            doc.close()
-            text = "\n".join(text_parts).strip()
+            # Extract text directly from PDF bytes
+            with pdf_engine.PdfFile(content_bytes) as pdf:
+                text = "\n".join(pdf.text(i) for i in range(len(pdf))).strip()
             # If PDF has extractable text, return it
             if len(text) > 50:
                 return text
