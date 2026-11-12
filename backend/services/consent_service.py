@@ -255,17 +255,6 @@ async def revoke(
     active.revoked_at = datetime.now(timezone.utc)
     await db.flush()
 
-    # If revoking an ML scope, mark related training_data for exclusion
-    if consent_type.value.startswith("ml_"):
-        await db.execute(
-            update(models.TrainingData)
-            .where(
-                models.TrainingData.user_id == user_id,
-                models.TrainingData.consent_id == active.id,
-            )
-            .values(excluded_due_to_revocation=True)
-        )
-
     await audit_service.log_consent_revoke(
         db, user_id=user_id, consent_type=consent_type.value, request=request,
     )

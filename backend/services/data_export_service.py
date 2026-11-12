@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import Request
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models
@@ -41,10 +41,8 @@ logger = logging.getLogger(__name__)
 EXPORTABLE_RELATIONS = [
     ('consultations', 'Consultation'),
     ('patients', 'Patient'),
-    ('transactions', 'Transaction'),
     ('avatar_history', 'AvatarHistory'),
     ('anamnesis_templates', 'UserAnamnesisTemplate'),
-    ('feedback', 'Feedback'),
     ('chat_sessions', 'ChatSession'),
     ('academic_libraries', 'AcademicLibrary'),
     ('academic_materials', 'AcademicMaterial'),
@@ -232,9 +230,6 @@ async def purge_user_data(db: AsyncSession, user_id: int) -> dict:
     relationships). Returns counts per relation for audit purposes.
 
     Should be called AFTER soft_delete_user, ideally from a background job.
-    Training data: rows are NOT deleted but `excluded_due_to_revocation` is
-    set so they're omitted from future exports. Anonymized entries (without
-    user_id linkage) are retained — they're out of LGPD scope per Art. 12.
     """
     user = await db.get(models.User, user_id)
     if user is None:
@@ -242,15 +237,7 @@ async def purge_user_data(db: AsyncSession, user_id: int) -> dict:
 
     counts = {}
 
-    # 1. Exclude (don't delete) training data — keeps history for ANPD audit
-    res = await db.execute(
-        update(models.TrainingData)
-        .where(models.TrainingData.user_id == user_id)
-        .values(excluded_due_to_revocation=True, user_id=None)
-    )
-    counts['training_data_excluded'] = res.rowcount or 0
-
-    # 2. Hard-delete the user — SQLAlchemy cascade handles related rows
+    # Hard-delete the user — SQLAlchemy cascade handles related rows
     # (patients, consultations, chat_sessions, etc.) per the relationship
     # `cascade="all, delete-orphan"` definitions.
     await db.execute(delete(models.User).where(models.User.id == user_id))
