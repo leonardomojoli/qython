@@ -26,6 +26,6 @@ body:
   - type: checkboxes
     id: contribuir
     attributes:
-      label: Contribuição
+      label: Teste
       options:
-        - label: Posso ajudar a implementar ou a testar.
+        - label: Posso testar a mudança quando ela sair.
