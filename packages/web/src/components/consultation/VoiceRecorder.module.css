@@ -32,10 +32,11 @@
     cursor: not-allowed;
 }
 
-.voiceButton.listening {
-    border-color: var(--notification-error-bg);
-    color: var(--notification-error-bg);
-    background: rgba(239, 68, 68, 0.1);
+.voiceButton.listening,
+.voiceButton.listening:hover:not(:disabled) {
+    border-color: var(--notification-error-text);
+    color: var(--notification-error-text);
+    background: var(--notification-error-bg);
     animation: pulse 1.5s infinite;
 }
 
@@ -67,7 +68,7 @@
     }
 }
 
-.interimDisplay {
+.statusDisplay {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -79,24 +80,27 @@
     overflow: hidden;
 }
 
-.spinnerIcon {
-    color: var(--accent-color);
-    font-size: 0.9rem;
-    flex-shrink: 0;
-}
-
-.interimText {
+.statusText {
     font-size: 0.85rem;
     color: var(--text-color-secondary);
-    font-style: italic;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+.errorDisplay {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--notification-error-text);
+    background: var(--notification-error-bg);
+    color: var(--notification-error-text);
+    font-size: 0.85rem;
+    max-width: 360px;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .interimDisplay {
+    .statusDisplay,
+    .errorDisplay {
         max-width: 200px;
     }
 }
