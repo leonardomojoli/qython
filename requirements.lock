@@ -230,8 +230,6 @@ multidict==7.2.0
     # via
     #   aiohttp
     #   yarl
-networkx==3.7
-    # via pymupdf
 numpy==2.4.6
     # via
     #   -r requirements.txt
@@ -239,7 +237,6 @@ numpy==2.4.6
     #   ctranslate2
     #   onnxruntime
     #   opencv-python-headless
-    #   pymupdf
     #   rank-bm25
     #   rapidocr
     #   shapely
@@ -252,7 +249,6 @@ onnxruntime==1.31.0
     #   -r requirements.txt
     #   chromadb
     #   faster-whisper
-    #   pymupdf
 openai==3.37.0
     # via -r requirements.txt
 opencv-python-headless==5.0.0.93
@@ -318,9 +314,7 @@ protobuf==7.36.2
     #   opentelemetry-proto
     #   proto-plus
 psutil==7.2.2
-    # via
-    #   -r requirements.txt
-    #   pymupdf
+    # via -r requirements.txt
 psycopg==3.3.6
     # via -r requirements.txt
 psycopg-binary==3.3.6
@@ -355,14 +349,10 @@ pygments==2.21.0
     # via rich
 pyjwt==2.15.1
     # via -r requirements.txt
-pymupdf==2.0
-    # via -r requirements.txt
-pymupdf-layout==2.0
-    # via pymupdf
-pymupdf4llm==2.0
-    # via pymupdf
 pyparsing==3.3.3
     # via httplib2
+pypdfium2==5.15.2
+    # via -r requirements.txt
 pyphen==0.18.1
     # via weasyprint
 pypika==0.51.1
@@ -390,7 +380,6 @@ pyyaml==6.0.3
     #   kubernetes
     #   langchain-core
     #   omegaconf
-    #   pymupdf
     #   rapidocr
     #   uvicorn
 qrcode==8.2
@@ -456,8 +445,6 @@ starlette==1.10.0
     # via
     #   -r requirements.txt
     #   fastapi
-tabulate==0.10.0
-    # via pymupdf
 tenacity==9.1.4
     # via
     #   chromadb
