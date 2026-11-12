@@ -5,7 +5,7 @@
 # que esconder, e a pasta solta deixa o antivírus e o diagnóstico mais simples.
 appId: br.com.qython.desktop
 productName: Qython
-copyright: Olympos Group SAS. Software livre (AGPL-3.0-only).
+copyright: Leonardo de Abreu. Software livre (AGPL-3.0-only).
 asar: false
 artifactName: Qython-${version}-${os}-${arch}.${ext}
 

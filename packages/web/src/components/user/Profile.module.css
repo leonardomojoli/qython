@@ -1483,3 +1483,22 @@ html[data-theme='light'] .toggleLabel {
 html[data-theme='light'] .toggleStatus {
   color: rgba(0, 0, 0, 0.45);
 }
+
+/* Blocos de texto informativo (Ajuda e Sobre): usam as cores do tema. sectionHeader/sectionDescription são
+   de tema escuro (cinza claro e branco 50%) e somem num cartão branco. */
+.infoHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--text-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.infoDescription {
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
