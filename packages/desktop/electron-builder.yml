@@ -72,6 +72,9 @@ mac:
   identity: null                 # sem assinatura (não há conta Apple); ver o README
   hardenedRuntime: false
   gatekeeperAssess: false
+  extendInfo:
+    # O ditado grava pelo microfone da janela. Sem esta chave o macOS recusa o acesso (ou derruba o app).
+    NSMicrophoneUsageDescription: O Qython usa o microfone para o ditado. A voz é transcrita no seu computador e não é enviada para a internet.
 
 publish:
   provider: github
