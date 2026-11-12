@@ -228,6 +228,10 @@ jobs:
           # revogação, contra o backend da imagem (a dona do CI já existe).
           python3 tests/backend/test_pairing_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
 
+          # Sincronização do celular: consultas em páginas, pacientes só na primeira, e a diferença (`since`)
+          # entrega também o que acabou de ser criado.
+          python3 tests/backend/test_sync_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
+
       - name: Logs em caso de falha
         if: failure()
         run: docker compose logs --tail=150 || true
