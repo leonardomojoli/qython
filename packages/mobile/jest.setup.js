@@ -100,18 +100,6 @@ jest.mock('react-native-linear-gradient', () => {
   return { __esModule: true, default: View };
 });
 
-jest.mock('@react-native-voice/voice', () => ({
-  __esModule: true,
-  default: {
-    start: jest.fn(async () => {}),
-    stop: jest.fn(async () => {}),
-    cancel: jest.fn(async () => {}),
-    destroy: jest.fn(async () => {}),
-    removeAllListeners: jest.fn(),
-    isAvailable: jest.fn(async () => false),
-  },
-}));
-
 jest.mock('react-native-blob-util', () => ({
   __esModule: true,
   default: {
