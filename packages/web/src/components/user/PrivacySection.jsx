@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -6,22 +6,14 @@ import {
   faDownload,
   faTrash,
   faSpinner,
-  faCheck,
   faExclamationTriangle,
-  faCopy,
-  faPrint,
-  faQrcode,
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   exportMyData,
   deleteMyAccount,
 } from '../../api';
 import styles from './PrivacySection.module.css';
-import { usePublicConfig } from '../../contexts/PublicConfigContext';
-
-const PATIENT_NOTICE_URL = 'https://qython.ai/paciente';
 
 /**
  * Privacy settings panel (LGPD Direitos do Titular).
@@ -36,51 +28,10 @@ const PATIENT_NOTICE_URL = 'https://qython.ai/paciente';
 const PrivacySection = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // Consentimentos de treino, aviso ao paciente e páginas do encarregado descrevem o
-  // SaaS, em que a empresa tratava os dados. Na instalação local nada disso existe:
-  // ficam só exportar e excluir, que são direitos do titular em qualquer edição.
-  const { config } = usePublicConfig();
-  const isHosted = config?.edition === 'hosted';
-
+  // Só exportar e excluir: são direitos do titular (LGPD) e valem em qualquer instalação.
   const [exporting, setExporting] = useState(false);
   const [deletingStage, setDeletingStage] = useState(null); // null | 'confirm' | 'final' | 'deleting'
   const [deleteError, setDeleteError] = useState(null);
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  const handleCopyPatientLink = async () => {
-    try {
-      await navigator.clipboard.writeText(PATIENT_NOTICE_URL);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.error('Erro ao copiar link:', err);
-    }
-  };
-
-  const handlePrintQR = () => {
-    const svg = document.getElementById('patient-notice-qr');
-    if (!svg) return;
-    const svgHtml = new XMLSerializer().serializeToString(svg);
-    const win = window.open('', '_blank', 'width=420,height=520');
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Qython — Aviso ao Paciente</title>
-      <style>
-        body { font-family: system-ui, sans-serif; text-align: center; padding: 32px; }
-        h1 { font-size: 18px; margin-bottom: 4px; }
-        p { color: #555; font-size: 13px; margin-top: 4px; }
-        .url { margin-top: 16px; font-size: 13px; color: #333; word-break: break-all; }
-      </style></head>
-      <body>
-        <h1>Transparência ao paciente</h1>
-        <p>Aponte a câmera para saber como seus dados são protegidos no Qython</p>
-        <div>${svgHtml}</div>
-        <div class="url">${PATIENT_NOTICE_URL}</div>
-        <script>window.onload = () => { window.print(); }</script>
-      </body></html>
-    `);
-    win.document.close();
-  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -221,56 +172,6 @@ const PrivacySection = () => {
           </div>
         )}
       </div>
-
-      {/* Patient transparency — shareable QR + link */}
-      {isHosted && (
-      <div className={styles.consentBlock}>
-        <h5 className={styles.subheader}>
-          <FontAwesomeIcon icon={faQrcode} /> Transparência ao paciente
-        </h5>
-        <p className={styles.blockDescription}>
-          Compartilhe com seus pacientes como os dados deles são tratados e
-          protegidos. Imprima o QR code e cole na sala de espera, ou envie o
-          link diretamente.
-        </p>
-        <div className={styles.patientShare}>
-          <div className={styles.qrBox}>
-            <QRCodeSVG
-              id="patient-notice-qr"
-              value={PATIENT_NOTICE_URL}
-              size={140}
-              level="M"
-              marginSize={2}
-            />
-          </div>
-          <div className={styles.patientShareActions}>
-            <div className={styles.linkRow}>
-              <code className={styles.linkText}>{PATIENT_NOTICE_URL}</code>
-              <button className={styles.iconButton} onClick={handleCopyPatientLink}>
-                <FontAwesomeIcon icon={linkCopied ? faCheck : faCopy} />
-                {linkCopied ? ' Copiado' : ' Copiar'}
-              </button>
-            </div>
-            <button className={styles.actionButton} onClick={handlePrintQR}>
-              <FontAwesomeIcon icon={faPrint} /> Imprimir QR code
-            </button>
-            <a className={styles.plainLink} href={PATIENT_NOTICE_URL}
-               target="_blank" rel="noopener noreferrer">
-              Abrir a página do paciente
-            </a>
-          </div>
-        </div>
-      </div>
-
-      )}
-
-      {isHosted && (
-        <p className={styles.footnote}>
-          Dúvidas? Contate o <a href="/encarregado">Encarregado pelo Tratamento de Dados</a>.
-          <br />
-          Mais informações: <a href="/paciente">Para o paciente</a> · <a href="/subprocessors">Sub-operadores</a>
-        </p>
-      )}
     </div>
   );
 };
