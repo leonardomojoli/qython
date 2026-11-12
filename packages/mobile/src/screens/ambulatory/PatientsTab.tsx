@@ -20,7 +20,7 @@ import PatientCard from '../../components/ambulatory/PatientCard';
 import PatientFormModal from '../../components/ambulatory/PatientFormModal';
 import PatientDetailModal from '../../components/ambulatory/PatientDetailModal';
 import { useNetwork } from '../../contexts/NetworkContext';
-import { searchPatientsOffline } from '../../services/offlineSearchService';
+import { searchPatientsOffline, unsentPatients } from '../../services/offlineSearchService';
 import { createPatientOfflineAware, type LocalPatient } from '../../services/offlineMutations';
 import type { Patient } from '../../types/ambulatory';
 
@@ -45,7 +45,8 @@ export default function PatientsTab() {
         setPatients(data);
       } else {
         const data = await getPatients(query || undefined);
-        setPatients(data);
+        // Cadastros feitos sem rede e ainda na fila de envio não estão no servidor: continuam na lista.
+        setPatients([...unsentPatients(query), ...data]);
       }
     } catch {
       // Try offline as fallback

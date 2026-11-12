@@ -1,7 +1,6 @@
 import api from './api';
-import { useNetwork } from '../contexts/NetworkContext';
 import { setObject, getObject, STORAGE_KEYS } from './storage';
-import { enqueue } from './offlineQueue';
+import { enqueue, enqueueOrReplace, isTempId, mergeIntoQueuedCreate } from './offlineQueue';
 import type { Patient, Consultation, CreatePatientPayload, CreateConsultationPayload } from '../types/ambulatory';
 
 // Extended types for local records
@@ -13,8 +12,23 @@ export interface LocalConsultation extends Consultation {
   _isLocal?: boolean;
 }
 
+let tempCounter = 0;
+
+// Único mesmo para dois registros criados no mesmo milissegundo (o contador) e entre execuções do app (o
+// instante e o sufixo aleatório).
 function generateTempId(): string {
-  return `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  tempCounter += 1;
+  return `temp_${Date.now().toString(36)}_${tempCounter.toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/**
+ * Só vale guardar para enviar depois quando o servidor não foi alcançado (sem resposta) ou está
+ * indisponível (502/503/504). Se ele respondeu e recusou (dados inválidos, sem permissão), guardar só
+ * esconderia o erro: o registro apareceria como salvo e a fila falharia depois, sem o usuário ver.
+ */
+function shouldQueue(err: any): boolean {
+  const status = err?.response?.status;
+  return !err?.response || status === 502 || status === 503 || status === 504;
 }
 
 export async function createPatientOfflineAware(
@@ -30,8 +44,9 @@ export async function createPatientOfflineAware(
       cached.unshift(patient);
       setObject(STORAGE_KEYS.PATIENTS, cached);
       return patient;
-    } catch {
-      // Fall through to offline mode
+    } catch (err) {
+      if (!shouldQueue(err)) throw err;
+      // Servidor fora de alcance: guarda no aparelho e envia depois.
     }
   }
 
@@ -90,8 +105,9 @@ export async function updatePatientOfflineAware(
       if (idx >= 0) cached[idx] = patient;
       setObject(STORAGE_KEYS.PATIENTS, cached);
       return patient;
-    } catch {
-      // Fall through to offline
+    } catch (err) {
+      if (!shouldQueue(err)) throw err;
+      // Servidor fora de alcance: vale só no aparelho por enquanto.
     }
   }
 
@@ -103,8 +119,12 @@ export async function updatePatientOfflineAware(
     setObject(STORAGE_KEYS.PATIENTS, cached);
   }
 
-  if (typeof id === 'number') {
-    enqueue({
+  if (isTempId(id)) {
+    // Paciente criado offline que ainda não foi enviado: a edição entra no próprio cadastro que está na fila.
+    mergeIntoQueuedCreate(id, data as unknown as Record<string, unknown>);
+  } else if (typeof id === 'number') {
+    // Várias edições seguidas do mesmo paciente viram uma só (vale a última).
+    enqueueOrReplace({
       type: 'UPDATE_PATIENT',
       endpoint: `/patients/${id}`,
       method: 'PUT',
@@ -128,19 +148,23 @@ export async function createConsultationOfflineAware(
       cached.unshift(consultation);
       setObject(STORAGE_KEYS.CONSULTATIONS, cached);
       return consultation;
-    } catch {
-      // Fall through to offline
+    } catch (err) {
+      if (!shouldQueue(err)) throw err;
+      // Servidor fora de alcance: guarda no aparelho e envia depois.
     }
   }
 
   // Offline: create local record
   const tempId = generateTempId();
   const patientId = data.patient_id;
+  const cachedPatients = getObject<LocalPatient[]>(STORAGE_KEYS.PATIENTS) || [];
+  const patientRecord = patientId != null ? cachedPatients.find((p) => String(p.id) === String(patientId)) : undefined;
   const localConsultation: LocalConsultation = {
     id: tempId as any,
     user_id: 0,
-    patient_id: typeof patientId === 'number' ? patientId : null,
-    patient_name: null,
+    // Paciente criado offline: guarda o id provisório; vira o real quando o cadastro for enviado.
+    patient_id: patientId != null ? (patientId as any) : null,
+    patient_name: patientRecord?.full_name ?? null,
     specialty: data.specialty,
     is_first_consultation: data.is_first_consultation,
     raw_notes: data.rawNotes,
@@ -174,9 +198,7 @@ export async function createConsultationOfflineAware(
     method: 'POST',
     payload: queuePayload,
     tempId,
-    dependsOnTempId: typeof patientId === 'string' && patientId.startsWith('temp_')
-      ? patientId
-      : undefined,
+    dependsOnTempId: isTempId(patientId) ? patientId : undefined,
   });
 
   return localConsultation;
