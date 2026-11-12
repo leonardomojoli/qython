@@ -86,3 +86,11 @@ installations, and use by system developers "desde que sejam dados os devidos
 créditos e não seja cobrado pelo seu uso"; the files may not be sold. Qython is
 distributed at no charge and gives this credit here. Whoever sells a copy of
 Qython, or charges for its use, must first remove or replace this file.
+
+Additional terms (AGPL-3.0, section 7)
+
+Beginning with the release that includes the file TERMOS-ADICIONAIS.md, the
+copyright holder adds to material of their authorship the terms stated there
+(preservation of notices and attribution, origin of modified versions, and no
+grant of rights over the name and logos; see also TRADEMARKS.md). Earlier
+releases are not affected by those terms.
