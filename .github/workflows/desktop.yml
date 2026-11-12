@@ -48,6 +48,7 @@ on:
       - "scripts/fetch_models.py"
       - "tests/backend/test_lan_cert.py"
       - "tests/backend/test_dictation.py"
+      - "tests/backend/test_pdf_engine.py"
       - "backend/routes/pairing_routes.py"
       - "package-lock.json"
       - ".github/workflows/desktop.yml"
@@ -134,6 +135,7 @@ jobs:
           python tests/backend/test_vector_search.py
           python tests/backend/test_lan_cert.py
           python tests/backend/test_dictation.py
+          python tests/backend/test_pdf_engine.py
 
       - name: Front do desktop (sem service worker, fontes locais)
         run: |

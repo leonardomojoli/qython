@@ -26,7 +26,7 @@ def _prepare_pdf_libs():
 
 if __name__ == "__main__":
     # Necessário no Windows quando o app congelado usa multiprocessing (o chromadb e o
-    # PyMuPDF podem criar processos filhos): sem isto cada filho reabriria o servidor.
+    # PDF e OCR podem criar processos filhos): sem isto cada filho reabriria o servidor.
     multiprocessing.freeze_support()
     _prepare_pdf_libs()
     from backend.desktop import main

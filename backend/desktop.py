@@ -265,10 +265,11 @@ def selftest(_args: argparse.Namespace) -> int:
         if not pdf.startswith(b"%PDF"):
             raise RuntimeError(f"o PDF gerado não é válido ({len(pdf)} bytes)")
         # Sem fonte (fontconfig sem configuração) o PDF sai em branco: confere que o texto está lá.
-        import fitz
+        from backend.services import pdf_engine
 
-        with fitz.open(stream=pdf, filetype="pdf") as doc:
-            text = doc[0].get_text()
+        with pdf_engine.PdfFile(pdf) as doc:
+            text = doc.text(0)
+            doc.render(0, scale=0.5)  # a página também precisa virar imagem (OCR, miniatura)
         print("[selftest] pdf: texto lido", file=sys.stderr, flush=True)
         if "Receita" not in text or "ação" not in text:
             raise RuntimeError(f"o PDF saiu sem o texto esperado (fontes?): {text!r}")
@@ -304,10 +305,12 @@ def selftest(_args: argparse.Namespace) -> int:
             raise RuntimeError(f"certificado inesperado: {made['fingerprint']!r}")
         return f"ok (impressão digital {made['fingerprint'][:12]}…)"
 
-    def import_fitz():
-        import fitz
+    def import_pdfium():
+        # O PDFium é uma biblioteca nativa dentro da roda do pypdfium2: o PyInstaller só a leva se
+        # o pacote for coletado inteiro (ver qython-backend.spec).
+        import pypdfium2
 
-        return fitz.__doc__.split("\n")[0]
+        return f"pypdfium2 {pypdfium2.version.PYPDFIUM_INFO}"
 
     def alembic_scripts():
         from backend.bootstrap_db import _alembic_config
@@ -332,7 +335,7 @@ def selftest(_args: argparse.Namespace) -> int:
     check("onnx", onnx_runtime)
     check("whisper", whisper_runtime)
     check("chromadb", import_chroma)
-    check("fitz", import_fitz)
+    check("pdfium", import_pdfium)
     check("lan_cert", lan_certificate)
     check("ocr", ocr_runtime)
     check("pdf", import_pdf)
