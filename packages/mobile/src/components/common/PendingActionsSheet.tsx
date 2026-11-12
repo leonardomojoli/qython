@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
-import { getAll, removeById, processQueue } from '../../services/offlineQueue';
+import { getAll, isFailed, removeById, processQueue } from '../../services/offlineQueue';
 import { useNetwork } from '../../contexts/NetworkContext';
 import type { QueuedOperation } from '../../types/offline';
 
@@ -49,7 +49,8 @@ export default function PendingActionsSheet({ visible, onClose, onSyncComplete }
 
   const handleSync = async () => {
     setSyncing(true);
-    await processQueue();
+    // O botão é um pedido explícito: o que falhou antes tem direito a outra rodada.
+    await processQueue({ retryFailed: true });
     setSyncing(false);
     setOperations(getAll());
     onSyncComplete?.();
@@ -57,7 +58,7 @@ export default function PendingActionsSheet({ visible, onClose, onSyncComplete }
 
   const renderItem = ({ item }: { item: QueuedOperation }) => {
     const typeKey = TYPE_LABELS[item.type] || item.type;
-    const hasError = item.retryCount >= item.maxRetries;
+    const hasError = isFailed(item);
 
     return (
       <View style={[styles.item, { borderColor: theme.surfaceBorder }]}>
@@ -68,8 +69,8 @@ export default function PendingActionsSheet({ visible, onClose, onSyncComplete }
           <Text style={[styles.itemTime, { color: theme.textMuted }]}>
             {new Date(item.createdAt).toLocaleString()}
           </Text>
-          {hasError && (
-            <Text style={[styles.itemError, { color: theme.error }]}>
+          {(hasError || !!item.error) && (
+            <Text style={[styles.itemError, { color: hasError ? theme.error : theme.textMuted }]}>
               {item.error || t('offlineSyncFailed', 'Falha ao sincronizar')}
             </Text>
           )}

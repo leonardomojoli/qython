@@ -90,6 +90,11 @@ export function searchPatientsOffline(query?: string): Patient[] {
   );
 }
 
+/** Pacientes criados sem rede e ainda não enviados ao servidor (id provisório), que casam com a busca. */
+export function unsentPatients(query?: string): Patient[] {
+  return searchPatientsOffline(query).filter((p) => typeof (p as { id: unknown }).id === 'string');
+}
+
 export function getConsultationsOffline(): Consultation[] {
   return getObject<Consultation[]>(STORAGE_KEYS.CONSULTATIONS) || [];
 }

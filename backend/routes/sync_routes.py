@@ -5,7 +5,7 @@ Provides delta-sync for medications, drug interactions, and user data.
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 from typing import Optional
@@ -98,53 +98,63 @@ async def sync_interactions(
     }
 
 
+# O celular guarda as consultas para consultar sem rede. Antes só vinham as 50 mais recentes; agora vêm
+# em páginas, e o celular continua pedindo enquanto `consultations_has_more` for verdadeiro.
+CONSULTATIONS_DEFAULT_LIMIT = 50  # sem `limit`, igual ao comportamento antigo (celulares já instalados)
+CONSULTATIONS_MAX_LIMIT = 200
+
+
 @router.get("/user-data")
 async def sync_user_data(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_active_user),
     since: Optional[str] = Query(None, description="ISO timestamp for delta sync"),
+    limit: int = Query(CONSULTATIONS_DEFAULT_LIMIT, ge=1, le=CONSULTATIONS_MAX_LIMIT,
+                       description="Consultas por página (mais recentes primeiro)"),
+    offset: int = Query(0, ge=0, description="Consultas já recebidas, para a próxima página"),
 ):
-    """Sync user's patients and recent consultations."""
+    """Sync user's patients and consultations (consultations in pages, newest first).
+
+    Pacientes vêm todos na primeira página (offset=0) e não se repetem nas seguintes.
+    """
     server_timestamp = datetime.now(timezone.utc).isoformat()
 
-    # Patients query
-    patients_query = select(Patient).where(Patient.doctor_id == user.id)
+    since_dt = None
     if since:
         try:
             since_dt = datetime.fromisoformat(since)
-            patients_query = patients_query.where(Patient.updated_at > since_dt)
         except ValueError:
             pass
 
-    patients_result = await db.execute(patients_query)
-    patients = patients_result.scalars().all()
+    # `updated_at` só é preenchido quando o registro é EDITADO; um paciente ou consulta recém-criado tem
+    # `updated_at` nulo. Comparar só com ele fazia a sincronização por diferença nunca entregar o que é
+    # novo, então vale o mais recente entre `updated_at` e `created_at`.
+    patients = []
+    if offset == 0:
+        patients_query = select(Patient).where(Patient.doctor_id == user.id)
+        if since_dt:
+            patients_query = patients_query.where(func.coalesce(Patient.updated_at, Patient.created_at) > since_dt)
+        patients = (await db.execute(patients_query)).scalars().all()
 
-    # Consultations query -- last 50
+    consultations_query = select(Consultation).where(Consultation.user_id == user.id)
+    if since_dt:
+        consultations_query = consultations_query.where(
+            func.coalesce(Consultation.updated_at, Consultation.created_at) > since_dt
+        )
+    # Uma a mais que o pedido: se ela existe, há outra página (sem um COUNT à parte).
     consultations_query = (
-        select(Consultation)
-        .where(Consultation.user_id == user.id)
-        .order_by(Consultation.created_at.desc())
-        .limit(50)
+        consultations_query
+        .order_by(Consultation.created_at.desc(), Consultation.id.desc())
+        .offset(offset)
+        .limit(limit + 1)
     )
-    if since:
-        try:
-            since_dt = datetime.fromisoformat(since)
-            consultations_query = (
-                select(Consultation)
-                .where(Consultation.user_id == user.id)
-                .where(Consultation.updated_at > since_dt)
-                .order_by(Consultation.created_at.desc())
-                .limit(50)
-            )
-        except ValueError:
-            pass
-
-    consultations_result = await db.execute(consultations_query)
-    consultations = consultations_result.scalars().all()
+    consultations = (await db.execute(consultations_query)).scalars().all()
+    has_more = len(consultations) > limit
 
     return {
         "patients": [_patient_to_dict(p) for p in patients],
-        "consultations": [_consultation_to_dict(c) for c in consultations],
+        "consultations": [_consultation_to_dict(c) for c in consultations[:limit]],
+        "consultations_has_more": has_more,
         "server_timestamp": server_timestamp,
     }
 

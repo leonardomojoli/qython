@@ -33,7 +33,6 @@ export type MainDrawerParamList = {
 export type MoreStackParamList = {
   MoreHome: undefined;
   ProfileStack: undefined;
-  SyncSettings: undefined;
   NotificationCenter: undefined;
   AnamnesisTemplates: undefined;
   Connectors: undefined;
@@ -43,6 +42,7 @@ export type MoreStackParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Main: undefined;
+  SyncSettings: undefined;
 };
 
 // Screen props helpers
