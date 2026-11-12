@@ -1,25 +1,5 @@
 // Type declarations for native modules that may not have bundled types
 
-declare module '@react-native-voice/voice' {
-  interface SpeechResultsEvent {
-    value?: string[];
-  }
-  interface SpeechErrorEvent {
-    error?: { code?: string; message?: string };
-  }
-  const Voice: {
-    onSpeechResults: ((e: SpeechResultsEvent) => void) | null;
-    onSpeechPartialResults: ((e: SpeechResultsEvent) => void) | null;
-    onSpeechError: ((e: SpeechErrorEvent) => void) | null;
-    start(locale?: string): Promise<void>;
-    stop(): Promise<void>;
-    destroy(): Promise<void>;
-    removeAllListeners(): void;
-    isAvailable(): Promise<boolean>;
-  };
-  export default Voice;
-}
-
 declare module 'react-native-share' {
   interface ShareOptions {
     url?: string;

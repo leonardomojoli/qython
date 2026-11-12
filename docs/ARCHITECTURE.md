@@ -105,6 +105,7 @@ slides saem sem imagem) e geração de áudio.
 /api/admin          → Dashboard, gerenciamento de usuários
 /api/sync           → Sync offline (medications, interactions, user-data)
 /api/notifications  → Notification center, preferences, unread count
+/api/dictation      → Ditado de voz: áudio curto → whisper local → texto (celular pareado)
 ```
 
 ### Rotas de Orientações ao Paciente (`/api/orientations`)
