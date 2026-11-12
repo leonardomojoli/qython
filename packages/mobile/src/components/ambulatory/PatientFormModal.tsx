@@ -18,7 +18,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
-import { createPatient, updatePatient } from '../../services/ambulatory';
+import { useNetwork } from '../../contexts/NetworkContext';
+import { createPatientOfflineAware, updatePatientOfflineAware } from '../../services/offlineMutations';
 import { GENDER_OPTIONS } from '../../types/ambulatory';
 import type { Patient, Gender, CreatePatientPayload } from '../../types/ambulatory';
 
@@ -33,6 +34,7 @@ export default function PatientFormModal({ visible, patient, onClose, onSaved }:
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { user } = useUser();
+  const { isInternetReachable } = useNetwork();
   const isEdit = !!patient;
 
   const [fullName, setFullName] = useState('');
@@ -107,13 +109,25 @@ export default function PatientFormModal({ visible, patient, onClose, onSaved }:
 
     setSaving(true);
     try {
+      // Sem o computador ao alcance, o cadastro fica no aparelho e é enviado quando a conexão volta.
       const saved = isEdit
-        ? await updatePatient(patient!.id, payload)
-        : await createPatient(payload);
+        ? await updatePatientOfflineAware(patient!.id, payload, !!isInternetReachable)
+        : await createPatientOfflineAware(payload, !!isInternetReachable);
       onSaved(saved);
       onClose();
-    } catch {
-      Alert.alert('', t('errorSavingPatient', 'Erro ao salvar paciente'));
+      if (saved._isLocal) {
+        Alert.alert(
+          '',
+          t(
+            'patientSavedOffline',
+            'Paciente salvo no celular. Ele será enviado ao computador quando a conexão voltar.',
+          ),
+        );
+      }
+    } catch (error: any) {
+      // O computador respondeu e recusou (dados inválidos): mostra o motivo em vez de um erro genérico.
+      const detail = error?.response?.data?.detail;
+      Alert.alert('', typeof detail === 'string' ? detail : t('errorSavingPatient', 'Erro ao salvar paciente'));
     } finally {
       setSaving(false);
     }

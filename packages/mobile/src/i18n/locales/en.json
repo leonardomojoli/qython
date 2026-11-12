@@ -1,4 +1,5 @@
 {
+  "patientSavedOffline": "Patient saved on this phone. It will be sent to the computer when the connection is back.",
   "pillStudySchedule": "Build a study schedule",
   "pillPcr": "Cardiac arrest management",
   "pillSepsis": "Sepsis management in the ED",

@@ -19,6 +19,7 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import NotificationCenterScreen from '../screens/notifications/NotificationCenterScreen';
 import AnamnesisTemplatesScreen from '../screens/ambulatory/AnamnesisTemplatesScreen';
 import ConnectorsScreen from '../screens/connectors/ConnectorsScreen';
+import SyncSettingsScreen from '../screens/profile/SyncSettingsScreen';
 import { useTheme } from '../contexts/ThemeContext';
 // NotificationContext kept for toast-only usage (bell removed to match web)
 import { useDeviceClass } from '../hooks/useDeviceClass';
@@ -277,12 +278,29 @@ function AuthedRoot({ onLogout }: { onLogout: () => void }) {
 }
 
 export default function Navigation({ isAuthenticated, onLoginSuccess, onLogout }: Props) {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
-        <RootStack.Screen name="Main">
-          {() => <AuthedRoot onLogout={onLogout} />}
-        </RootStack.Screen>
+        <>
+          <RootStack.Screen name="Main">
+            {() => <AuthedRoot onLogout={onLogout} />}
+          </RootStack.Screen>
+          {/* Na raiz (e não dentro de "Mais") para abrir tanto no celular quanto no tablet: as Configurações
+              chamam navigate('SyncSettings') de dentro de qualquer um dos dois layouts. */}
+          <RootStack.Screen
+            name="SyncSettings"
+            component={SyncSettingsScreen}
+            options={{
+              headerShown: true,
+              title: t('offlineSyncSettings', 'Sincronização e dados offline'),
+              headerStyle: { backgroundColor: theme.background },
+              headerTintColor: theme.text,
+            }}
+          />
+        </>
       ) : (
         <RootStack.Screen name="Auth">
           {() => <AuthNavigator onLoginSuccess={onLoginSuccess} />}
