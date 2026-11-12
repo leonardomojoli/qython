@@ -15,7 +15,6 @@ Conventions for action strings (verb.target.qualifier):
     user.data.export, user.data.access
     patient.create, patient.read, patient.update, patient.delete
     consultation.create, consultation.read, consultation.update
-    training_data.collect, training_data.exclude, training_data.export
     admin.dsr.process, admin.user.impersonate
 """
 

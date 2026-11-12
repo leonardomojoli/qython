@@ -18,7 +18,7 @@ import json
 import os
 
 from ..database import get_db
-from ..models import User, Invitation, Consultation, Transaction, Feedback, TrainingData, SettingsAuditLog, ServerMetrics, Medication, Pharmacy, PharmacyChain, PharmacyWaitlist, PrescriptionShare, UserActivity
+from ..models import User, Invitation, Consultation, SettingsAuditLog, Medication, Pharmacy, PharmacyChain, PharmacyWaitlist, PrescriptionShare, UserActivity
 from ..security import get_current_active_user
 from ..config import Config
 from ..services.system_settings_service import SystemSettingsService
@@ -347,12 +347,9 @@ async def get_engagement_metrics(
     if (total_waitlist + total_active) > 0:
         conversion_rate = (total_active / (total_waitlist + total_active)) * 100
 
-    total_feedbacks = await db.scalar(select(func.count(Feedback.id))) or 0
-
     return {
         "dau_proxy": active_users_count,
         "conversion_rate": round(conversion_rate, 1),
-        "total_feedbacks": total_feedbacks
     }
 
 
@@ -520,9 +517,7 @@ async def get_ai_usage(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
-    """AI generation usage by type + dracma spend."""
-    from ..models import DracmaLedger
-
+    """AI generation usage by type."""
     start = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Generations by feature+action
@@ -542,13 +537,7 @@ async def get_ai_usage(
         for row in result.fetchall()
     ]
 
-    # Total dracmas consumed in period
-    total_consumed = await db.scalar(
-        select(func.sum(DracmaLedger.amount - DracmaLedger.remaining))
-        .where(DracmaLedger.acquired_at >= start)
-    ) or 0
-
-    return {"usage": usage, "total_dracmas_consumed": round(total_consumed, 1), "period_days": days}
+    return {"usage": usage, "period_days": days}
 
 
 # --- PRIORIDADE 3: GESTÃO DE PROMPTS ---

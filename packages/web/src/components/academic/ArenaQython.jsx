@@ -26,13 +26,12 @@ import RankingLeague from './RankingLeague';
 import InlineLoading from '../shared/InlineLoading';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faTrophy, faArrowRight, faGlobe, faPlay,
+    faTrophy, faGlobe, faPlay,
     faSignOutAlt, faCalendarAlt, faClock,
     faMedal, faFire, faUserFriends, faBolt, faLayerGroup,
     faPlus, faChevronDown, faChevronUp
 } from '@fortawesome/free-solid-svg-icons';
 import ChallengeModal from './ChallengeModal';
-import ComingSoonModal from '../shared/ComingSoonModal';
 import MeusConcursos from './MeusConcursos';
 
 // Plans that have Arena access
@@ -136,11 +135,9 @@ const ArenaQython = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentSeason, setCurrentSeason] = useState(null);
     const [challengeTarget, setChallengeTarget] = useState(null); // { exam, opponent? }
-    const [showComingSoon, setShowComingSoon] = useState(false);
     const [xpProfile, setXpProfile] = useState(null);
     const [refreshTick, setRefreshTick] = useState(0);
 
-    const hasArenaAccess = true;
     const currentUserDisplay = user?.username ? `@${user.username}` : user?.full_name;
 
     const fetchData = useCallback(async () => {
@@ -170,12 +167,8 @@ const ArenaQython = () => {
     }, [t, addNotification]);
 
     useEffect(() => {
-        if (hasArenaAccess) {
-            fetchData();
-        } else {
-            setIsLoading(false);
-        }
-    }, [fetchData, hasArenaAccess]);
+        fetchData();
+    }, [fetchData]);
 
     const handleStartQuiz = async (examCode, mode, language) => {
         try {
@@ -212,38 +205,6 @@ const ArenaQython = () => {
             addNotification(error.message || t('errorUnenrolling'), 'error');
         }
     };
-
-    // Upgrade banner for users without Arena access
-    if (!hasArenaAccess) {
-        return (
-            <div className={styles.arenaContainer}>
-                <div className={styles.upgradeBanner}>
-                    <div className={styles.upgradeBannerIcon}>
-                        <FontAwesomeIcon icon={faTrophy} />
-                    </div>
-                    <h2>{t('arenaUpgradeTitle')}</h2>
-                    <p>{t('arenaUpgradeDesc')}</p>
-                    <ul className={styles.upgradeBenefits}>
-                        <li>🏆 {t('arenaFeature1')}</li>
-                        <li>📊 {t('arenaFeature2')}</li>
-                        <li>🎯 {t('arenaFeature3')}</li>
-                    </ul>
-                    <button
-                        className={styles.upgradeButton}
-                        onClick={() => setShowComingSoon(true)}
-                    >
-                        {t('upgradeNow')} <FontAwesomeIcon icon={faArrowRight} />
-                    </button>
-                </div>
-
-                <ComingSoonModal
-                    isOpen={showComingSoon}
-                    onClose={() => setShowComingSoon(false)}
-                    userEmail={user?.email}
-                />
-            </div>
-        );
-    }
 
     const enrolledExamDetails = enrolledExamCodes
         .map(code => availableExams.find(exam => exam.exam_code === code))
