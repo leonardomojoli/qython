@@ -1,7 +1,7 @@
 // frontend/src/components/academic/ArenaQython.js
-// Arena em DUAS zonas: "Ligas Nacionais" (disputar com todos — hub por exame com
-// posição nacional + catálogo embutido) e "Meus Concursos" (treinar no seu ritmo).
-// O catálogo de exames não é mais uma aba: é matrícula dentro da zona de disputa
+// Arena em DUAS zonas: "Simulados" (um hub por concurso em que você se inscreveu, com o
+// catálogo embutido) e "Meus Concursos" (treinar no seu ritmo).
+// O catálogo de exames não é uma aba: é a inscrição dentro da zona de simulados
 // (card "+ Adicionar concurso"; vira o conteúdo da zona quando não há inscrição).
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,54 +11,27 @@ import {
     getActiveSimuladoJob,
     getAvailableExams,
     getEnrolledExams,
-    getExamRanking,
     enrollInExam,
     unenrollFromExam,
-    getCurrentSeason,
     getMyXpProfile,
 } from '../../api';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useUser } from '../../contexts/UserContext';
-import { usePublicConfig } from '../../contexts/PublicConfigContext';
 import QuizPlayer from './QuizPlayer';
 import styles from './ArenaQython.module.css';
-import RankingLeague from './RankingLeague';
 import InlineLoading from '../shared/InlineLoading';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faTrophy, faGlobe, faPlay,
-    faSignOutAlt, faCalendarAlt, faClock,
-    faMedal, faFire, faUserFriends, faBolt, faLayerGroup,
-    faPlus, faChevronDown, faChevronUp
+    faSignOutAlt,
+    faMedal, faFire, faBolt, faLayerGroup,
+    faPlus, faChevronUp
 } from '@fortawesome/free-solid-svg-icons';
-import ChallengeModal from './ChallengeModal';
 import MeusConcursos from './MeusConcursos';
 
-// Plans that have Arena access
-const ARENA_ALLOWED_PLANS = ['resident', 'staff', 'specialist'];
-
-// Mini-hub de um exame inscrito: posição nacional + ações + ranking (preview/completo).
-// Definido FORA do ArenaQython — componente estável entre renders do pai (estado próprio
-// de ranking/expansão não pode resetar a cada render).
-// `competitive` = há disputa entre usuários (SaaS). Numa instalação local não há com quem
-// disputar: o card fica só com o simulado e a saída.
-const ExamHubCard = ({ exam, competitive, currentUserDisplay, refreshTick, onPlay, onChallenge, onOvertake, onUnenroll }) => {
+// Card de um exame inscrito: o simulado e a saída. Definido FORA do ArenaQython para ser um
+// componente estável entre renders do pai.
+const ExamHubCard = ({ exam, onPlay, onUnenroll }) => {
     const { t } = useTranslation();
-    const [ranking, setRanking] = useState(null);
-    const [expanded, setExpanded] = useState(false);
-
-    useEffect(() => {
-        if (!competitive) return undefined;
-        let alive = true;
-        getExamRanking(exam.exam_code)
-            .then(res => { if (alive) setRanking(res?.ranking_data || []); })
-            .catch(() => { if (alive) setRanking([]); });
-        return () => { alive = false; };
-    }, [exam.exam_code, refreshTick, competitive]);
-
-    const myEntry = ranking?.find(r => r.isRealUser && r.name === currentUserDisplay) || null;
-    const total = ranking ? ranking.length : 0;
-    const topPct = myEntry && total > 0 ? Math.max(1, Math.round((myEntry.rank / total) * 100)) : null;
 
     return (
         <div className={styles.examCard}>
@@ -68,53 +41,15 @@ const ExamHubCard = ({ exam, competitive, currentUserDisplay, refreshTick, onPla
                     <h3>{t(exam.title_key)}</h3>
                     <span className={styles.examCountry}>{exam.country}</span>
                 </div>
-                {!competitive ? null : myEntry ? (
-                    <div className={styles.examPosition}>
-                        <span className={styles.examPositionRank}>
-                            #{myEntry.rank} <small>{t('rankOfTotal', { total })}</small>
-                        </span>
-                        {topPct !== null && topPct <= 50 && (
-                            <span className={styles.examPositionPct}>{t('topPercent', { pct: topPct })}</span>
-                        )}
-                    </div>
-                ) : (ranking !== null && (
-                    <div className={styles.examPosition}>
-                        <span className={styles.examPositionHint}>{t('noXpInExam')}</span>
-                    </div>
-                ))}
             </div>
             <div className={styles.examHubActions}>
                 <button className={styles.playButtonWide} onClick={onPlay}>
                     <FontAwesomeIcon icon={faPlay} /> {t('startQuiz')}
                 </button>
-                {competitive && (
-                    <>
-                        <button className={styles.challengeButtonWide} onClick={onChallenge}>
-                            <FontAwesomeIcon icon={faUserFriends} /> {t('challenge')}
-                        </button>
-                        <button
-                            className={styles.rankToggle}
-                            onClick={() => setExpanded(v => !v)}
-                            aria-expanded={expanded}
-                        >
-                            {t('ranking')} <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} />
-                        </button>
-                    </>
-                )}
                 <button className={styles.leaveButton} onClick={onUnenroll} title={t('leave')}>
                     <FontAwesomeIcon icon={faSignOutAlt} />
                 </button>
             </div>
-            {!competitive ? null : ranking === null ? (
-                <InlineLoading size={40} />
-            ) : (
-                <RankingLeague
-                    rankingData={ranking}
-                    mode={expanded ? 'full' : 'preview'}
-                    currentUserDisplay={currentUserDisplay}
-                    onOvertake={onOvertake}
-                />
-            )}
         </div>
     );
 };
@@ -122,32 +57,21 @@ const ExamHubCard = ({ exam, competitive, currentUserDisplay, refreshTick, onPla
 const ArenaQython = () => {
     const { t } = useTranslation();
     const { addNotification } = useNotification();
-    const { user } = useUser();
-    const { config } = usePublicConfig();
-    // Ranking, desafios e temporada precisam de um servidor central com todos os
-    // usuários: só existem no SaaS. Sem cobrança, a Arena inteira é liberada.
-    const competitive = config?.edition === 'hosted';
     const [activeSimuladoJob, setActiveSimuladoJob] = useState(null);
     const [availableExams, setAvailableExams] = useState([]);
     const [enrolledExamCodes, setEnrolledExamCodes] = useState([]);
-    const [activeView, setActiveView] = useState('ligas');
+    const [activeView, setActiveView] = useState('simulados');
     const [showCatalog, setShowCatalog] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [currentSeason, setCurrentSeason] = useState(null);
-    const [challengeTarget, setChallengeTarget] = useState(null); // { exam, opponent? }
     const [xpProfile, setXpProfile] = useState(null);
-    const [refreshTick, setRefreshTick] = useState(0);
-
-    const currentUserDisplay = user?.username ? `@${user.username}` : user?.full_name;
 
     const fetchData = useCallback(async () => {
         try {
             setIsLoading(true);
-            const [examsData, enrolledData, activeJobData, seasonData, profileData] = await Promise.all([
+            const [examsData, enrolledData, activeJobData, profileData] = await Promise.all([
                 getAvailableExams(),
                 getEnrolledExams(),
                 getActiveSimuladoJob(),
-                getCurrentSeason().catch(() => null),
                 getMyXpProfile().catch(() => null),
             ]);
             setAvailableExams(examsData || []);
@@ -155,9 +79,7 @@ const ArenaQython = () => {
             if (activeJobData) {
                 setActiveSimuladoJob(activeJobData);
             }
-            setCurrentSeason(seasonData?.season || null);
             setXpProfile(profileData || null);
-            setRefreshTick(tick => tick + 1);
         } catch (error) {
             console.error("Erro ao buscar dados da Arena:", error);
             addNotification(t('errorFetchingArenaData'), 'error');
@@ -182,7 +104,7 @@ const ArenaQython = () => {
 
     const handleCloseQuizPlayer = () => {
         setActiveSimuladoJob(null);
-        fetchData(); // Refresh rankings and XP after quiz
+        fetchData(); // Atualiza o XP depois do simulado
     };
 
     const handleEnroll = async (examCode) => {
@@ -210,16 +132,16 @@ const ArenaQython = () => {
         .map(code => availableExams.find(exam => exam.exam_code === code))
         .filter(Boolean);
 
-    // Sem XP nenhum = ainda não entrou na disputa: mostra convite, não card zerado
+    // Sem XP nenhum = ainda não fez simulado: mostra convite, não card zerado
     const hasAnyXp = (xpProfile?.total_xp || 0) > 0 || (xpProfile?.season_xp || 0) > 0;
 
-    // Catálogo de exames = matrícula na disputa. Hero quando não há inscrição;
+    // Catálogo de exames = inscrição. Hero quando não há inscrição;
     // revelado pelo "+ Adicionar concurso" quando já há.
     const renderCatalog = (isHero) => (
         <div className={`${styles.catalogSection} ${isHero ? styles.catalogHero : ''}`}>
             <div className={styles.catalogHeader}>
                 <FontAwesomeIcon icon={faGlobe} className={styles.catalogIcon} />
-                <h3>{competitive ? t('catalogHeroTitle') : t('catalogHeroTitleLocal', 'Escolha o concurso que você vai prestar')}</h3>
+                <h3>{t('catalogHeroTitleLocal', 'Escolha o concurso que você vai prestar')}</h3>
                 {!isHero && (
                     <button
                         className={styles.catalogClose}
@@ -261,16 +183,16 @@ const ArenaQython = () => {
 
     return (
         <div className={styles.arenaContainer}>
-            {/* Duas zonas: disputar com todos × treinar no seu ritmo */}
+            {/* Duas zonas: simulados por concurso × treinar no seu ritmo */}
             <div className={styles.modeSwitch}>
                 <button
-                    className={`${styles.modeButton} ${activeView === 'ligas' ? styles.modeActive : ''}`}
-                    onClick={() => setActiveView('ligas')}
+                    className={`${styles.modeButton} ${activeView === 'simulados' ? styles.modeActive : ''}`}
+                    onClick={() => setActiveView('simulados')}
                 >
                     <FontAwesomeIcon icon={faTrophy} className={styles.modeIcon} />
                     <span className={styles.modeText}>
-                        <span className={styles.modeTitle}>{competitive ? t('myRankings') : t('arenaSimuladosTitle', 'Simulados')}</span>
-                        <span className={styles.modeSub}>{competitive ? t('arenaModeLigasSub') : t('arenaModeSimuladosSub', 'Questões no estilo de cada prova')}</span>
+                        <span className={styles.modeTitle}>{t('arenaSimuladosTitle', 'Simulados')}</span>
+                        <span className={styles.modeSub}>{t('arenaModeSimuladosSub', 'Questões no estilo de cada prova')}</span>
                     </span>
                 </button>
                 <button
@@ -286,40 +208,18 @@ const ArenaQython = () => {
             </div>
 
             <div className={styles.arenaContent}>
-                {activeView === 'ligas' ? (
+                {activeView === 'simulados' ? (
                     isLoading ? (
                         <InlineLoading text={t('loadingArena')} />
                     ) : (
                         <div className={styles.rankingsView}>
-                            {/* Season Banner — a temporada pertence à disputa */}
-                            {competitive && currentSeason && (
-                                <div className={styles.seasonBanner}>
-                                    <div className={styles.seasonInfo}>
-                                        <FontAwesomeIcon icon={faCalendarAlt} className={styles.seasonIcon} />
-                                        <div className={styles.seasonText}>
-                                            <span className={styles.seasonLabel}>{t('currentSeason')}</span>
-                                            <span className={styles.seasonName}>{currentSeason.name}</span>
-                                        </div>
-                                    </div>
-                                    <div className={styles.seasonTimer}>
-                                        <FontAwesomeIcon icon={faClock} />
-                                        <span>
-                                            {currentSeason.is_active
-                                                ? `${currentSeason.days_remaining} ${t('daysRemaining')}`
-                                                : `${t('startsIn')} ${currentSeason.days_until_start} ${t('days')}`
-                                            }
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* XP Profile Card — convite p/ a disputa enquanto não há XP */}
+                            {/* XP Profile Card — convite enquanto não há XP */}
                             {xpProfile && !hasAnyXp && (
                                 <div className={`${styles.xpProfileCard} ${styles.xpEmptyCard}`}>
                                     <span className={styles.xpEmptyIcon} aria-hidden="true">🏁</span>
                                     <div className={styles.xpEmptyInfo}>
-                                        <span className={styles.xpEmptyTitle}>{competitive ? t('arenaXpEmptyTitle') : t('arenaXpEmptyTitleLocal', 'Comece um simulado')}</span>
-                                        <span className={styles.xpEmptyDesc}>{competitive ? t('arenaXpEmptyDesc') : t('arenaXpEmptyDescLocal', 'Complete um simulado para ganhar seus primeiros XP.')}</span>
+                                        <span className={styles.xpEmptyTitle}>{t('arenaXpEmptyTitleLocal', 'Comece um simulado')}</span>
+                                        <span className={styles.xpEmptyDesc}>{t('arenaXpEmptyDescLocal', 'Complete um simulado para ganhar seus primeiros XP.')}</span>
                                     </div>
                                 </div>
                             )}
@@ -358,12 +258,7 @@ const ArenaQython = () => {
                                             <ExamHubCard
                                                 key={exam.exam_code}
                                                 exam={exam}
-                                                competitive={competitive}
-                                                currentUserDisplay={currentUserDisplay}
-                                                refreshTick={refreshTick}
                                                 onPlay={() => handleStartQuiz(exam.exam_code, exam.exam_code, exam.language)}
-                                                onChallenge={() => setChallengeTarget({ exam })}
-                                                onOvertake={(opponentName) => setChallengeTarget({ exam, opponent: opponentName })}
                                                 onUnenroll={() => handleUnenroll(exam.exam_code)}
                                             />
                                         ))}
@@ -386,17 +281,6 @@ const ArenaQython = () => {
                 <QuizPlayer
                     activeJob={activeSimuladoJob}
                     onClose={handleCloseQuizPlayer}
-                />
-            )}
-
-            {challengeTarget && (
-                <ChallengeModal
-                    isOpen={!!challengeTarget}
-                    onClose={() => setChallengeTarget(null)}
-                    examCode={challengeTarget.exam.exam_code}
-                    examName={t(challengeTarget.exam.title_key)}
-                    examFlag={challengeTarget.exam.flag}
-                    initialOpponent={challengeTarget.opponent}
                 />
             )}
         </div>

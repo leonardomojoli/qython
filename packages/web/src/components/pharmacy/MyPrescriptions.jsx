@@ -4,35 +4,17 @@ import styles from './MyPrescriptions.module.css';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faQrcode, faCopy, faPaperPlane, faEye, faCheck,
-  faFilePrescription, faExternalLinkAlt, faSpinner, faShareFromSquare
+  faFilePrescription, faSpinner, faShareFromSquare
 } from '@fortawesome/free-solid-svg-icons';
 import { useNotification } from '../../contexts/NotificationContext';
-import { usePublicConfig } from '../../contexts/PublicConfigContext';
-import {
-  getPrescriptions,
-  getPrescriptionPharmacySends, getPrescriptionPdf
-} from '../../api';
-
-const STATUS_LABELS = {
-  sent: { label: 'prescriptionSent', color: '#3498db' },
-  viewed: { label: 'prescriptionViewed', color: '#f1c40f' },
-  fulfilled: { label: 'prescriptionFulfilled', color: '#27ae60' },
-  cancelled: { label: 'cancelled', color: '#e74c3c' },
-};
+import { getPrescriptions, getPrescriptionPdf } from '../../api';
 
 function MyPrescriptions() {
   const { t } = useTranslation();
   const { addNotification } = useNotification();
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedRx, setExpandedRx] = useState(null);
-  const [pharmacySends, setPharmacySends] = useState({});
   const [sharingId, setSharingId] = useState(null);
-  // Link público e envio para farmácias parceiras dependem do servidor central do SaaS.
-  // Na instalação local a receita vai ao paciente como o próprio PDF.
-  const { config } = usePublicConfig();
-  const isHosted = config?.edition === 'hosted';
 
   const fetchPrescriptions = useCallback(async () => {
     try {
@@ -82,25 +64,6 @@ function MyPrescriptions() {
     }
   };
 
-  const handleToggleExpand = async (rxId) => {
-    if (!isHosted) return;
-    if (expandedRx === rxId) {
-      setExpandedRx(null);
-      return;
-    }
-    setExpandedRx(rxId);
-
-    // Fetch pharmacy sends if not cached
-    if (!pharmacySends[rxId]) {
-      try {
-        const sends = await getPrescriptionPharmacySends(rxId);
-        setPharmacySends(prev => ({ ...prev, [rxId]: sends || [] }));
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
-
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('pt-BR', {
@@ -132,7 +95,7 @@ function MyPrescriptions() {
     <div className={styles.container}>
       {prescriptions.map(rx => (
         <div key={rx.id} className={styles.rxCard}>
-          <div className={styles.rxHeader} onClick={() => handleToggleExpand(rx.id)}>
+          <div className={styles.rxHeader}>
             <div className={styles.rxInfo}>
               <h4 className={styles.rxTitle}>
                 {t('prescription')} #{rx.id}
@@ -161,41 +124,6 @@ function MyPrescriptions() {
                 <span>{t('sharePrescriptionPdf', 'Compartilhar PDF')}</span>
               </button>
           </div>
-
-          {/* Expanded: pharmacy sends */}
-          {expandedRx === rx.id && (
-            <div className={styles.expandedSection}>
-              <h5 className={styles.sendsTitle}>{t('pharmacySends')}</h5>
-              {pharmacySends[rx.id]?.length > 0 ? (
-                <div className={styles.sendsList}>
-                  {pharmacySends[rx.id].map(send => {
-                    const statusConfig = STATUS_LABELS[send.status] || STATUS_LABELS.sent;
-                    return (
-                      <div key={send.id} className={styles.sendCard}>
-                        <div className={styles.sendInfo}>
-                          <span className={styles.sendPharmacy}>{send.pharmacy_name}</span>
-                          {send.pharmacy_address && (
-                            <span className={styles.sendAddress}>{send.pharmacy_address}</span>
-                          )}
-                        </div>
-                        <div className={styles.sendStatus}>
-                          <span
-                            className={styles.statusBadge}
-                            style={{ color: statusConfig.color, borderColor: statusConfig.color }}
-                          >
-                            {t(statusConfig.label)}
-                          </span>
-                          <span className={styles.sendDate}>{formatDate(send.sent_at)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className={styles.noSends}>{t('noPharmacySends')}</p>
-              )}
-            </div>
-          )}
         </div>
       ))}
     </div>

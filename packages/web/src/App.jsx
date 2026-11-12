@@ -42,14 +42,7 @@ const OnboardingPage = lazy(() => import('./components/user/OnboardingPage'));
 // Public pages (no auth)
 
 // Legal pages (rarely visited)
-const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy'));
-const TermsOfUse = lazy(() => import('./components/legal/TermsOfUse'));
 const LocalTerms = lazy(() => import('./components/legal/LocalTerms'));
-const DPO = lazy(() => import('./components/legal/DPO'));
-const Subprocessors = lazy(() => import('./components/legal/Subprocessors'));
-const PatientNotice = lazy(() => import('./components/legal/PatientNotice'));
-const Contact = lazy(() => import('./components/contact/Contact'));
-const Careers = lazy(() => import('./components/careers/Careers'));
 const TestDNALoading = lazy(() => import('./components/shared/TestDNALoading'));
 const QythonTour = lazy(() => import('./components/shared/QythonTour'));
 import { consultationTourSteps, handleConsultationStepChange, copilotTourSteps, academicTourSteps, profileTourSteps, handleProfileStepChange } from './components/shared/tourConfigs';
@@ -62,8 +55,6 @@ const AdminAiSettings = lazy(() => import('./components/admin/AdminAiSettings'))
 const UserManager = lazy(() => import('./components/admin/UserManager'));
 const AdminConsultations = lazy(() => import('./components/admin/AdminConsultations'));
 const ProfileUpdateManager = lazy(() => import('./components/admin/ProfileUpdateManager'));
-const PharmacyAdmin = lazy(() => import('./components/admin/PharmacyAdmin'));
-const AnalyticsDashboard = lazy(() => import('./components/admin/AnalyticsDashboard'));
 
 // Loading fallback component
 const PageLoader = () => <DNALoadingAnimation />;
@@ -190,15 +181,9 @@ const AppLayoutAndRoutes = () => {
   // Com o termo de uso pendente, a tela de aceite ocupa tudo: sem barra lateral nem tour.
   const appUnlocked = isLoggedIn && !user?.terms_pending;
 
-  // Edição: o SaaS (hosted) tem landing, preços, páginas legais da empresa e páginas de
-  // marketing. A instalação local abre direto no app e não tem nada disso; as rotas
-  // levam para o lugar equivalente. Até a config chegar, nenhuma das duas é assumida.
+  // A config pública (travas do cadastro, IA) chega antes de qualquer rota decidir para onde ir.
   const { config: publicConfig } = usePublicConfig();
-  const editionKnown = publicConfig !== null;
-  const isHosted = publicConfig?.edition === 'hosted';
-  const onlyIf = (allowed, element, fallback) => (
-    !editionKnown ? <PageLoader /> : allowed ? element : <Navigate to={fallback} replace />
-  );
+  const configLoaded = publicConfig !== null;
 
   const handleInitialCheckComplete = useCallback(() => {
     setInitialCheckComplete(true);
@@ -288,7 +273,7 @@ const AppLayoutAndRoutes = () => {
                 {/* Core routes (eagerly loaded) */}
                 <Route
                   path="/"
-                  element={(!editionKnown || !initialCheckComplete)
+                  element={(!configLoaded || !initialCheckComplete)
                     ? <PageLoader />
                     : <Navigate to={isLoggedIn ? '/copilot' : '/login'} replace />}
                 />
@@ -298,13 +283,7 @@ const AppLayoutAndRoutes = () => {
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Legal routes (lazy) */}
-                <Route path="/privacy-policy" element={onlyIf(isHosted, <PrivacyPolicy />, '/terms-of-use')} />
-                <Route path="/terms-of-use" element={!editionKnown ? <PageLoader /> : isHosted ? <TermsOfUse /> : <LocalTerms />} />
-                <Route path="/encarregado" element={onlyIf(isHosted, <DPO />, '/terms-of-use')} />
-                <Route path="/subprocessors" element={onlyIf(isHosted, <Subprocessors />, '/terms-of-use')} />
-                <Route path="/paciente" element={onlyIf(isHosted, <PatientNotice />, '/terms-of-use')} />
-                <Route path="/contact" element={onlyIf(isHosted, <Contact />, '/')} />
-                <Route path="/careers" element={onlyIf(isHosted, <Careers />, '/')} />
+                <Route path="/terms-of-use" element={<LocalTerms />} />
 
                 {/* Admin Routes (lazy) */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -313,8 +292,6 @@ const AppLayoutAndRoutes = () => {
                 <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
                 <Route path="/admin/ai" element={<AdminRoute><AdminAiSettings /></AdminRoute>} />
                 <Route path="/admin/profile-updates" element={<AdminRoute><ProfileUpdateManager /></AdminRoute>} />
-                <Route path="/admin/pharmacies" element={onlyIf(isHosted, <AdminRoute><PharmacyAdmin /></AdminRoute>, '/admin')} />
-                <Route path="/admin/analytics" element={onlyIf(isHosted, <AdminRoute><AnalyticsDashboard /></AdminRoute>, '/admin')} />
                 <Route path="/test-dna" element={<TestDNALoading />} />
 
                 {/* Waitlist Route (accessible only for waitlist users) */}

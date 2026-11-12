@@ -631,15 +631,6 @@ export const submitQuiz = async (quizData) => {
   }
 };
 
-export const getRankings = async (specialty = 'Geral', period = 'all_time') => {
-  try {
-    const response = await api.get(`/academic/arena/rankings?specialty=${specialty}&period=${period}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar rankings');
-  }
-};
-
 export const getUserAchievements = async () => {
   try {
     const response = await api.get('/user/achievements');
@@ -825,33 +816,6 @@ export const unenrollFromExam = async (examCode) => {
   }
 };
 
-export const getExamRanking = async (examCode) => {
-  try {
-    const response = await api.get(`/academic/arena/ranking/${examCode}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar ranking do exame');
-  }
-};
-
-export const getCurrentSeason = async () => {
-  try {
-    const response = await api.get('/academic/arena/current-season');
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar temporada atual');
-  }
-};
-
-export const getMySeasonStats = async (examCode) => {
-  try {
-    const response = await api.get(`/academic/arena/my-season-stats/${examCode}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar estatísticas da temporada');
-  }
-};
-
 export const generateShareCard = async (cardData) => {
   try {
     const response = await api.post('/academic/arena/generate-share-card', cardData);
@@ -861,58 +825,12 @@ export const generateShareCard = async (cardData) => {
   }
 };
 
-// Challenge API functions
-export const createChallenge = async (challengeData) => {
-  try {
-    const response = await api.post('/academic/arena/challenges', challengeData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'criar desafio');
-  }
-};
-
-export const getMyChallenges = async () => {
-  try {
-    const response = await api.get('/academic/arena/challenges');
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar desafios');
-  }
-};
-
-export const respondToChallenge = async (challengeId, accept) => {
-  try {
-    const response = await api.post(`/academic/arena/challenges/${challengeId}/respond`, { accept });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'responder desafio');
-  }
-};
-
-export const submitChallengeScore = async (challengeId, score) => {
-  try {
-    const response = await api.post(`/academic/arena/challenges/${challengeId}/submit-score`, { score });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'submeter pontuação do desafio');
-  }
-};
-
 export const getMyXpProfile = async () => {
   try {
     const response = await api.get('/academic/arena/my-xp-profile');
     return response.data;
   } catch (error) {
     handleError(error, 'buscar perfil de XP');
-  }
-};
-
-export const findRandomOpponent = async (examCode) => {
-  try {
-    const response = await api.post('/academic/arena/matchmaking', { exam_code: examCode });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar oponente');
   }
 };
 
@@ -1343,176 +1261,6 @@ export const getPharmacies = async (params = {}) => {
     return response.data;
   } catch (error) {
     handleError(error, 'buscar farmácias');
-  }
-};
-
-export const getPharmacy = async (pharmacyId) => {
-  try {
-    const response = await api.get(`/pharmacy/${pharmacyId}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar farmácia');
-  }
-};
-
-export const getPharmacyMedications = async (pharmacyId, params = {}) => {
-  try {
-    const response = await api.get(`/pharmacy/${pharmacyId}/medications`, { params, timeout: 30000 });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar catálogo da farmácia');
-  }
-};
-
-// --- Prescription Sharing ---
-
-export const sendPrescriptionToPharmacy = async (prescriptionId, pharmacyId) => {
-  try {
-    const response = await api.post(`/prescriptions/${prescriptionId}/send-to-pharmacy`, {
-      pharmacy_id: pharmacyId,
-    });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'enviar receita para farmácia');
-  }
-};
-
-export const getPrescriptionPharmacySends = async (prescriptionId) => {
-  try {
-    const response = await api.get(`/prescriptions/${prescriptionId}/pharmacy-sends`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar envios para farmácias');
-  }
-};
-
-// --- Public (no auth) ---
-
-export const getNearbyPharmaciesPublic = async (lat, lng, radiusKm = 10) => {
-  try {
-    const response = await axios.get(`${API_URL.replace('/api', '')}/api/public/pharmacies/nearby`, {
-      params: { lat, lng, radius_km: radiusKm },
-      timeout: 30000,
-    });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar farmácias próximas');
-  }
-};
-
-// --- Pharmacy Admin API ---
-
-export const getPharmacyChains = async () => {
-  try {
-    const response = await api.get('/pharmacy/chains');
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar redes de farmácia');
-    throw error;
-  }
-};
-
-export const createPharmacyChain = async (chainData) => {
-  try {
-    const response = await api.post('/pharmacy/chains', chainData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'criar rede de farmácia');
-    throw error;
-  }
-};
-
-export const updatePharmacyChain = async (chainId, chainData) => {
-  try {
-    const response = await api.put(`/pharmacy/chains/${chainId}`, chainData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'atualizar rede de farmácia');
-    throw error;
-  }
-};
-
-export const createPharmacy = async (pharmacyData) => {
-  try {
-    const response = await api.post('/pharmacy', pharmacyData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'criar farmácia');
-    throw error;
-  }
-};
-
-export const updatePharmacy = async (pharmacyId, pharmacyData) => {
-  try {
-    const response = await api.put(`/pharmacy/${pharmacyId}`, pharmacyData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'atualizar farmácia');
-    throw error;
-  }
-};
-
-export const deletePharmacy = async (pharmacyId) => {
-  try {
-    await api.delete(`/pharmacy/${pharmacyId}`);
-    return true;
-  } catch (error) {
-    handleError(error, 'desativar farmácia');
-    throw error;
-  }
-};
-
-export const updatePharmacyInventory = async (pharmacyId, items) => {
-  try {
-    const response = await api.post(`/pharmacy/${pharmacyId}/medications`, items);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'atualizar inventário');
-    throw error;
-  }
-};
-
-export const getPharmacyWaitlist = async (statusFilter = null) => {
-  try {
-    const params = statusFilter ? { status: statusFilter } : {};
-    const response = await api.get('/pharmacy/waitlist', { params });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar lista de espera');
-    throw error;
-  }
-};
-
-export const updatePharmacyWaitlistEntry = async (entryId, data) => {
-  try {
-    const response = await api.put(`/pharmacy/waitlist/${entryId}`, data);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'atualizar entrada da lista de espera');
-    throw error;
-  }
-};
-
-export const getChainMetrics = async (chainId) => {
-  try {
-    const response = await api.get(`/pharmacy/chains/${chainId}/metrics`);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar métricas da rede');
-    throw error;
-  }
-};
-
-// --- Pharmacy Waitlist ---
-
-export const submitPharmacyWaitlist = async (waitlistData) => {
-  try {
-    const response = await axios.post(`${API_URL.replace('/api', '')}/api/pharmacy/waitlist`, waitlistData, {
-      timeout: 30000,
-    });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'enviar formulário de interesse');
   }
 };
 
