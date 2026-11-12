@@ -20,6 +20,9 @@ test('o resto da API exige o acesso do aparelho no cabeçalho', () => {
   assert.equal(d('GET', '/api/user/info', { authorization: 'Bearer ' }).status, 401);
   assert.equal(d('GET', '/api/user/info', bearer).ok, true);
   assert.equal(d('POST', '/api/patients/', bearer).ok, true);
+  // O ditado do celular manda o áudio ao whisper do computador por aqui; sem acesso do aparelho, não passa.
+  assert.equal(d('POST', '/api/dictation').status, 401);
+  assert.equal(d('POST', '/api/dictation', bearer).ok, true);
 });
 
 test('login por senha, cadastro, administração e a gestão de aparelhos nunca passam, nem logado', () => {
