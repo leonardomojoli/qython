@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, and_
 from datetime import datetime, timedelta, timezone
-from ...models import User, QuizAttempt, Transaction
+from ...models import User, QuizAttempt
 
 logger = logging.getLogger("qython_logger")
 DECAY_PERCENTAGE = 0.05  # 5% de decaimento

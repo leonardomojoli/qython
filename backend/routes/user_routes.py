@@ -16,7 +16,7 @@ from sqlalchemy import func
 from werkzeug.utils import secure_filename
 
 from ..database import get_db
-from ..models import User, AvatarHistory, Transaction, Consultation, UserStats, Achievement, Invitation, SeasonRanking, ArenaSeason, AcademicMaterial, AcademicLibrary
+from ..models import User, AvatarHistory, Consultation, UserStats, Achievement, Invitation, SeasonRanking, ArenaSeason, AcademicMaterial, AcademicLibrary
 from ..utils import allowed_file_profile, UPLOAD_FOLDER_PROFILE, UPLOAD_FOLDER_DOCTOR_LOGOS
 from ..security import get_current_active_user, get_current_user, verify_password, get_password_hash
 from ..config import Config
@@ -479,14 +479,11 @@ async def get_usage_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Retorna um histórico combinado de uso (consultas e transações)."""
+    """Retorna o histórico de uso (consultas)."""
     logger.info(f"Histórico de uso solicitado por: {current_user.email}")
     
     result_consultations = await db.execute(select(Consultation).filter_by(user_id=current_user.id))
     consultations = result_consultations.scalars().all()
-    
-    result_transactions = await db.execute(select(Transaction).filter_by(user_id=current_user.id))
-    transactions = result_transactions.scalars().all()
 
     history = []
     for c in consultations:
@@ -496,14 +493,6 @@ async def get_usage_history(
             "date": c.created_at,
             "amount": None,
             "specialty": c.specialty
-        })
-    for t in transactions:
-        history.append({
-            "type": "transaction",
-            "description": t.description or "Transação",
-            "date": t.timestamp,
-            "amount": t.amount,
-            "specialty": None
         })
 
     history.sort(key=lambda item: item["date"], reverse=True)
@@ -919,45 +908,6 @@ async def get_comprehensive_statistics(
     )
 
 
-# --- Payment Waitlist (Coming Soon) ---
-
-class PaymentWaitlistPayload(BaseModel):
-    email: EmailStr
-
-
-@router.post("/payment-waitlist", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")
-async def add_to_payment_waitlist(
-    request: Request,
-    payload: PaymentWaitlistPayload,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Add an email to the payment waitlist for notification when premium plans are available.
-    This endpoint is public (no auth required) to allow lead capture from non-logged users.
-    """
-    from ..models import PaymentWaitlist
-
-    # Check if email already exists
-    existing = await db.execute(
-        select(PaymentWaitlist).filter(PaymentWaitlist.email == payload.email.lower())
-    )
-    if existing.scalars().first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This email is already on the waitlist."
-        )
-
-    # Add to waitlist
-    waitlist_entry = PaymentWaitlist(email=payload.email.lower())
-    db.add(waitlist_entry)
-    await db.commit()
-
-    logger.info(f"Email added to payment waitlist: {payload.email}")
-
-    return {"message": "Successfully added to waitlist", "email": payload.email}
-
-
 @router.get("/storage", status_code=status.HTTP_200_OK)
 async def get_storage_info(
     db: AsyncSession = Depends(get_db),
@@ -988,24 +938,6 @@ async def get_storage_info(
         "libraries_max": limits.get('max_libraries'),
         "docs_per_library_max": limits.get('docs_per_library'),
     }
-
-
-@router.get("/payment-waitlist/check/{email}", status_code=status.HTTP_200_OK)
-async def check_payment_waitlist(
-    email: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Check if an email is already on the payment waitlist.
-    """
-    from ..models import PaymentWaitlist
-
-    existing = await db.execute(
-        select(PaymentWaitlist).filter(PaymentWaitlist.email == email.lower())
-    )
-    is_on_waitlist = existing.scalars().first() is not None
-
-    return {"email": email, "is_on_waitlist": is_on_waitlist}
 
 
 @router.post("/push-token", status_code=status.HTTP_200_OK)
