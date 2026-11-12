@@ -105,6 +105,7 @@ slides saem sem imagem) e geração de áudio.
 /api/admin          → Dashboard, gerenciamento de usuários
 /api/sync           → Sync offline (medications, interactions, user-data)
 /api/notifications  → Notification center, preferences, unread count
+/api/dictation      → Ditado de voz: áudio curto → whisper local → texto (celular pareado)
 ```
 
 ### Rotas de Orientações ao Paciente (`/api/orientations`)
@@ -234,7 +235,7 @@ Plano completo em `docs/QYTHON_LGPD_PLAN.md`.
 | Chaves (KEK) | `QYTHON_FIELD_KEK` (encryption) + `QYTHON_TOKEN_KEK` (pseudonimização/lookup_hash). Em env, gitignored. |
 | Consentimento | `services/consent_service.py` + modelos `ConsentDocument` (imutável, versionado, content_hash) e `UserConsent` (grant/revoke, partial unique index do consent ativo). 8 documentos: T&C, Privacy + 6 escopos ML opt-in (default OFF, TTL 12 meses). |
 | Audit log (Art. 37) | Tabela `audit_log` **append-only** via trigger Postgres que rejeita UPDATE/DELETE. `services/audit_service.py`. Instrumentado em login, patient/consultation/prescription/exam/document CRUD, consent, export, delete. |
-| PII redaction (Art. 6 III) | `middleware/pii_redaction.py` — Presidio PT-BR + recognizers BR. Roda antes de toda chamada a LLM externo e na coleta de training_data. |
+| PII redaction (Art. 6 III) | `middleware/pii_redaction.py` — Presidio PT-BR + recognizers BR. Roda antes de toda chamada a LLM externo. |
 | Anonimização (Art. 12) | `services/anonymization_service.py` — generalização + suppression + K-anonimato ≥ 5. |
 | Pre-export validator | `services/export_validator_service.py` — valida consent ativo + PII recheck antes de gerar SFT/DPO; grava `DatasetExportLog` (prova de minimização). |
 | Direitos do titular (Art. 18) | Endpoints em `user_routes`: `GET /api/user/me/data-export` (portabilidade), `DELETE /api/user/me` (eliminação + soft delete + purga async), `GET/POST/DELETE /api/user/me/consents`, `GET /api/user/me/audit-log`. |

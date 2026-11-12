@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 from starlette.concurrency import run_in_threadpool
 
 from ..database import get_db, AsyncSessionLocal
-from ..models import User, Transaction, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
+from ..models import User, QuizAttempt, UserStats, Achievement, AcademicLibrary, AcademicDocument, AcademicMaterial, SimuladoGenerationJob, ArenaExam, CustomExamCard, CustomCardSource
 from ..services.academic_services import library_service, vector_db_service
 from ..services.academic_services.transcription_service import transcribe_audio
 from ..services.academic_services import exam_generation_service
