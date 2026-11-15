@@ -279,17 +279,34 @@ export default function SettingsTab({ onLogout }: Props) {
         </View>
       </TouchableOpacity>
 
-      {/* About */}
+      {/* About: os avisos legais que a AGPL-3.0 (seção 5d) e os termos adicionais pedem na interface */}
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-        <TouchableOpacity
-          style={styles.cardRow}
-          activeOpacity={0.7}
-          onPress={() => Linking.openURL('https://qython.ai').catch(() => {})}>
-          <Text style={[styles.cardLabel, { color: theme.text }]}>
-            {t('aboutQython', 'Sobre o Qython')}
-          </Text>
-          <Text style={[styles.chevron, { color: theme.textMuted }]}>{'›'}</Text>
-        </TouchableOpacity>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {t('aboutQython', 'Sobre o Qython')}
+        </Text>
+        <Text style={[styles.trainingDataDesc, { color: theme.textMuted, marginBottom: spacing.sm }]}>
+          {t(
+            'aboutQythonNotice',
+            'Qython é software livre sob a licença GNU AGPL-3.0 (somente a versão 3). Copyright © 2024–2026 Leonardo de Abreu. Este programa não tem garantia de qualquer tipo. Não é dispositivo médico e não substitui o julgamento clínico.',
+          )}
+        </Text>
+        {[
+          ['aboutSourceCode', 'Código-fonte', QYTHON_REPO_URL],
+          ['aboutLicense', 'Licença', `${QYTHON_REPO_URL}/blob/main/LICENSE`],
+          ['aboutAdditionalTerms', 'Termos adicionais', `${QYTHON_REPO_URL}/blob/main/TERMOS-ADICIONAIS.md`],
+          ['aboutTrademarks', 'Nome e logotipo', `${QYTHON_REPO_URL}/blob/main/TRADEMARKS.md`],
+        ].map(([key, label, url], index) => (
+          <View key={key}>
+            {index > 0 && <View style={[styles.legalDivider, { borderTopColor: theme.surfaceBorder }]} />}
+            <TouchableOpacity
+              style={styles.cardRow}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL(url).catch(() => {})}>
+              <Text style={[styles.cardLabel, { color: theme.text }]}>{t(key, label)}</Text>
+              <Text style={[styles.chevron, { color: theme.textMuted }]}>{'›'}</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
       </View>
 
       {/* Computador pareado (o celular fala direto com ele pela rede local) */}
