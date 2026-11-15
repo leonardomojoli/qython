@@ -30,7 +30,8 @@ extraResources:
 linux:
   target: [AppImage, deb]
   executableName: qython
-  category: Office
+  # Ciência e software médico, não "Escritório": é como COSMIC, GNOME e KDE agrupam o app no menu.
+  category: Science;MedicalSoftware
   icon: assets/icon.png
   maintainer: Qython <171846753+leonardomojoli@users.noreply.github.com>
   synopsis: Apoio clínico com IA local para médicos

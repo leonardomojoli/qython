@@ -323,6 +323,9 @@ jobs:
         run: |
           sudo apt-get install -y ./packages/desktop/release/Qython-*-linux-amd64.deb
           test -x /opt/Qython/qython
+          # O menu de aplicativos agrupa pela categoria do .desktop e mostra o ícone instalado.
+          grep -qx 'Categories=Science;MedicalSoftware;' /usr/share/applications/qython.desktop
+          test -f /usr/share/icons/hicolor/512x512/apps/qython.png
           xvfb-run -a /opt/Qython/qython --smoke --no-sandbox
 
       - name: Instala o NSIS e abre o app instalado (Windows)
