@@ -478,11 +478,12 @@ async function shutdown(code = 0) {
 }
 
 async function boot() {
+  // As preferências vêm antes do menu: a caixa "Procurar atualizações" lê o estado dela.
+  settings = new Settings(paths.settings);
   buildMenu();
   if (!SMOKE) createSplash();
 
   const secrets = new SecretStore(paths.secrets, electronVault(safeStorage));
-  settings = new Settings(paths.settings);
   const manifest = loadManifest(path.join(here, '..', 'models.json'));
   const models = new ModelManager(manifest, paths.models);
   ai = new AiController({ models, settings, logger: log, llm: () => stack?.llm ?? null });
