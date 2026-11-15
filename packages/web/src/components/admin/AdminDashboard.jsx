@@ -7,7 +7,7 @@ import InvitationManager from './InvitationManager';
 import PromptManager from './PromptManager';
 import { api } from '../../api';
 import { usePublicConfig } from '../../contexts/PublicConfigContext';
-import { FaUsers, FaUserClock, FaFileMedical, FaDollarSign, FaChartLine, FaBrain, FaDatabase, FaPills, FaStore, FaClipboardList, FaShareAlt } from 'react-icons/fa';
+import { FaUsers, FaUserClock, FaFileMedical, FaChartLine, FaBrain } from 'react-icons/fa';
 import InlineLoading from '../shared/InlineLoading';
 
 const AdminDashboard = () => {
@@ -18,7 +18,6 @@ const AdminDashboard = () => {
     const navigate = useNavigate();
     // Convites saem por e-mail e só existem com o Resend configurado.
     const { config } = usePublicConfig();
-    const isHosted = config?.edition === 'hosted';
     const canInvite = Boolean(config?.registration?.email_verification);
 
     useEffect(() => {
@@ -132,55 +131,6 @@ const AdminDashboard = () => {
                             <div className="value">{stats?.total_consultations || 0}</div>
                         </div>
                     </div>
-
-                    {/* Pharmacy Module Stats */}
-                    {isHosted && (
-                    <>
-                    <h3 style={{ margin: '30px 0 15px', color: '#bb86fc', fontSize: '1rem', fontWeight: '600' }}>
-                        <FaPills style={{ marginRight: '8px' }} /> Módulo Farmácia
-                    </h3>
-                    <div className="stats-grid">
-                        <div
-                            className="stat-card"
-                            style={clickableCardStyle}
-                            onClick={() => navigate('/admin/pharmacies')}
-                            title="Gerenciar medicamentos"
-                        >
-                            <h3><FaPills /> Medicamentos</h3>
-                            <div className="value">{stats?.total_medications || 0}</div>
-                            <div className="trend neutral">Cadastrados</div>
-                        </div>
-
-                        <div
-                            className="stat-card"
-                            style={clickableCardStyle}
-                            onClick={() => navigate('/admin/pharmacies')}
-                            title="Gerenciar farmácias"
-                        >
-                            <h3><FaStore /> Farmácias</h3>
-                            <div className="value">{stats?.total_pharmacies || 0}</div>
-                            <div className="trend neutral">{stats?.total_pharmacy_chains || 0} redes</div>
-                        </div>
-
-                        <div
-                            className="stat-card"
-                            style={clickableCardStyle}
-                            onClick={() => navigate('/admin/pharmacies')}
-                            title="Ver lista de espera"
-                        >
-                            <h3><FaClipboardList /> Waitlist Farmácias</h3>
-                            <div className="value">{stats?.pending_waitlist || 0}</div>
-                            <div className="trend positive">Pendentes</div>
-                        </div>
-
-                        <div className="stat-card">
-                            <h3><FaShareAlt /> Receitas Compartilhadas</h3>
-                            <div className="value">{stats?.total_prescription_shares || 0}</div>
-                            <div className="trend neutral">Via QR code / link</div>
-                        </div>
-                    </div>
-                    </>
-                    )}
 
                     {canInvite && (
                         <div style={{ marginTop: '20px' }}>

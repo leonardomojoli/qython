@@ -400,19 +400,6 @@
 }
 
 /* --- Ranking Update --- */
-.rankingUpdate {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(var(--secondary-color-rgb), 0.1);
-  border: 1px solid rgba(var(--secondary-color-rgb), 0.2);
-  border-radius: 10px;
-  color: var(--secondary-color);
-  font-weight: 600;
-  margin-bottom: 24px;
-}
-
 /* --- Answer Review --- */
 .reviewSection {
   margin-top: 16px;

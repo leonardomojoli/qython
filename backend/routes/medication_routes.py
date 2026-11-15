@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models import User, Medication, MedicationCountry, MedicationBrand, MedicationTranslation, DrugInteraction, GovernmentProgram, MedicationGovernmentProgram
 from ..security import get_current_active_user
-from ..services.pharmacy_service import check_interactions
+from ..services.interaction_service import check_interactions
 from ..services.activity_service import track_activity
 from ..i18n.pharma_translations import translate_medication_response
 

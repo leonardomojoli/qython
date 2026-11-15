@@ -124,8 +124,12 @@ jobs:
 
           tables=$(docker compose exec -T db psql -U qython -d qython -tAc \
             "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
-          echo "tabelas: $tables"
-          [ "$tables" -ge 60 ]
+          # O banco tem exatamente as tabelas dos modelos mais a alembic_version. (Antes era um mínimo
+          # fixo, que quebrava toda vez que uma limpeza tirava tabelas.)
+          modelos=$(docker compose exec -T backend python -c \
+            "from backend.db_base import Base; from backend import models; print(len(Base.metadata.tables))")
+          echo "tabelas: $tables (modelos: $modelos, mais a alembic_version)"
+          [ "$tables" -eq $((modelos + 1)) ]
           head=$(docker compose exec -T db psql -U qython -d qython -tAc "SELECT version_num FROM alembic_version")
           echo "alembic head: $head"
           [ -n "$head" ]
@@ -151,8 +155,6 @@ jobs:
           [ "$prompts" -ge 15 ]
           meds=$(psql "SELECT count(*) FROM medications"); echo "medicamentos: $meds"
           [ "$meds" -gt 0 ]
-          seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
-          [ "$seasons" -gt 0 ]
           exams=$(psql "SELECT count(*) FROM arena_exams"); echo "concursos da Arena: $exams"
           [ "$exams" -ge 7 ]
 
@@ -186,13 +188,13 @@ jobs:
           # OCR: a imagem traz o modelo médio (QYTHON_OCR_MODELS); lê uma página rasterizada como
           # o backend faz com PDF escaneado.
           docker compose exec -T backend python -c "
-          import fitz
-          from PIL import Image
-          from backend.services import ocr_service as o
-          doc = fitz.open(); pg = doc.new_page()
-          pg.insert_text((50, 100), 'Amoxicilina 50 mg/kg/dia, pressão arterial', fontname='helv', fontsize=22)
-          pix = pg.get_pixmap(dpi=200)
-          texto = o.ocr_imagem(Image.frombytes('RGB', [pix.width, pix.height], pix.samples))
+          from fpdf import FPDF
+          from backend.services import ocr_service as o, pdf_engine
+          pdf = FPDF(); pdf.add_page(); pdf.set_font('Helvetica', size=22)
+          pdf.cell(0, 20, 'Amoxicilina 50 mg/kg/dia, pressão arterial')
+          with pdf_engine.PdfFile(bytes(pdf.output())) as doc:
+              imagem = doc.render(0, dpi=200)
+          texto = o.ocr_imagem(imagem)
           print('ocr:', o.modelo_em_uso(), repr(texto))
           assert o.modelo_em_uso() == 'medio' and 'amoxicilina' in texto.lower() and 'pressão' in texto.lower()"
 
@@ -231,6 +233,10 @@ jobs:
           # Sincronização do celular: consultas em páginas, pacientes só na primeira, e a diferença (`since`)
           # entrega também o que acabou de ser criado.
           python3 tests/backend/test_sync_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
+
+          # Simulado e XP: o primeiro simulado de um usuário novo é aceito e dá XP; o que era da edição
+          # hospedada (ranking, temporada, desafios, farmácias parceiras) não responde mais.
+          python3 tests/backend/test_arena_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
 
       - name: Logs em caso de falha
         if: failure()

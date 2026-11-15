@@ -1,8 +1,7 @@
 """Termo de uso da edição local, aceito no primeiro acesso.
 
-O termo do SaaS (backend/scripts/seed_consent_documents.py) descrevia um serviço:
-a empresa como controladora dos dados, servidores, planos. Na instalação local não
-há serviço nenhum; quem instala opera o software e responde pelo uso. Este texto diz
+O termo do antigo SaaS descrevia um serviço: a empresa como controladora dos dados,
+servidores, planos. Na instalação local não há serviço nenhum; quem instala opera o software e responde pelo uso. Este texto diz
 isso e é publicado como um ConsentDocument, então o aceite fica gravado em
 user_consents com a versão e o hash do texto exato que a pessoa leu.
 

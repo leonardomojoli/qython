@@ -25,7 +25,7 @@ from .routes import (
     export_routes, admin_routes, patient_routes,
     prescription_routes, document_routes, exam_routes, icd10_routes,
     profile_update_routes, orientation_routes,
-    medication_routes, pharmacy_routes, public_routes, sync_routes,
+    medication_routes, public_routes, sync_routes,
     notification_routes, verification_routes, connector_routes, ai_settings_routes, pairing_routes, dictation_routes
 )
 
@@ -131,9 +131,8 @@ from .rate_limiter import limiter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Import scheduler and arena services
+    # Import scheduler and seeds
     from .services.scheduler import start_scheduler, stop_scheduler
-    from .services.arena_service import seed_seasons
     from .seeds.seed_medications import seed_all as seed_pharmacy_data
     from .seeds.seed_icd10 import seed_icd10
     from .seeds.copilot_prompts import seed_copilot_prompts
@@ -153,13 +152,6 @@ async def lifespan(app: FastAPI):
         if not acquired:
             logger.info("Another worker is running seeds, skipping")
         else:
-            try:
-                added = await seed_seasons(db)
-                if added > 0:
-                    logger.info(f"Seeded {added} new arena seasons")
-            except Exception as e:
-                logger.error(f"Error seeding seasons: {e}")
-
             try:
                 meds_added, interactions_added = await seed_pharmacy_data(db)
                 if meds_added > 0 or interactions_added > 0:
@@ -282,7 +274,6 @@ app.include_router(icd10_routes.router, prefix="/api/icd10", tags=["ICD-10"])
 app.include_router(profile_update_routes.router, prefix="/api/profile-updates", tags=["Profile Updates"])
 app.include_router(orientation_routes.router, prefix="/api/orientations", tags=["Orientations"])
 app.include_router(medication_routes.router, prefix="/api/medications", tags=["Medications"])
-app.include_router(pharmacy_routes.router, prefix="/api/pharmacy", tags=["Pharmacy"])
 app.include_router(public_routes.router, prefix="/api/public", tags=["Public"])
 app.include_router(sync_routes.router, prefix="/api/sync", tags=["Sync"])
 app.include_router(notification_routes.router, prefix="/api/notifications", tags=["Notifications"])
