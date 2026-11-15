@@ -23,7 +23,7 @@ O Qython utiliza uma estratégia de retenção chamada "Soft Block" para usuári
 Pipeline multimodal em duas fases para extrair e descrever imagens médicas de PDFs da biblioteca:
 
 **Fase 1 — Durante upload (sem custo, imediata):**
-- `file_processing_service.extract_images_from_pdf()` usa PyMuPDF (`page.get_images()` + `doc.extract_image()`)
+- `file_processing_service.extract_images_from_pdf()` usa o PDFium (`pdf_engine.PdfFile.images()`, que lê os objetos de imagem que a página realmente desenha)
 - Filtro heurístico local (`_is_likely_medical_image()`) descarta logos, gradientes, ícones — analisa variância de cor, aspect ratio, tamanho mínimo (250px, 5KB)
 - Imagens salvas em `/static/uploads/document_images/{document_id}/`
 - Registros `DocumentImage` criados com `vision_status='pending'`
@@ -46,7 +46,7 @@ Pipeline multimodal em duas fases para extrair e descrever imagens médicas de P
 
 ### Otimização de Processamento de PDFs (Março 2026)
 
-O processamento de documentos tenta **extração direta de texto** (PyMuPDF `page.get_text()`) antes de recorrer ao OCR:
+O processamento de documentos tenta **extração direta de texto** (PDFium, `pdf_engine.PdfFile.text()`) antes de recorrer ao OCR:
 
 1. `extract_text_direct(filepath)` — instantâneo, zero temp files
 2. Se < 100 chars extraídos → PDF escaneado → fallback para OCR local (`services/ocr_service.py`: RapidOCR com PP-OCRv6 em ONNX, sem binário nem download; lê página com duas colunas na ordem certa; cerca de 5 s por página em CPU)
@@ -100,8 +100,7 @@ slides saem sem imagem) e geração de áudio.
 /api/connectors     → Conectores de nuvem do usuário (OAuth Google Drive, status, Picker)
 /api/orientations   → Orientações ao paciente (templates + geração IA)
 /api/medications    → Catálogo de medicamentos, Farmácia Popular, interações
-/api/pharmacy       → Farmácias parceiras, redes, inventário, waitlist
-/api/public         → Receita pública (QR code), farmácias próximas (sem auth)
+/api/public         → Configuração da instalação e termo de uso (sem auth)
 /api/admin          → Dashboard, gerenciamento de usuários
 /api/sync           → Sync offline (medications, interactions, user-data)
 /api/notifications  → Notification center, preferences, unread count
@@ -132,32 +131,9 @@ slides saem sem imagem) e geração de áudio.
 | `GET` | `/api/medications/government-programs/{code}` | Autenticado | Detalhe do programa governamental |
 | `GET` | `/api/medications/{id}` | Autenticado | Detalhe do medicamento |
 
-#### Farmácias (`/api/pharmacy`)
+**Models:** `Medication`, `DrugInteraction`, `GovernmentProgram`, `MedicationGovernmentProgram`
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| `GET` | `/api/pharmacy` | Público | Listar farmácias (geo, cidade, estado) |
-| `GET` | `/api/pharmacy/{id}` | Público | Detalhe da farmácia + catálogo |
-| `GET` | `/api/pharmacy/{id}/medications` | Público | Catálogo de medicamentos da farmácia |
-| `GET` | `/api/pharmacy/chains` | Admin | Listar redes de farmácia |
-| `POST` | `/api/pharmacy/chains` | Admin | Criar rede |
-| `PUT` | `/api/pharmacy/chains/{id}` | Admin | Atualizar rede |
-| `POST` | `/api/pharmacy` | Admin | Criar farmácia |
-| `PUT` | `/api/pharmacy/{id}` | Admin | Atualizar farmácia |
-| `DELETE` | `/api/pharmacy/{id}` | Admin | Desativar farmácia (soft delete) |
-| `POST` | `/api/pharmacy/{id}/medications` | Admin | Atualizar inventário (bulk) |
-| `POST` | `/api/pharmacy/waitlist` | Público | Formulário de interesse (rate limited) |
-| `GET` | `/api/pharmacy/waitlist` | Admin | Listar waitlist |
-| `GET` | `/api/pharmacy/chains/{id}/metrics` | Admin | Métricas agregadas da rede |
-
-#### Rotas Públicas (`/api/public`)
-
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| `GET` | `/api/public/prescription/{token}` | Nenhum | Dados da receita + farmácias próximas (via QR code) |
-| `GET` | `/api/public/pharmacies/nearby` | Nenhum | Farmácias perto de coordenadas |
-
-**Models:** `Medication`, `DrugInteraction`, `GovernmentProgram`, `MedicationGovernmentProgram`, `PharmacyChain`, `Pharmacy`, `PharmacyMedication`, `PrescriptionShare`, `PharmacyPrescription`, `PharmacyWaitlist`
+A receita vai ao paciente como o próprio PDF (`GET /api/prescriptions/{id}/pdf`, pela folha de compartilhar do sistema). Não há mais rede de farmácias parceiras, link público de receita nem envio a farmácia.
 
 ## 5. Diagrama de Fluxo
 
@@ -207,8 +183,6 @@ Arquivos de mídia gerados (podcasts, vídeos, slideshows) expiram em **72 horas
 
 | Job | Horário (UTC) | Função |
 |-----|---------------|--------|
-| `daily_ranking_update` | 3:00 AM | Atualiza rankings da Arena |
-| `season_check` | Cada 6h | Verifica/ativa temporadas |
 | `avatar_cleanup` | 3:30 AM | Remove avatares órfãos (não referenciados no DB, > 1h) |
 | `chat_images_cleanup` | 4:00 AM | Remove imagens de chat > 30 dias |
 | `generated_content_cleanup` | 5:00 AM | Remove mídia expirada, temp files > 24h, thumbnails órfãos |
@@ -309,7 +283,7 @@ O hook `useDeviceClass()` retorna a classe do dispositivo baseada na largura da 
 | Copiloto | Chat com IA (markdown, imagens, sessões, rename, feedback, RAG, contexto paciente) | ✅ Implementado |
 | Ambulatório | Consultas (24 esp.), pacientes CRUD, prescrições, exames, orientações, voz, timer, undo/redo | ✅ Implementado |
 | Farmácia | Medicamentos (busca, filtros, 20 países), insumos, interações, prescrições | ✅ Implementado |
-| Acadêmico | Bibliotecas (CRUD + edit), upload, RAG chat, materiais, podcasts, arena, challenges, rankings, difficulty badges | ✅ Implementado |
+| Acadêmico | Bibliotecas (CRUD + edit), upload, RAG chat, materiais, arena (simulados por concurso, XP e sequência de dias, provas customizadas), difficulty badges | ✅ Implementado |
 
 ### API Endpoints Usados pelo Mobile
 
@@ -400,7 +374,6 @@ Tabela `notifications` armazena notificações persistentes para o Notification 
 **Event Triggers**:
 - Material generation (podcast/video/simulado) → `material_ready` / `material_failed`
 - KYC verification → `kyc_verified` / `kyc_rejected`
-- Arena season activation → `arena_season_started`
 
 ### Activity Tracking (`backend/services/activity_service.py`)
 

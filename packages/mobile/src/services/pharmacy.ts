@@ -3,7 +3,6 @@ import type {
   Medication,
   InteractionCheckResult,
   Prescription,
-  PharmacySend,
 } from '../types/pharmacy';
 
 export interface SearchMedicationsParams {
@@ -46,24 +45,6 @@ export async function checkDrugInteractions(
 
 export async function getPrescriptions(): Promise<Prescription[]> {
   const response = await api.get<Prescription[]>('/prescriptions');
-  return response.data;
-}
-
-export async function createPrescriptionShareLink(
-  prescriptionId: number,
-): Promise<{ share_url: string }> {
-  const response = await api.post<{ share_url: string }>(
-    `/prescriptions/${prescriptionId}/share`,
-  );
-  return response.data;
-}
-
-export async function getPrescriptionPharmacySends(
-  prescriptionId: number,
-): Promise<PharmacySend[]> {
-  const response = await api.get<PharmacySend[]>(
-    `/prescriptions/${prescriptionId}/pharmacy-sends`,
-  );
   return response.data;
 }
 

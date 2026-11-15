@@ -1,5 +1,3 @@
-import base64
-import io
 import os
 import logging
 from datetime import datetime
@@ -119,28 +117,7 @@ def get_logo_path(doctor=None):
         return f'file:///{url_path}'
     return ''
 
-def generate_qr_code_base64(url: str) -> str:
-    """Generate a QR code as base64-encoded PNG."""
-    try:
-        import qrcode
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=8,
-            border=2,
-        )
-        qr.add_data(url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        return base64.b64encode(buffer.getvalue()).decode("utf-8")
-    except Exception as e:
-        logger.warning(f"Failed to generate QR code: {e}")
-        return ""
-
-
-def render_prescription_pdf(prescription, doctor, patient, share_token: str = None) -> bytes:
+def render_prescription_pdf(prescription, doctor, patient) -> bytes:
     """
     Renderiza uma receita médica estruturada em PDF (bytes) usando HTML/CSS.
     """
@@ -208,21 +185,6 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
             </div>
             """
 
-        # QR Code section
-        qr_html = ""
-        if share_token:
-            share_url = f"{Config.WEB_BASE_URL}/receita/{share_token}"
-            qr_base64 = generate_qr_code_base64(share_url)
-            if qr_base64:
-                qr_html = f"""
-                <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
-                    <div style="display: inline-block; padding: 10px; border: 1px solid #e9ecef; border-radius: 8px; background: #f8f9fa;">
-                        <img src="data:image/png;base64,{qr_base64}" style="width: 2.5cm; height: 2.5cm;" alt="QR Code">
-                        <div style="font-size: 8pt; color: #7f8c8d; margin-top: 5px;">Aponte a câmera para ver sua receita digital — qython.ai</div>
-                    </div>
-                </div>
-                """
-
         full_html = f"""
         <!DOCTYPE html>
         <html>
@@ -259,7 +221,6 @@ def render_prescription_pdf(prescription, doctor, patient, share_token: str = No
 
             {notes_html}
 
-            {qr_html}
 
             <div class="signature-box">
                 <div class="signature-line"></div>

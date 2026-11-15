@@ -19,76 +19,6 @@ logger = logging.getLogger("qython_logger")
 scheduler = AsyncIOScheduler()
 
 
-
-
-
-
-async def scheduled_season_check():
-    """
-    Scheduled task to check and activate/deactivate seasons.
-    Runs every 6 hours.
-    """
-    from ..database import AsyncSessionLocal
-    from .arena_service import activate_current_season
-    from sqlalchemy.future import select
-    from ..models import ArenaSeason
-    from sqlalchemy import and_
-    from datetime import datetime, timezone as tz
-
-    logger.info("Checking season status...")
-
-    async with AsyncSessionLocal() as db:
-        try:
-            # Check if a NEW season will be activated (not already active)
-            now = datetime.now(tz.utc)
-            pending_result = await db.execute(
-                select(ArenaSeason).filter(
-                    and_(
-                        ArenaSeason.start_date <= now,
-                        ArenaSeason.end_date >= now,
-                        ArenaSeason.is_active == False
-                    )
-                )
-            )
-            new_season_pending = pending_result.scalars().first()
-
-            season = await activate_current_season(db)
-            if season:
-                logger.info(f"Current active season: {season.name}")
-
-            # Send arena season started notification if a NEW season was just activated
-            if new_season_pending and season and season.id == new_season_pending.id:
-                try:
-                    from .notification_service import send_notification_to_multiple, NotificationType
-                    from ..models import User
-
-                    eligible = await db.execute(
-                        select(User.id).where(User.subscription_plan.in_(['resident', 'staff', 'specialist']))
-                    )
-                    user_ids = [row[0] for row in eligible.fetchall()]
-
-                    if user_ids:
-                        await send_notification_to_multiple(
-                            db, user_ids, NotificationType.ARENA_SEASON_STARTED,
-                            'Nova temporada da Arena!',
-                            f'A temporada {season.name} começou. Participe agora!',
-                            data={'route': '/academic'},
-                        )
-                        await db.commit()
-                        logger.info(f"[NOTIFICATIONS] Sent arena season notification to {len(user_ids)} users")
-                except Exception as ne:
-                    logger.error(f"[NOTIFICATIONS] Failed to send arena season notification: {ne}")
-
-        except Exception as e:
-            logger.error(f"Error in season check: {e}", exc_info=True)
-
-
-
-
-
-
-
-
 def _resolve_generated_media_path(path_val):
     """
     Resolve a media path as stored in the DB to a real filesystem path.
@@ -510,18 +440,6 @@ async def scheduled_avatar_cleanup():
     logger.info(f"[CLEANUP] Avatar cleanup complete. Deleted {total_deleted} orphan files. Freed {size_mb:.2f} MB.")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 async def scheduled_vision_processing():
     """
     Scheduled task to process pending document image descriptions via the local vision model.
@@ -755,10 +673,6 @@ _TLS_WATCHED_HOSTS = ("qython.ai", "www.qython.ai", "qython.app", "qython.com")
 _TLS_ALERT_DAYS = 21
 
 
-
-
-
-
 def _daily(hour: int, minute: int = 0):
     """Gatilho diário. O computador costuma estar desligado de madrugada e um horário fixo nunca
     dispararia: roda a cada 24 h, começando pouco depois de abrir."""
@@ -769,18 +683,9 @@ def start_scheduler():
     """Start the background scheduler with all jobs.
 
     Só jobs de manutenção: limpeza de arquivos e notificações, recuperação de documentos
-    travados e a fila de visão. O Qython não tem mais ranking nacional, cobrança, e-mails de
+    travados e a fila de visão. O Qython não tem mais ranking, liga, temporada, desafio, cobrança, e-mails de
     campanha nem coleta de dados de treinamento.
     """
-    # Season check every 6 hours
-    scheduler.add_job(
-        scheduled_season_check,
-        CronTrigger(hour="*/6"),
-        id="season_check",
-        name="Season Status Check",
-        replace_existing=True
-    )
-
     # Generated content cleanup (TTL expiration + temp files) daily at 5:00 AM UTC
     scheduler.add_job(
         scheduled_generated_content_cleanup,

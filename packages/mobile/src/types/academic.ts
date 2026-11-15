@@ -48,7 +48,6 @@ export interface XpBreakdown {
   accuracy_bonus: number;
   streak_bonus: number;
   speed_bonus: number;
-  challenge_bonus: number;
   total: number;
 }
 
@@ -81,54 +80,12 @@ export interface QuizResult {
     longest: number;
     is_new_record: boolean;
   };
-  league?: {
-    tier: string;
-    icon: string;
-    display: string;
-    season_xp: number;
-    next_tier?: string;
-    next_tier_icon?: string;
-    next_tier_min_xp?: number;
-    xp_to_next?: number;
-  };
-  ranking_update?: {
-    rank_position: number;
-    percentile: number;
-    total_xp: number;
-  };
 }
-
-export interface RankingEntry {
-  rank: number;
-  name: string;
-  xp: number;
-  quizzes_completed?: number;
-  isRealUser?: boolean;
-  league_tier?: string;
-  league_icon?: string;
-}
-
-export type LeagueTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'champion';
 
 export interface XpProfile {
   total_xp: number;
-  season_xp: number;
   current_streak: number;
   longest_streak: number;
-  league_tier: LeagueTier;
-  next_tier?: LeagueTier;
-  next_tier_min_xp?: number;
-  xp_to_next?: number;
-}
-
-export interface Season {
-  id: number;
-  name: string;
-  start_date: string;
-  end_date: string;
-  is_active: boolean;
-  days_remaining?: number;
-  days_until_start?: number;
 }
 
 export interface ChatMessage {

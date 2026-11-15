@@ -4,41 +4,26 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { api } from '../../api';
 import { useTranslation } from 'react-i18next';
 import {
-    FaServer, FaUserShield, FaToggleOn, FaToggleOff, FaSave,
-    FaCreditCard, FaChartLine, FaHistory, FaExclamationTriangle,
-    FaSpinner, FaClock, FaShieldAlt, FaSyncAlt
+    FaUserShield, FaToggleOn, FaToggleOff,
+    FaHistory, FaExclamationTriangle,
+    FaSpinner, FaSyncAlt
 } from 'react-icons/fa';
-import { SiStripe } from 'react-icons/si';
 import styles from './AdminSettings.module.css';
-import { usePublicConfig } from '../../contexts/PublicConfigContext';
 
 const AdminSettings = () => {
     const { addNotification } = useNotification();
     const { t } = useTranslation();
-    // Métricas e modo de manutenção dependem do monitor de servidor, que só roda no
-    // SaaS; gateways de pagamento, da cobrança.
-    const { config } = usePublicConfig();
-    const isHosted = config?.edition === 'hosted';
-
     // Loading states
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     // Settings state
     const [settings, setSettings] = useState({
-        server_maintenance_level: 0,
         new_registrations_enabled: true,
         require_invite: false,
         rate_limit_enabled: true,
         rate_limit_requests_per_minute: 60,
-        auto_maintenance_enabled: true,
-        auto_maintenance_cpu_threshold: 90,
-        auto_maintenance_memory_threshold: 85,
     });
-
-    // Server metrics state
-    const [metrics, setMetrics] = useState(null);
-    const [metricsLoading, setMetricsLoading] = useState(false);
 
     // Audit log state
     const [auditLog, setAuditLog] = useState([]);
@@ -58,14 +43,10 @@ const AdminSettings = () => {
             const data = response.data;
 
             setSettings({
-                server_maintenance_level: parseInt(data.server_maintenance_level) || 0,
                 new_registrations_enabled: data.new_registrations_enabled === 'true',
                 require_invite: data.require_invite === 'true',
                 rate_limit_enabled: data.rate_limit_enabled === 'true',
                 rate_limit_requests_per_minute: parseInt(data.rate_limit_requests_per_minute) || 60,
-                auto_maintenance_enabled: data.auto_maintenance_enabled === 'true',
-                auto_maintenance_cpu_threshold: parseInt(data.auto_maintenance_cpu_threshold) || 90,
-                auto_maintenance_memory_threshold: parseInt(data.auto_maintenance_memory_threshold) || 85,
             });
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -74,19 +55,6 @@ const AdminSettings = () => {
             setLoading(false);
         }
     }, [addNotification]);
-
-    // Fetch server metrics
-    const fetchMetrics = useCallback(async () => {
-        setMetricsLoading(true);
-        try {
-            const response = await api.get('/admin/metrics?hours=1');
-            setMetrics(response.data);
-        } catch (error) {
-            console.error('Error fetching metrics:', error);
-        } finally {
-            setMetricsLoading(false);
-        }
-    }, []);
 
     // Fetch audit log
     const fetchAuditLog = useCallback(async () => {
@@ -117,14 +85,9 @@ const AdminSettings = () => {
     // Initial load
     useEffect(() => {
         fetchSettings();
-        fetchMetrics();
         fetchAuditLog();
         fetchViolations();
-
-        // Refresh metrics every 60 seconds
-        const metricsInterval = setInterval(fetchMetrics, 60000);
-        return () => clearInterval(metricsInterval);
-    }, [fetchSettings, fetchMetrics, fetchAuditLog, fetchViolations]);
+    }, [fetchSettings, fetchAuditLog, fetchViolations]);
 
     // Update a single setting
     const updateSetting = async (key, value, reason = '') => {
@@ -164,58 +127,11 @@ const AdminSettings = () => {
         }
     };
 
-    // Handle maintenance level change
-    const handleMaintenanceLevelChange = (level) => {
-        if (level > settings.server_maintenance_level) {
-            // Escalating - show confirmation
-            setConfirmModal({
-                open: true,
-                key: 'server_maintenance_level',
-                newValue: String(level),
-                reason: ''
-            });
-        } else {
-            // De-escalating
-            setSettings(prev => ({ ...prev, server_maintenance_level: level }));
-            updateSetting('server_maintenance_level', level);
-        }
-    };
-
-    // Override auto-maintenance
-    const handleOverrideAutoMaintenance = async (hours) => {
-        try {
-            await api.post(`/admin/maintenance/override?hours=${hours}`);
-            addNotification(`Auto-manutenção desabilitada por ${hours} hora(s)`, 'success');
-            fetchAuditLog();
-        } catch (error) {
-            addNotification('Erro ao desabilitar auto-manutenção', 'error');
-        }
-    };
-
     // Confirm modal action
     const confirmAction = () => {
         updateSetting(confirmModal.key, confirmModal.newValue, confirmModal.reason);
-        setSettings(prev => ({
-            ...prev,
-            [confirmModal.key]: confirmModal.key === 'server_maintenance_level'
-                ? parseInt(confirmModal.newValue)
-                : confirmModal.newValue === 'true'
-        }));
+        setSettings(prev => ({ ...prev, [confirmModal.key]: confirmModal.newValue === 'true' }));
     };
-
-    // Render progress bar
-    const ProgressBar = ({ value, color, threshold }) => (
-        <div className={styles.progressBar}>
-            <div
-                className={styles.progressFill}
-                style={{
-                    width: `${value || 0}%`,
-                    backgroundColor: value > (threshold || 90) ? '#ff6b6b' : color
-                }}
-            />
-            <span className={styles.progressValue}>{value?.toFixed(1) || 0}%</span>
-        </div>
-    );
 
     // Render toggle button
     const ToggleButton = ({ active, onClick, disabled, color = '#03dac6' }) => (
@@ -247,7 +163,7 @@ const AdminSettings = () => {
                 <div className="admin-actions">
                     <button
                         className={styles.refreshButton}
-                        onClick={() => { fetchSettings(); fetchMetrics(); fetchAuditLog(); }}
+                        onClick={() => { fetchSettings(); fetchAuditLog(); }}
                     >
                         <FaSyncAlt /> Atualizar
                     </button>
@@ -285,48 +201,6 @@ const AdminSettings = () => {
             )}
 
             <div className={styles.settingsGrid}>
-                {/* Server Metrics Card */}
-                {isHosted && (
-                <div className={styles.card}>
-                    <div className={styles.cardHeader}>
-                        <FaChartLine size={24} style={{ color: '#03dac6' }} />
-                        <h3>Métricas do Servidor</h3>
-                        {metricsLoading && <FaSpinner className={styles.spinner} />}
-                    </div>
-
-                    {metrics?.latest ? (
-                        <div className={styles.metricsGrid}>
-                            <div className={styles.metricItem}>
-                                <label>CPU</label>
-                                <ProgressBar
-                                    value={metrics.latest.cpu_percent}
-                                    color="#03dac6"
-                                    threshold={settings.auto_maintenance_cpu_threshold}
-                                />
-                            </div>
-                            <div className={styles.metricItem}>
-                                <label>Memória</label>
-                                <ProgressBar
-                                    value={metrics.latest.memory_percent}
-                                    color="#bb86fc"
-                                    threshold={settings.auto_maintenance_memory_threshold}
-                                />
-                            </div>
-                            <div className={styles.metricItem}>
-                                <label>Disco</label>
-                                <ProgressBar value={metrics.latest.disk_percent} color="#6627cd" threshold={90} />
-                            </div>
-                            <div className={styles.metricItem}>
-                                <label>Conexões Ativas</label>
-                                <span className={styles.metricValue}>{metrics.latest.active_connections || 0}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className={styles.noData}>Nenhuma métrica disponível</p>
-                    )}
-                </div>
-                )}
-
                 {/* Access Control Card */}
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
@@ -375,94 +249,6 @@ const AdminSettings = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* Maintenance Mode Card */}
-                {isHosted && (
-                <div className={styles.card}>
-                    <div className={styles.cardHeader}>
-                        <FaServer size={24} style={{ color: '#ff6b6b' }} />
-                        <h3>Modo de Manutenção</h3>
-                    </div>
-
-                    <div className={styles.maintenanceLevels}>
-                        {[
-                            { level: 0, name: 'Normal', desc: 'Tudo funcionando', color: '#03dac6' },
-                            { level: 1, name: 'Alto Tráfego', desc: 'Cadastros pausados', color: '#f0b90b' },
-                            { level: 2, name: 'Manutenção', desc: 'Somente leitura', color: '#ff6b6b' },
-                        ].map(({ level, name, desc, color }) => (
-                            <button
-                                key={level}
-                                className={`${styles.levelButton} ${settings.server_maintenance_level === level ? styles.levelActive : ''}`}
-                                onClick={() => handleMaintenanceLevelChange(level)}
-                                style={{ borderColor: settings.server_maintenance_level === level ? color : 'transparent' }}
-                            >
-                                <span className={styles.levelName} style={{ color: settings.server_maintenance_level === level ? color : '#e0e0e0' }}>
-                                    {name}
-                                </span>
-                                <span className={styles.levelDesc}>{desc}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className={styles.autoMaintenanceSection}>
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <FaShieldAlt />
-                                <div>
-                                    <strong>Auto-Manutenção</strong>
-                                    <span>Ativa automaticamente quando recursos atingem threshold</span>
-                                </div>
-                            </div>
-                            <ToggleButton
-                                active={settings.auto_maintenance_enabled}
-                                onClick={() => handleToggle('auto_maintenance_enabled')}
-                            />
-                        </div>
-
-                        {settings.auto_maintenance_enabled && (
-                            <div className={styles.thresholdInputs}>
-                                <div className={styles.thresholdItem}>
-                                    <label>CPU Threshold</label>
-                                    <input
-                                        type="number"
-                                        value={settings.auto_maintenance_cpu_threshold}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 90;
-                                            setSettings(prev => ({ ...prev, auto_maintenance_cpu_threshold: val }));
-                                        }}
-                                        onBlur={() => updateSetting('auto_maintenance_cpu_threshold', settings.auto_maintenance_cpu_threshold)}
-                                        min={50}
-                                        max={99}
-                                    />
-                                    <span>%</span>
-                                </div>
-                                <div className={styles.thresholdItem}>
-                                    <label>RAM Threshold</label>
-                                    <input
-                                        type="number"
-                                        value={settings.auto_maintenance_memory_threshold}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 85;
-                                            setSettings(prev => ({ ...prev, auto_maintenance_memory_threshold: val }));
-                                        }}
-                                        onBlur={() => updateSetting('auto_maintenance_memory_threshold', settings.auto_maintenance_memory_threshold)}
-                                        min={50}
-                                        max={99}
-                                    />
-                                    <span>%</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <button
-                            className={styles.overrideButton}
-                            onClick={() => handleOverrideAutoMaintenance(1)}
-                        >
-                            <FaClock /> Override Manual (1h)
-                        </button>
-                    </div>
-                </div>
-                )}
 
                 {/* Audit Log Card */}
                 <div className={styles.card}>

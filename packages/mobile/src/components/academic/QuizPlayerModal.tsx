@@ -23,7 +23,6 @@ import type { JobStatus, QuizQuestion, QuizResult, AnswerDetail } from '../../ty
 interface Props {
   activeJob: JobStatus;
   onClose: () => void;
-  onShareResult?: (score: number, total: number, correct: number) => void;
 }
 
 const QUIZ_DURATION = 4 * 60 * 60;
@@ -41,7 +40,7 @@ function formatTime(seconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
-export default function QuizPlayerModal({ activeJob, onClose, onShareResult }: Props) {
+export default function QuizPlayerModal({ activeJob, onClose }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const startTimeRef = useRef(Date.now());
@@ -238,12 +237,6 @@ export default function QuizPlayerModal({ activeJob, onClose, onShareResult }: P
                 <Text style={[styles.xpRowValue, { color: theme.primary }]}>+{breakdown.speed_bonus}</Text>
               </View>
             )}
-            {breakdown.challenge_bonus > 0 && (
-              <View style={styles.xpRow}>
-                <Text style={[styles.xpRowLabel, { color: theme.textMuted }]}>⚔️ {t('challengeBonus', 'Bônus Desafio')}</Text>
-                <Text style={[styles.xpRowValue, { color: theme.primary }]}>+{breakdown.challenge_bonus}</Text>
-              </View>
-            )}
           </View>
         )}
 
@@ -258,15 +251,6 @@ export default function QuizPlayerModal({ activeJob, onClose, onShareResult }: P
             </View>
           )}
         </View>
-
-        {/* Ranking Update */}
-        {result?.ranking_update && (
-          <View style={[styles.rankingUpdateBox, { backgroundColor: theme.secondary + '15', borderColor: theme.secondary + '30' }]}>
-            <Text style={[styles.rankingUpdateText, { color: theme.secondary }]}>
-              ↑ #{result.ranking_update.rank_position} — Top {result.ranking_update.percentile}%
-            </Text>
-          </View>
-        )}
 
         {/* Answer Review */}
         {answersDetail.length > 0 && (
@@ -338,17 +322,6 @@ export default function QuizPlayerModal({ activeJob, onClose, onShareResult }: P
 
         {/* Actions */}
         <View style={styles.resultActions}>
-          {onShareResult && result && (
-            <TouchableOpacity
-              style={[styles.shareResultBtn, { borderColor: theme.primary }]}
-              onPress={() =>
-                onShareResult(result.xp_earned ?? result.score, result.total_questions ?? result.total, result.correct_count ?? result.correct)
-              }>
-              <Text style={[styles.shareResultText, { color: theme.primary }]}>
-                {t('shareResult', 'Compartilhar')}
-              </Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             style={[styles.closeResultBtn, { backgroundColor: theme.primary }]}
             onPress={onClose}>
@@ -654,17 +627,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: '#ff8c00',
   },
-  rankingUpdateBox: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    marginBottom: spacing.base,
-  },
-  rankingUpdateText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
   reviewSection: {
     marginTop: spacing.sm,
   },
@@ -755,15 +717,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.lg,
-  },
-  shareResultBtn: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  shareResultText: {
-    ...typography.button,
   },
   closeResultBtn: {
     paddingHorizontal: spacing.xl,
