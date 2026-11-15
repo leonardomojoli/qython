@@ -13,7 +13,7 @@ import { runSmoke } from './smoke.js';
 import { AiController } from './ai.js';
 import { LocalLlm } from './llm.js';
 import { ModelManager, loadManifest } from './models.js';
-import { startUpdater } from './updater.js';
+import { startUpdater, autoUpdateEnabled, updatesAvailable } from './updater.js';
 import { BackupError, EXTENSION, suggestedName } from './backup.js';
 import { backupFlow, restoreFlow } from './backup-flow.js';
 import { LanAccess } from './lan.js';
@@ -127,6 +127,7 @@ function showMain() {
 }
 
 let installUpdate = null; // definida quando uma atualização já foi baixada
+let updater = null; // o autoUpdater, quando a atualização automática está ativa
 
 function trayMenu() {
   return Menu.buildFromTemplate([
@@ -152,6 +153,32 @@ function createTray() {
   }
 }
 
+/** Liga ou desliga a consulta ao GitHub por versão nova (menu Ajuda). Vale já; religar sem reiniciar também. */
+function setAutoUpdate(enabled) {
+  settings.set('autoUpdate', enabled);
+  log.info(`Atualização automática ${enabled ? 'ligada' : 'desligada'} pelo menu.`);
+  // Uma versão já baixada não deve se instalar sozinha ao fechar se a pessoa desligou.
+  if (updater) updater.autoInstallOnAppQuit = enabled;
+  if (enabled && !updater) launchUpdater();
+}
+
+let updaterLaunching = false;
+function launchUpdater() {
+  if (updaterLaunching) return Promise.resolve();
+  updaterLaunching = true;
+  return startUpdater({
+    app, settings, log,
+    notify: (title, body) => {
+      if (Notification.isSupported()) new Notification({ title, body, icon: iconFile }).show();
+    },
+    openExternal: (url) => shell.openExternal(url),
+    onInstallReady: (fn) => {
+      installUpdate = fn;
+      tray?.setContextMenu(trayMenu());
+    },
+  }).then((u) => { updater = u; }).catch((err) => log.warn(`Atualizador: ${err.message}`)).finally(() => { updaterLaunching = false; });
+}
+
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
@@ -167,6 +194,14 @@ function buildMenu() {
     { label: 'Ajuda', submenu: [
       { label: 'Escolher a IA…', click: () => { openWizard(); } },
       { label: 'Baixar a transcrição de áudio e vídeo (1,6 GB)', click: () => { downloadWhisper(); } },
+      // O deb não consulta o GitHub (o gerenciador de pacotes cuida das versões): sem a opção.
+      ...(updatesAvailable({ platform: process.platform, appImage: Boolean(process.env.APPIMAGE) }) ? [{
+        label: 'Procurar atualizações automaticamente',
+        type: 'checkbox',
+        checked: autoUpdateEnabled({ env: process.env, settings }),
+        enabled: !process.env.QYTHON_NO_UPDATE, // a variável de ambiente manda mais que o menu
+        click: (item) => setAutoUpdate(item.checked),
+      }] : []),
       { label: 'Abrir a pasta de logs', click: () => shell.openPath(paths.logs) },
       { label: 'Reportar um problema…', click: () => shell.openExternal('https://github.com/leonardomojoli/qython/issues/new?template=problema.yml') },
       { label: 'Código-fonte e documentação', click: () => shell.openExternal('https://github.com/leonardomojoli/qython') },
@@ -513,17 +548,7 @@ async function boot() {
   createTray();
 
   // Atualização automática pelo GitHub Releases (só no app instalado; ver updater.js).
-  startUpdater({
-    app, settings, log,
-    notify: (title, body) => {
-      if (Notification.isSupported()) new Notification({ title, body, icon: iconFile }).show();
-    },
-    openExternal: (url) => shell.openExternal(url),
-    onInstallReady: (fn) => {
-      installUpdate = fn;
-      tray?.setContextMenu(trayMenu());
-    },
-  }).catch((err) => log.warn(`Atualizador: ${err.message}`));
+  launchUpdater();
 
   // Primeira abertura: o médico escolhe a IA antes de começar. O download segue em segundo
   // plano e o cadastro da conta é feito na própria tela do Qython.

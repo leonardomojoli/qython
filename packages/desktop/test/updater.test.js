@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { updatePolicy } from '../src/updater.js';
+import { updatePolicy, autoUpdateEnabled, updatesAvailable } from '../src/updater.js';
 
 const settings = (autoUpdate) => ({ get: (k, d) => (k === 'autoUpdate' && autoUpdate !== undefined ? autoUpdate : d) });
 const base = { isPackaged: true, env: {}, settings: settings(), platform: 'win32', appImage: false };
@@ -29,4 +29,18 @@ test('o deb é do gerenciador de pacotes do sistema; só o AppImage se atualiza'
 
 test('no macOS sem assinatura só avisa, não baixa nem instala', () => {
   assert.deepEqual(updatePolicy({ ...base, platform: 'darwin' }), { enabled: true, autoDownload: false });
+});
+
+test('a opção do menu liga e desliga a consulta ao GitHub; a variável de ambiente manda mais', () => {
+  assert.equal(autoUpdateEnabled({ env: {}, settings: settings() }), true);
+  assert.equal(autoUpdateEnabled({ env: {}, settings: settings(true) }), true);
+  assert.equal(autoUpdateEnabled({ env: {}, settings: settings(false) }), false);
+  assert.equal(autoUpdateEnabled({ env: { QYTHON_NO_UPDATE: '1' }, settings: settings(true) }), false);
+});
+
+test('só quem se atualiza sozinho mostra a opção no menu (o deb não)', () => {
+  assert.equal(updatesAvailable({ platform: 'win32', appImage: false }), true);
+  assert.equal(updatesAvailable({ platform: 'darwin', appImage: false }), true);
+  assert.equal(updatesAvailable({ platform: 'linux', appImage: true }), true);
+  assert.equal(updatesAvailable({ platform: 'linux', appImage: false }), false);
 });

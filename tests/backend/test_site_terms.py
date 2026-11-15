@@ -54,6 +54,7 @@ def test_paginas_se_ligam_e_a_landing_liga_para_as_duas():
     assert 'href="/terms-of-use/"' in ler("privacy-policy", "index.html")
     landing = ler("index.html")
     assert 'href="/privacy-policy/"' in landing and 'href="/terms-of-use/"' in landing
+    assert 'href="/code-signing-policy/"' in landing and 'href="/code-signing-policy/"' in ler("privacy-policy", "index.html")
 
 
 def test_politica_de_privacidade_diz_o_essencial():
@@ -63,9 +64,20 @@ def test_politica_de_privacidade_diz_o_essencial():
         assert trecho in texto, f"a política precisa dizer: {trecho}"
 
 
+def test_politica_de_assinatura_e_honesta_e_completa():
+    html = ler("code-signing-policy", "index.html")
+    texto = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+    for trecho in ("Code signing policy", "não são assinados", "SHA-256", "sha256sum", "Get-FileHash", "Leonardo de Abreu",
+                   "aprovação manual", "construído a partir do código-fonte", "Procurar atualizações automaticamente",
+                   "política de privacidade", "desinstalador"):
+        assert trecho in texto, f"a política de assinatura precisa dizer: {trecho}"
+    # Enquanto não existir certificado, a página não pode afirmar que os instaladores são assinados nem citar provedor.
+    assert "Free code signing" not in html and "SignPath" not in html, "a página afirma uma assinatura que ainda não existe"
+
+
 def test_site_nao_carrega_nada_de_terceiros():
     for pagina in ("index.html", "404.html", os.path.join("terms-of-use", "index.html"),
-                   os.path.join("privacy-policy", "index.html")):
+                   os.path.join("privacy-policy", "index.html"), os.path.join("code-signing-policy", "index.html")):
         html = ler(pagina)
         # Script só o próprio da landing (o botão "copiar"): sem src de fora e sem nenhuma chamada de rede.
         for tag in re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.I | re.S):

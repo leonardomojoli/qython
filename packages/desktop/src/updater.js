@@ -8,15 +8,32 @@
 //  - no macOS sem assinatura o Squirrel.Mac não instala: o app só avisa e abre a página da versão.
 
 /**
+ * A pessoa quer que o app consulte o GitHub atrás de versão nova? Variável de ambiente e preferência
+ * (menu Ajuda) desligam; o padrão é ligado. Função pura, para testar.
+ */
+export function autoUpdateEnabled({ env, settings }) {
+  if (env.QYTHON_NO_UPDATE) return false;
+  return settings.get('autoUpdate', true) !== false;
+}
+
+/**
+ * Este tipo de instalação se atualiza por conta própria? O deb é do gerenciador de pacotes do
+ * sistema e não consulta o GitHub; então a opção de desligar nem aparece nele.
+ */
+export function updatesAvailable({ platform, appImage }) {
+  return !(platform === 'linux' && !appImage);
+}
+
+/**
  * Decide se este app deve procurar atualização, e como. Função pura, para testar.
  * @returns {{enabled:boolean, reason?:string, autoDownload?:boolean}}
  */
 export function updatePolicy({ isPackaged, env, settings, platform, appImage }) {
   if (!isPackaged) return { enabled: false, reason: 'app em desenvolvimento' };
   if (env.QYTHON_NO_UPDATE) return { enabled: false, reason: 'QYTHON_NO_UPDATE' };
-  if (settings.get('autoUpdate', true) === false) return { enabled: false, reason: 'desligado nas preferências' };
+  if (!autoUpdateEnabled({ env, settings })) return { enabled: false, reason: 'desligado nas preferências' };
   // O deb é instalado pelo gerenciador de pacotes do sistema, que cuida das versões.
-  if (platform === 'linux' && !appImage) return { enabled: false, reason: 'instalado por pacote do sistema' };
+  if (!updatesAvailable({ platform, appImage })) return { enabled: false, reason: 'instalado por pacote do sistema' };
   // Sem assinatura, o macOS recusa trocar o app por si mesmo: só avisa.
   return { enabled: true, autoDownload: platform !== 'darwin' };
 }
@@ -62,7 +79,14 @@ export async function startUpdater(o) {
   });
   autoUpdater.on('error', (err) => o.log.warn(`Não foi possível procurar atualização: ${err?.message ?? err}`));
 
-  const check = () => autoUpdater.checkForUpdates().catch((err) => o.log.warn(`Atualização: ${err.message}`));
+  // A preferência vale a cada consulta: desligar no menu para as próximas na hora, sem reiniciar.
+  const check = () => {
+    if (!autoUpdateEnabled({ env: process.env, settings: o.settings })) {
+      o.log.info('Atualização automática desligada nas preferências: não consultei o GitHub.');
+      return Promise.resolve();
+    }
+    return autoUpdater.checkForUpdates().catch((err) => o.log.warn(`Atualização: ${err.message}`));
+  };
   setTimeout(check, 30_000).unref();
   setInterval(check, SIX_HOURS).unref();
   return autoUpdater;

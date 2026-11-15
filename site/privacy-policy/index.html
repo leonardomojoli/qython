@@ -42,7 +42,7 @@
 
     <h2>3. Quando o Qython fala com a internet</h2>
     <ul>
-      <li><strong>Instalar e atualizar:</strong> o app baixa os modelos de IA do Hugging Face e do GitHub (conferidos por SHA-256), e verifica e baixa atualizações pelo GitHub. O GitHub e o Hugging Face enxergam o seu endereço IP e o que você baixa, como em qualquer download.</li>
+      <li><strong>Instalar e atualizar:</strong> o app baixa os modelos de IA do Hugging Face e do GitHub (conferidos por SHA-256), e, no Windows, no macOS e no AppImage, verifica e baixa atualizações pelo GitHub (você desliga em <em>Ajuda</em> → <em>Procurar atualizações automaticamente</em>; o <code>.deb</code> nunca consulta o GitHub). O GitHub e o Hugging Face enxergam o seu endereço IP e o que você baixa, como em qualquer download.</li>
       <li><strong>Referências do copiloto (PubMed):</strong> para citar artigos, o copiloto consulta o PubMed (NCBI). Vão os <strong>termos da busca</strong>, derivados da sua pergunta, e não o prontuário; mesmo assim, não escreva nome nem documento de paciente em perguntas ao copiloto. Quem prefere cortar isso (por exemplo, em instalação sem internet) desliga com <code>COPILOT_PUBMED=0</code>.</li>
       <li><strong>Google Drive (opcional):</strong> só se você conectar. O Qython pede acesso apenas aos arquivos que ele mesmo cria ou que você escolhe abrir (permissão <em>drive.file</em>), e você revoga quando quiser, no Qython ou na sua conta Google.</li>
       <li><strong>Servidor exposto na internet (opcional):</strong> o administrador pode ligar verificação de segurança (Cloudflare Turnstile), SMS e login com Google (Firebase), e-mail (Resend) e a verificação profissional (Lastreo). Cada um só funciona se configurado e recebe apenas o que o recurso exige, sob os termos do próprio serviço. Na instalação padrão, nenhum deles está ligado.</li>
@@ -71,6 +71,7 @@
   <footer>
     <a href="/">Início</a>
     <a href="/terms-of-use/">Termo de uso</a>
+    <a href="/code-signing-policy/">Code signing policy</a>
     <a href="https://github.com/leonardomojoli/qython/blob/main/LICENSE">Licença AGPL-3.0</a>
   </footer>
 </body>
