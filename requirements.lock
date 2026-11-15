@@ -297,7 +297,6 @@ pillow==13.0.0
     #   -r requirements.txt
     #   fpdf2
     #   python-pptx
-    #   qrcode
     #   rapidocr
     #   weasyprint
 propcache==0.5.4
@@ -382,8 +381,6 @@ pyyaml==6.0.3
     #   omegaconf
     #   rapidocr
     #   uvicorn
-qrcode==8.2
-    # via -r requirements.txt
 rank-bm25==0.2.2
     # via -r requirements.txt
 rapidocr==3.10.0

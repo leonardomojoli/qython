@@ -60,37 +60,6 @@
     color: var(--text-color-secondary);
 }
 
-.xpProfileLeague {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.xpSeasonIcon {
-    font-size: 1.6rem;
-    color: var(--accent-color);
-}
-
-.xpLeagueInfo {
-    display: flex;
-    flex-direction: column;
-}
-
-.xpSeasonLabel {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-color-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.xpSeasonXp {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-color);
-    font-family: 'monospace', monospace;
-}
-
 .xpProfileStats {
     display: flex;
     gap: 16px;

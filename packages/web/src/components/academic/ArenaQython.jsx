@@ -133,7 +133,7 @@ const ArenaQython = () => {
         .filter(Boolean);
 
     // Sem XP nenhum = ainda não fez simulado: mostra convite, não card zerado
-    const hasAnyXp = (xpProfile?.total_xp || 0) > 0 || (xpProfile?.season_xp || 0) > 0;
+    const hasAnyXp = (xpProfile?.total_xp || 0) > 0;
 
     // Catálogo de exames = inscrição. Hero quando não há inscrição;
     // revelado pelo "+ Adicionar concurso" quando já há.
@@ -226,13 +226,6 @@ const ArenaQython = () => {
                             {xpProfile && hasAnyXp && (
                                 <div className={styles.xpProfileCard}>
                                     <div className={styles.xpProfileMain}>
-                                        <div className={styles.xpProfileLeague}>
-                                            <FontAwesomeIcon icon={faBolt} className={styles.xpSeasonIcon} />
-                                            <div className={styles.xpLeagueInfo}>
-                                                <span className={styles.xpSeasonLabel}>{t('seasonXpLabel')}</span>
-                                                <span className={styles.xpSeasonXp}>{(xpProfile.season_xp || 0).toLocaleString()} XP</span>
-                                            </div>
-                                        </div>
                                         <div className={styles.xpProfileStats}>
                                             {xpProfile.current_streak > 0 && (
                                                 <div className={styles.xpStat}>

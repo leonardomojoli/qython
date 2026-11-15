@@ -35,22 +35,8 @@ class ArenaExam(Base):
         return f"<ArenaExam {self.exam_code}>"
 
 
-# League tier constants.
-# ⚠️ UI de tiers REMOVIDA (jul/2026, decisão do fundador: conceito confuso p/ usuário).
-# Mantido no backend só p/ compat de API com builds mobile antigos + matchmaking interno
-# (find_random_opponent pareia por tier adjacente). Não reintroduzir tiers na interface.
-LEAGUE_TIERS = [
-    {'name': 'bronze',    'display': 'Bronze',    'icon': '🥉', 'min_xp': 0},
-    {'name': 'silver',    'display': 'Prata',     'icon': '🥈', 'min_xp': 500},
-    {'name': 'gold',      'display': 'Ouro',      'icon': '🥇', 'min_xp': 1500},
-    {'name': 'platinum',  'display': 'Platina',   'icon': '💎', 'min_xp': 3500},
-    {'name': 'diamond',   'display': 'Diamante',  'icon': '💠', 'min_xp': 7000},
-    {'name': 'champion',  'display': 'Campeão',   'icon': '👑', 'min_xp': 15000},
-]
-
-
 class UserXpProfile(Base):
-    """Central XP tracking per user. Effort-based ranking (Duolingo-style)."""
+    """Central XP tracking per user (esforço conta, estilo Duolingo) e a sequência de dias."""
     __tablename__ = 'user_xp_profiles'
 
     id = Column(Integer, primary_key=True)
@@ -59,31 +45,19 @@ class UserXpProfile(Base):
     # Lifetime XP (never resets)
     total_xp = Column(Integer, default=0, nullable=False)
 
-    # Season XP (resets at season transition)
-    season_xp = Column(Integer, default=0, nullable=False)
-
     # Streak tracking
     current_streak = Column(Integer, default=0, nullable=False)
     longest_streak = Column(Integer, default=0, nullable=False)
     last_activity_date = Column(DateTime(timezone=True), nullable=True)
-
-    # League tier
-    league_tier = Column(String(20), default='bronze', nullable=False, index=True)
-
-    # Current season reference
-    season_id = Column(Integer, ForeignKey('arena_seasons.id'), nullable=True)
-    season_rank = Column(Integer, nullable=True)
-    season_percentile = Column(Integer, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
                        onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="xp_profile")
-    season = relationship("ArenaSeason")
 
     def __repr__(self):
-        return f"<UserXpProfile user={self.user_id} xp={self.total_xp} tier={self.league_tier}>"
+        return f"<UserXpProfile user={self.user_id} xp={self.total_xp}>"
 
 
 class XpTransaction(Base):
@@ -92,13 +66,11 @@ class XpTransaction(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    season_id = Column(Integer, ForeignKey('arena_seasons.id'), nullable=True)
 
     amount = Column(Integer, nullable=False)
     source = Column(String(30), nullable=False)  # quiz_base, accuracy_bonus, streak_bonus, etc.
 
     quiz_attempt_id = Column(Integer, ForeignKey('quiz_attempts.id'), nullable=True)
-    challenge_id = Column(Integer, ForeignKey('arena_challenges.id'), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -106,83 +78,6 @@ class XpTransaction(Base):
 
     def __repr__(self):
         return f"<XpTransaction user={self.user_id} +{self.amount} source={self.source}>"
-
-
-class ArenaSeason(Base):
-    """Bimonthly arena seasons for competitions"""
-    __tablename__ = 'arena_seasons'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)  # "Jan-Fev 2026"
-    start_date = Column(DateTime(timezone=True), nullable=False)
-    end_date = Column(DateTime(timezone=True), nullable=False)
-    is_active = Column(Boolean, default=False, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    rankings = relationship("SeasonRanking", back_populates="season", cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<ArenaSeason {self.name}>"
-
-class SeasonRanking(Base):
-    """User rankings within a season for a specific exam"""
-    __tablename__ = 'season_rankings'
-
-    id = Column(Integer, primary_key=True)
-    season_id = Column(Integer, ForeignKey('arena_seasons.id', ondelete='CASCADE'), nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    exam_code = Column(String(50), nullable=False, index=True)
-    total_score = Column(Integer, default=0)
-    total_xp = Column(Integer, default=0)  # XP-based ranking (effort)
-    quizzes_completed = Column(Integer, default=0)
-    rank_position = Column(Integer)
-    percentile = Column(Integer)  # Top 5% = 5
-    league_tier = Column(String(20), default='bronze')
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        UniqueConstraint('season_id', 'user_id', 'exam_code', name='uq_season_user_exam'),
-    )
-
-    season = relationship("ArenaSeason", back_populates="rankings")
-    user = relationship("User", back_populates="season_rankings")
-
-    def __repr__(self):
-        return f"<SeasonRanking User {self.user_id} Season {self.season_id} Exam {self.exam_code}>"
-
-class ArenaChallenge(Base):
-    """Head-to-head challenges between users"""
-    __tablename__ = 'arena_challenges'
-
-    id = Column(Integer, primary_key=True)
-    challenger_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    opponent_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True)  # Null until opponent found
-    opponent_username = Column(String(30), nullable=False)  # @username of opponent
-    exam_code = Column(String(50), nullable=False)
-    exam_name = Column(String(100), nullable=False)
-    
-    # Status: pending, accepted, declined, completed, expired
-    status = Column(String(20), default='pending', index=True)
-    
-    # Scores (set after quiz completion)
-    challenger_score = Column(Integer, nullable=True)
-    opponent_score = Column(Integer, nullable=True)
-    challenger_xp = Column(Integer, nullable=True)
-    opponent_xp = Column(Integer, nullable=True)
-    winner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
-    
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    expires_at = Column(DateTime(timezone=True), nullable=False)  # 24h from creation
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    challenger = relationship("User", foreign_keys=[challenger_id], backref="challenges_sent")
-    opponent = relationship("User", foreign_keys=[opponent_id], backref="challenges_received")
-    winner = relationship("User", foreign_keys=[winner_id])
-
-    def __repr__(self):
-        return f"<ArenaChallenge {self.id} - {self.challenger_id} vs {self.opponent_username}>"
 
 
 # =============================================================================
@@ -519,7 +414,6 @@ class User(Base):
     video_lesson_jobs = relationship('VideoLessonJob', back_populates='user', cascade="all, delete-orphan")
     simulado_generation_jobs = relationship('SimuladoGenerationJob', back_populates='user', cascade="all, delete-orphan")
     enrolled_exams = relationship("ArenaExam", secondary=user_exam_enrollment, back_populates="enrolled_users")
-    season_rankings = relationship("SeasonRanking", back_populates="user", cascade="all, delete-orphan")
     xp_profile = relationship("UserXpProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     custom_exam_cards = relationship('CustomExamCard', back_populates='user', cascade="all, delete-orphan")
     consents = relationship('UserConsent', back_populates='user', cascade='all, delete-orphan',
@@ -1151,163 +1045,6 @@ class MedicationGovernmentProgram(Base):
 
     def __repr__(self):
         return f"<MedicationGovernmentProgram med={self.medication_id} prog={self.program_id}>"
-
-
-class PharmacyChain(Base):
-    """Pharmacy chains/networks (e.g. RD Saúde, DPSP)"""
-    __tablename__ = 'pharmacy_chains'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)  # e.g. "RD Saúde"
-    brand_names = Column(JSON, nullable=True)  # ["Raia", "Drogasil"]
-    cnpj_matriz = Column(String(20), unique=True, nullable=True)
-    logo_url = Column(String(500), nullable=True)
-    website = Column(String(500), nullable=True)
-    description = Column(Text, nullable=True)
-    contact_name = Column(String(150), nullable=True)
-    contact_email = Column(String(120), nullable=True)
-    contact_phone = Column(String(20), nullable=True)
-    subscription_tier = Column(String(20), default='individual')  # individual/regional/enterprise
-    subscription_active = Column(Boolean, default=False)
-    stripe_customer_id = Column(String(255), nullable=True)
-    is_active = Column(Boolean, default=True, index=True)
-    is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    pharmacies = relationship('Pharmacy', back_populates='chain', cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<PharmacyChain {self.id} - {self.name}>"
-
-
-class Pharmacy(Base):
-    """Individual pharmacy unit"""
-    __tablename__ = 'pharmacies'
-
-    id = Column(Integer, primary_key=True)
-    chain_id = Column(Integer, ForeignKey('pharmacy_chains.id'), nullable=True)  # null = independent
-    name = Column(String(255), nullable=False)
-    brand_name = Column(String(255), nullable=True)  # e.g. "Drogasil" for RD Saúde unit
-    cnpj = Column(String(20), unique=True, nullable=True)
-    phone = Column(String(20), nullable=True)
-    email = Column(String(120), nullable=True)
-    address = Column(String(500), nullable=True)
-    city = Column(String(100), nullable=True, index=True)
-    state = Column(String(2), nullable=True, index=True)  # UF
-    zip_code = Column(String(10), nullable=True)
-    latitude = Column(Float, nullable=True)
-    longitude = Column(Float, nullable=True)
-    is_active = Column(Boolean, default=True, index=True)
-    is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        Index('ix_pharmacy_geo', 'latitude', 'longitude'),
-        Index('ix_pharmacy_city_state', 'city', 'state'),
-    )
-
-    # Relationships
-    chain = relationship('PharmacyChain', back_populates='pharmacies')
-    medications = relationship('PharmacyMedication', back_populates='pharmacy', cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<Pharmacy {self.id} - {self.name}>"
-
-
-class PharmacyMedication(Base):
-    """Pharmacy inventory - which medications a pharmacy has and at what price"""
-    __tablename__ = 'pharmacy_medications'
-
-    id = Column(Integer, primary_key=True)
-    pharmacy_id = Column(Integer, ForeignKey('pharmacies.id', ondelete='CASCADE'), nullable=False)
-    medication_id = Column(Integer, ForeignKey('medications.id', ondelete='CASCADE'), nullable=False)
-    price = Column(Float, nullable=True)  # R$
-    farmacia_popular_price = Column(Float, nullable=True)  # R$, 0=free
-    in_stock = Column(Boolean, default=True)
-    last_stock_update = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        UniqueConstraint('pharmacy_id', 'medication_id', name='uq_pharmacy_medication'),
-    )
-
-    # Relationships
-    pharmacy = relationship('Pharmacy', back_populates='medications')
-    medication = relationship('Medication')
-
-    def __repr__(self):
-        return f"<PharmacyMedication pharmacy={self.pharmacy_id} med={self.medication_id}>"
-
-
-class PrescriptionShare(Base):
-    """Shareable prescription links via QR code"""
-    __tablename__ = 'prescription_shares'
-
-    id = Column(Integer, primary_key=True)
-    prescription_id = Column(Integer, ForeignKey('prescriptions.id', ondelete='CASCADE'), nullable=False)
-    share_token = Column(String(64), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    expires_at = Column(DateTime(timezone=True), nullable=False)  # 30 days default
-    view_count = Column(Integer, default=0)
-    last_viewed_at = Column(DateTime(timezone=True), nullable=True)
-    status = Column(String(20), default='active')  # active/expired/revoked
-
-    # Relationships
-    prescription = relationship('Prescription', backref='shares')
-
-    def __repr__(self):
-        return f"<PrescriptionShare {self.share_token[:8]}... status={self.status}>"
-
-
-class PharmacyPrescription(Base):
-    """Direct prescription sends to pharmacies"""
-    __tablename__ = 'pharmacy_prescriptions'
-
-    id = Column(Integer, primary_key=True)
-    prescription_id = Column(Integer, ForeignKey('prescriptions.id', ondelete='CASCADE'), nullable=False)
-    pharmacy_id = Column(Integer, ForeignKey('pharmacies.id', ondelete='CASCADE'), nullable=False)
-    doctor_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    status = Column(String(20), default='sent')  # sent/viewed/fulfilled/cancelled
-    sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    viewed_at = Column(DateTime(timezone=True), nullable=True)
-    fulfilled_at = Column(DateTime(timezone=True), nullable=True)
-    pharmacy_notes = Column(Text, nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint('prescription_id', 'pharmacy_id', name='uq_prescription_pharmacy'),
-    )
-
-    # Relationships
-    prescription = relationship('Prescription', backref='pharmacy_sends')
-    pharmacy = relationship('Pharmacy')
-    doctor = relationship('User')
-
-    def __repr__(self):
-        return f"<PharmacyPrescription rx={self.prescription_id} pharmacy={self.pharmacy_id} status={self.status}>"
-
-
-class PharmacyWaitlist(Base):
-    """Waitlist for pharmacies interested in joining the platform"""
-    __tablename__ = 'pharmacy_waitlist'
-
-    id = Column(Integer, primary_key=True)
-    pharmacy_name = Column(String(255), nullable=False)
-    cnpj = Column(String(20), nullable=True)
-    contact_name = Column(String(150), nullable=False)
-    email = Column(String(120), nullable=False, index=True)
-    phone = Column(String(20), nullable=True)
-    city = Column(String(100), nullable=True)
-    state = Column(String(2), nullable=True)
-    is_chain = Column(Boolean, default=False)
-    chain_size = Column(Integer, nullable=True)  # Number of units
-    status = Column(String(20), default='pending')  # pending/contacted/onboarded/rejected
-    admin_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    def __repr__(self):
-        return f"<PharmacyWaitlist {self.pharmacy_name} ({self.status})>"
 
 
 class PushToken(Base):

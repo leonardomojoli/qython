@@ -18,7 +18,7 @@ import json
 import os
 
 from ..database import get_db
-from ..models import User, Invitation, Consultation, SettingsAuditLog, Medication, Pharmacy, PharmacyChain, PharmacyWaitlist, PrescriptionShare, UserActivity
+from ..models import User, Invitation, Consultation, SettingsAuditLog, Medication, UserActivity
 from ..security import get_current_active_user
 from ..config import Config
 from ..services.system_settings_service import SystemSettingsService
@@ -44,10 +44,6 @@ class DashboardStats(BaseModel):
     waitlist_users: int
     total_consultations: int
     total_medications: int = 0
-    total_pharmacies: int = 0
-    total_pharmacy_chains: int = 0
-    pending_waitlist: int = 0
-    total_prescription_shares: int = 0
 
 class GenerateInvitePayload(BaseModel):
     quantity: int = 1
@@ -78,12 +74,7 @@ async def get_admin_stats(
     # Contagem de consultas
     total_consultations = await db.scalar(select(func.count(Consultation.id)))
     
-    # Pharmacy module stats
     total_medications = await db.scalar(select(func.count(Medication.id)).where(Medication.is_active == True)) or 0
-    total_pharmacies = await db.scalar(select(func.count(Pharmacy.id)).where(Pharmacy.is_active == True)) or 0
-    total_pharmacy_chains = await db.scalar(select(func.count(PharmacyChain.id)).where(PharmacyChain.is_active == True)) or 0
-    pending_waitlist = await db.scalar(select(func.count(PharmacyWaitlist.id)).where(PharmacyWaitlist.status == 'pending')) or 0
-    total_prescription_shares = await db.scalar(select(func.count(PrescriptionShare.id))) or 0
 
     return {
         "total_users": total_users,
@@ -91,10 +82,6 @@ async def get_admin_stats(
         "waitlist_users": waitlist_users,
         "total_consultations": total_consultations,
         "total_medications": total_medications,
-        "total_pharmacies": total_pharmacies,
-        "total_pharmacy_chains": total_pharmacy_chains,
-        "pending_waitlist": pending_waitlist,
-        "total_prescription_shares": total_prescription_shares,
     }
 
 @router.post("/invitations/generate", status_code=status.HTTP_201_CREATED)
