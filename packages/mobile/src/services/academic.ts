@@ -6,8 +6,6 @@ import type {
   JobStatus,
   QuizQuestion,
   QuizResult,
-  RankingEntry,
-  Season,
   ChatMessage,
   XpProfile,
 } from '../types/academic';
@@ -134,22 +132,6 @@ export async function unenrollFromExam(examCode: string): Promise<void> {
   await api.post('/academic/arena/unenroll', { exam_code: examCode });
 }
 
-export async function getCurrentSeason(): Promise<{ season: Season | null }> {
-  const response = await api.get<{ season: Season | null }>(
-    '/academic/arena/current-season',
-  );
-  return response.data;
-}
-
-export async function getExamRanking(
-  examCode: string,
-): Promise<{ ranking_data: RankingEntry[] }> {
-  const response = await api.get<{ ranking_data: RankingEntry[] }>(
-    `/academic/arena/ranking/${examCode}`,
-  );
-  return response.data;
-}
-
 export async function startQuiz(
   specialty: string,
   mode: string,
@@ -180,7 +162,6 @@ export async function submitQuiz(quizData: {
   answers: Record<number, number>;
   questions: QuizQuestion[];
   time_elapsed_seconds?: number;
-  challenge_id?: number;
 }): Promise<QuizResult> {
   const response = await api.post<QuizResult>(
     '/academic/arena/submit_quiz',
@@ -191,16 +172,6 @@ export async function submitQuiz(quizData: {
 
 export async function getMyXpProfile(): Promise<XpProfile> {
   const response = await api.get<XpProfile>('/academic/arena/my-xp-profile');
-  return response.data;
-}
-
-export async function findRandomOpponent(
-  examCode: string,
-): Promise<{ challenge_id: number; opponent_username: string }> {
-  const response = await api.post<{ challenge_id: number; opponent_username: string }>(
-    '/academic/arena/matchmaking',
-    { exam_code: examCode },
-  );
   return response.data;
 }
 
@@ -386,72 +357,6 @@ export async function updateCardDossier(
   data: { synthesis?: string; confirmed?: boolean; sources?: Array<{ uri: string; title?: string }> },
 ): Promise<CustomCard> {
   const response = await api.put<CustomCard>(`/academic/arena/cards/${cardId}/dossier`, data);
-  return response.data;
-}
-
-// ─── Challenges ──────────────────────────────────────────────
-
-export interface ArenaChallenge {
-  id: number;
-  challenger_id: number;
-  challenger_username: string;
-  opponent_id: number;
-  opponent_username: string;
-  exam_code: string;
-  exam_name?: string;
-  status: 'pending' | 'accepted' | 'declined' | 'completed' | 'expired';
-  challenger_score: number | null;
-  opponent_score: number | null;
-  challenger_xp: number | null;
-  opponent_xp: number | null;
-  winner_id: number | null;
-  is_winner?: boolean;
-  created_at: string;
-  expires_at: string;
-}
-
-export async function createChallenge(
-  opponentUsername: string,
-  examCode: string,
-  examName?: string,
-): Promise<ArenaChallenge> {
-  const response = await api.post<ArenaChallenge>('/academic/arena/challenges', {
-    opponent_username: opponentUsername,
-    exam_code: examCode,
-    exam_name: examName,
-  });
-  return response.data;
-}
-
-export async function getChallenges(): Promise<{
-  sent: ArenaChallenge[];
-  received: ArenaChallenge[];
-}> {
-  const response = await api.get<{ sent: ArenaChallenge[]; received: ArenaChallenge[] }>(
-    '/academic/arena/challenges',
-  );
-  return response.data;
-}
-
-export async function respondToChallenge(
-  challengeId: number,
-  accept: boolean,
-): Promise<ArenaChallenge> {
-  const response = await api.post<ArenaChallenge>(
-    `/academic/arena/challenges/${challengeId}/respond`,
-    { accept },
-  );
-  return response.data;
-}
-
-export async function submitChallengeScore(
-  challengeId: number,
-  score: number,
-): Promise<ArenaChallenge> {
-  const response = await api.post<ArenaChallenge>(
-    `/academic/arena/challenges/${challengeId}/submit-score`,
-    { score },
-  );
   return response.data;
 }
 

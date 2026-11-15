@@ -70,8 +70,6 @@ export interface ComprehensiveStats {
   academic: {
     quizzes_completed: number;
     correct_rate: number;
-    season_rank: number;
-    season_percentile: number;
   };
 }
 

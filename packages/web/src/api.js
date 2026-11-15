@@ -816,15 +816,6 @@ export const unenrollFromExam = async (examCode) => {
   }
 };
 
-export const generateShareCard = async (cardData) => {
-  try {
-    const response = await api.post('/academic/arena/generate-share-card', cardData);
-    return response.data;
-  } catch (error) {
-    handleError(error, 'gerar card de compartilhamento');
-  }
-};
-
 export const getMyXpProfile = async () => {
   try {
     const response = await api.get('/academic/arena/my-xp-profile');
@@ -1250,17 +1241,6 @@ export const checkDrugInteractions = async (activePrinciples) => {
     return response.data;
   } catch (error) {
     handleError(error, 'verificar interações medicamentosas');
-  }
-};
-
-// --- Pharmacies ---
-
-export const getPharmacies = async (params = {}) => {
-  try {
-    const response = await api.get('/pharmacy', { params, timeout: 30000 });
-    return response.data;
-  } catch (error) {
-    handleError(error, 'buscar farmácias');
   }
 };
 

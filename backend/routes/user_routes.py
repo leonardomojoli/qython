@@ -16,7 +16,7 @@ from sqlalchemy import func
 from werkzeug.utils import secure_filename
 
 from ..database import get_db
-from ..models import User, AvatarHistory, Consultation, UserStats, Achievement, Invitation, SeasonRanking, ArenaSeason, AcademicMaterial, AcademicLibrary
+from ..models import User, AvatarHistory, Consultation, UserStats, Achievement, Invitation, AcademicMaterial, AcademicLibrary
 from ..utils import allowed_file_profile, UPLOAD_FOLDER_PROFILE, UPLOAD_FOLDER_DOCTOR_LOGOS
 from ..security import get_current_active_user, get_current_user, verify_password, get_password_hash
 from ..config import Config
@@ -864,27 +864,6 @@ async def get_comprehensive_statistics(
 
     correct_rate = (correct_answers / (correct_answers + incorrect_answers)) if (correct_answers + incorrect_answers) > 0 else 0
 
-    # Ranking da temporada atual
-    season_rank = None
-    season_percentile = None
-
-    active_season_result = await db.execute(
-        select(ArenaSeason).filter(ArenaSeason.is_active == True)
-    )
-    active_season = active_season_result.scalars().first()
-
-    if active_season:
-        ranking_result = await db.execute(
-            select(SeasonRanking).filter(
-                SeasonRanking.season_id == active_season.id,
-                SeasonRanking.user_id == current_user.id
-            )
-        )
-        ranking = ranking_result.scalars().first()
-        if ranking:
-            season_rank = ranking.rank_position
-            season_percentile = ranking.percentile
-
     # ===================
     # BUILD RESPONSE
     # ===================
@@ -902,8 +881,6 @@ async def get_comprehensive_statistics(
         academic={
             "quizzes_completed": total_quizzes,
             "correct_rate": round(correct_rate, 3),
-            "season_rank": season_rank,
-            "season_percentile": season_percentile
         }
     )
 

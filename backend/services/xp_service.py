@@ -1,18 +1,15 @@
 # qython/backend/services/xp_service.py
 """
-XP (Experience Points) Service — Effort-based ranking system (Duolingo-style).
-Users earn XP for completing quizzes. Effort is always rewarded; accuracy gives bonuses.
+XP (Experience Points) Service — esforço sempre conta (estilo Duolingo).
+Quem termina um simulado ganha XP; a precisão dá bônus. Há também a sequência de dias seguidos.
 """
 
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..models import (
-    UserXpProfile, XpTransaction, QuizAttempt, ArenaSeason,
-    SeasonRanking, User, LEAGUE_TIERS
-)
+from ..models import UserXpProfile, XpTransaction
 
 logger = logging.getLogger("qython_logger")
 
@@ -51,10 +48,6 @@ STREAK_BONUS_TIERS = [
 SPEED_BONUS_XP = 15
 QUIZ_TOTAL_TIME = 4 * 60 * 60  # 4 hours in seconds
 
-# Challenge bonuses
-CHALLENGE_PARTICIPATION_XP = 20
-CHALLENGE_WIN_XP = 30
-
 
 # =============================================================================
 # XP CALCULATION
@@ -66,8 +59,6 @@ def calculate_xp(
     total_questions: int,
     time_elapsed_seconds: Optional[int],
     current_streak: int,
-    is_challenge: bool = False,
-    challenge_won: bool = False,
 ) -> Dict[str, int]:
     """
     Calculate XP breakdown for a quiz completion.
@@ -111,14 +102,6 @@ def calculate_xp(
         speed_bonus = SPEED_BONUS_XP
     breakdown['speed_bonus'] = speed_bonus
 
-    # 6. Challenge bonuses
-    challenge_bonus = 0
-    if is_challenge:
-        challenge_bonus = CHALLENGE_PARTICIPATION_XP
-        if challenge_won:
-            challenge_bonus += CHALLENGE_WIN_XP
-    breakdown['challenge_bonus'] = challenge_bonus
-
     breakdown['total'] = sum(breakdown.values())
     return breakdown
 
@@ -145,17 +128,11 @@ async def award_xp(
     xp_breakdown: Dict[str, int],
     db: AsyncSession,
     quiz_attempt_id: Optional[int] = None,
-    challenge_id: Optional[int] = None,
 ) -> UserXpProfile:
     """
     Award XP to a user. Creates XpTransaction records and updates profile.
     """
     profile = await get_or_create_xp_profile(user_id, db)
-
-    # Get active season for transaction logging
-    from .arena_service import get_active_season
-    active_season = await get_active_season(db)
-    season_id = active_season.id if active_season else None
 
     total_xp = 0
 
@@ -165,22 +142,15 @@ async def award_xp(
 
         transaction = XpTransaction(
             user_id=user_id,
-            season_id=season_id,
             amount=amount,
             source=source,
             quiz_attempt_id=quiz_attempt_id,
-            challenge_id=challenge_id,
         )
         db.add(transaction)
         total_xp += amount
 
     # Update profile
     profile.total_xp += total_xp
-    profile.season_xp += total_xp
-
-    # Ensure season reference is current
-    if season_id and profile.season_id != season_id:
-        profile.season_id = season_id
 
     return profile
 
@@ -230,288 +200,3 @@ async def update_streak(user_id: int, db: AsyncSession) -> Dict:
         "is_new_record": is_new_record,
         "previous": old_streak,
     }
-
-
-# =============================================================================
-# LEAGUE TIER
-# =============================================================================
-
-def get_league_tier(season_xp: int) -> Dict:
-    """Determine league tier from season XP. Returns tier dict."""
-    tier = LEAGUE_TIERS[0]
-    for league in LEAGUE_TIERS:
-        if season_xp >= league['min_xp']:
-            tier = league
-    return tier
-
-
-def get_next_league_tier(current_tier_name: str) -> Optional[Dict]:
-    """Get the next league tier above the current one."""
-    for i, tier in enumerate(LEAGUE_TIERS):
-        if tier['name'] == current_tier_name:
-            if i + 1 < len(LEAGUE_TIERS):
-                return LEAGUE_TIERS[i + 1]
-            return None
-    return LEAGUE_TIERS[1] if LEAGUE_TIERS else None
-
-
-def get_league_info(profile: UserXpProfile) -> Dict:
-    """Build league info dict for API response."""
-    current = get_league_tier(profile.season_xp)
-    next_tier = get_next_league_tier(current['name'])
-
-    return {
-        "tier": current['name'],
-        "display": current['display'],
-        "icon": current['icon'],
-        "season_xp": profile.season_xp,
-        "total_xp": profile.total_xp,
-        "next_tier": next_tier['display'] if next_tier else None,
-        "next_tier_name": next_tier['name'] if next_tier else None,
-        "next_tier_icon": next_tier['icon'] if next_tier else None,
-        "xp_to_next": (next_tier['min_xp'] - profile.season_xp) if next_tier else 0,
-        "next_tier_min_xp": next_tier['min_xp'] if next_tier else 0,
-    }
-
-
-# =============================================================================
-# REAL-TIME RANKING UPDATE
-# =============================================================================
-
-async def update_user_ranking(
-    user_id: int,
-    exam_code: str,
-    db: AsyncSession,
-) -> Optional[Dict]:
-    """
-    Update a single user's ranking for an exam in the active season.
-    Called after quiz submission for real-time ranking feedback.
-    Returns ranking info or None.
-    """
-    from .arena_service import get_active_season
-
-    active_season = await get_active_season(db)
-    if not active_season:
-        return None
-
-    profile = await get_or_create_xp_profile(user_id, db)
-
-    # Get or create this user's SeasonRanking for this exam
-    result = await db.execute(
-        select(SeasonRanking).filter(
-            and_(
-                SeasonRanking.season_id == active_season.id,
-                SeasonRanking.user_id == user_id,
-                SeasonRanking.exam_code == exam_code
-            )
-        )
-    )
-    ranking = result.scalars().first()
-
-    # Aggregate XP from xp_transactions for this season + exam-related quiz attempts
-    xp_query = await db.execute(
-        select(
-            func.coalesce(func.sum(QuizAttempt.xp_earned), 0),
-            func.count(QuizAttempt.id),
-        ).filter(
-            and_(
-                QuizAttempt.user_id == user_id,
-                QuizAttempt.quiz_specialty == exam_code,
-                QuizAttempt.completed_at >= active_season.start_date,
-                QuizAttempt.completed_at <= active_season.end_date,
-                QuizAttempt.mode != 'practice'
-            )
-        )
-    )
-    row = xp_query.first()
-    total_xp = row[0] if row else 0
-    quiz_count = row[1] if row else 0
-
-    # Also get legacy score sum for backward compat
-    score_query = await db.execute(
-        select(func.coalesce(func.sum(QuizAttempt.score), 0)).filter(
-            and_(
-                QuizAttempt.user_id == user_id,
-                QuizAttempt.quiz_specialty == exam_code,
-                QuizAttempt.completed_at >= active_season.start_date,
-                QuizAttempt.completed_at <= active_season.end_date,
-                QuizAttempt.mode != 'practice'
-            )
-        )
-    )
-    total_score = score_query.scalar() or 0
-
-    tier = get_league_tier(profile.season_xp)
-
-    if ranking:
-        ranking.total_xp = total_xp
-        ranking.total_score = total_score
-        ranking.quizzes_completed = quiz_count
-        ranking.league_tier = tier['name']
-    else:
-        ranking = SeasonRanking(
-            season_id=active_season.id,
-            user_id=user_id,
-            exam_code=exam_code,
-            total_xp=total_xp,
-            total_score=total_score,
-            quizzes_completed=quiz_count,
-            league_tier=tier['name'],
-        )
-        db.add(ranking)
-
-    # Count users with higher XP for rank position
-    higher_count = await db.execute(
-        select(func.count(SeasonRanking.id)).filter(
-            and_(
-                SeasonRanking.season_id == active_season.id,
-                SeasonRanking.exam_code == exam_code,
-                SeasonRanking.total_xp > total_xp,
-                SeasonRanking.user_id != user_id,
-            )
-        )
-    )
-    rank_position = (higher_count.scalar() or 0) + 1
-
-    # Total participants
-    total_count = await db.execute(
-        select(func.count(SeasonRanking.id)).filter(
-            and_(
-                SeasonRanking.season_id == active_season.id,
-                SeasonRanking.exam_code == exam_code,
-            )
-        )
-    )
-    total_participants = total_count.scalar() or 1
-
-    # Percentile: top X% (lower = better). #1 of 100 = top 1%
-    percentile = max(1, int((rank_position / total_participants) * 100))
-
-    ranking.rank_position = rank_position
-    ranking.percentile = percentile
-
-    # Update profile with season rank
-    profile.season_rank = rank_position
-    profile.season_percentile = percentile
-    profile.league_tier = tier['name']
-
-    return {
-        "rank_position": rank_position,
-        "percentile": percentile,
-        "total_xp": total_xp,
-        "total_participants": total_participants,
-    }
-
-
-# =============================================================================
-# SEASON END — PROMOTION / DEMOTION
-# =============================================================================
-
-async def process_season_end(db: AsyncSession) -> int:
-    """
-    Process league promotions/demotions at season end.
-    Reset season_xp for all profiles.
-    Returns number of profiles processed.
-    """
-    result = await db.execute(
-        select(UserXpProfile).filter(UserXpProfile.season_xp > 0)
-    )
-    profiles = result.scalars().all()
-
-    count = 0
-    for profile in profiles:
-        new_tier = get_league_tier(profile.season_xp)
-        current_idx = next(
-            (i for i, t in enumerate(LEAGUE_TIERS) if t['name'] == profile.league_tier),
-            0
-        )
-        new_idx = next(
-            (i for i, t in enumerate(LEAGUE_TIERS) if t['name'] == new_tier['name']),
-            0
-        )
-
-        if new_idx > current_idx:
-            # Promotion
-            profile.league_tier = new_tier['name']
-            logger.info(f"User {profile.user_id} promoted to {new_tier['name']}")
-        elif new_idx < current_idx:
-            # Soft demotion: drop at most one tier
-            demoted_idx = max(0, current_idx - 1)
-            profile.league_tier = LEAGUE_TIERS[demoted_idx]['name']
-            logger.info(f"User {profile.user_id} demoted to {LEAGUE_TIERS[demoted_idx]['name']}")
-
-        # Reset season XP
-        profile.season_xp = 0
-        profile.season_rank = None
-        profile.season_percentile = None
-        profile.season_id = None
-        count += 1
-
-    if count > 0:
-        await db.commit()
-        logger.info(f"Processed season end for {count} XP profiles")
-
-    return count
-
-
-# =============================================================================
-# MATCHMAKING
-# =============================================================================
-
-async def find_random_opponent(
-    user: User,
-    exam_code: str,
-    db: AsyncSession,
-) -> Optional[User]:
-    """
-    Find a random opponent for a challenge.
-    Prefers users in the same or adjacent league tier,
-    enrolled in the same exam, active in last 7 days.
-    """
-    profile = await get_or_create_xp_profile(user.id, db)
-    current_tier = profile.league_tier
-
-    # Get adjacent tiers
-    tier_names = [t['name'] for t in LEAGUE_TIERS]
-    current_idx = tier_names.index(current_tier) if current_tier in tier_names else 0
-    adjacent_tiers = set()
-    for offset in [-1, 0, 1]:
-        idx = current_idx + offset
-        if 0 <= idx < len(tier_names):
-            adjacent_tiers.add(tier_names[idx])
-
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-
-    # Find eligible users: enrolled in exam, active recently, in adjacent tier
-    from ..models import user_exam_enrollment, ArenaExam
-    query = (
-        select(User)
-        .join(user_exam_enrollment, User.id == user_exam_enrollment.c.user_id)
-        .join(ArenaExam, ArenaExam.id == user_exam_enrollment.c.exam_id)
-        .outerjoin(UserXpProfile, UserXpProfile.user_id == User.id)
-        .filter(
-            and_(
-                ArenaExam.exam_code == exam_code,
-                User.id != user.id,
-                User.status == 'active',
-                User.last_login_at >= seven_days_ago,
-            )
-        )
-    )
-
-    # Prefer users in adjacent tiers (but don't require it — fallback to anyone)
-    result = await db.execute(
-        query.filter(
-            UserXpProfile.league_tier.in_(adjacent_tiers)
-        ).order_by(func.random()).limit(1)
-    )
-    opponent = result.scalars().first()
-
-    if not opponent:
-        # Fallback: any active enrolled user
-        result = await db.execute(
-            query.order_by(func.random()).limit(1)
-        )
-        opponent = result.scalars().first()
-
-    return opponent
