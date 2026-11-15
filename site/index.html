@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d0d12">
 <meta name="color-scheme" content="dark">
 <meta property="og:title" content="Qython — Inteligência clínica com IA, open source">
-<meta property="og:description" content="Copiloto clínico, biblioteca semântica e gerador de materiais. Rode na sua própria infraestrutura. Open source, AGPL-3.0.">
+<meta property="og:description" content="Copiloto clínico, biblioteca semântica e gerador de materiais. Instale no seu computador: a IA roda nele. Open source, AGPL-3.0.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://qython.ai">
 <meta property="og:image" content="https://qython.ai/og.png">
@@ -165,24 +165,59 @@
     </p>
     <p class="pivot">
       O Qython era um SaaS por assinatura. Em setembro de 2026 o código foi aberto
-      e o serviço hospedado foi desligado. Agora você roda por conta
-      própria: seus dados na sua infraestrutura, suas chaves de API, sem mensalidade
+      e o serviço hospedado foi desligado. Agora é um programa que você instala:
+      seus dados ficam no seu computador, a IA roda nele, sem mensalidade
       e sem intermediário.
     </p>
 
     <div class="cta-row">
-      <a class="btn btn-primary" href="https://github.com/leonardomojoli/qython">
-        Baixar no GitHub
+      <a class="btn btn-primary" href="#baixar">
+        Baixar o app
       </a>
-      <a class="btn btn-ghost" href="https://github.com/leonardomojoli/qython#começando">
-        Como instalar
+      <a class="btn btn-ghost" href="https://github.com/leonardomojoli/qython">
+        Código no GitHub
       </a>
     </div>
   </header>
 
+  <h2 id="baixar">Baixar</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Windows</h3>
+      <p>Instalador <code>.exe</code>, 64 bits. Instala só para o seu usuário, sem pedir
+      administrador, e nunca apaga os dados dos pacientes ao desinstalar.</p>
+    </div>
+    <div class="card">
+      <h3>macOS</h3>
+      <p>Arquivo <code>.dmg</code>, para Mac com chip Apple (M1 ou mais novo).</p>
+    </div>
+    <div class="card">
+      <h3>Linux</h3>
+      <p>Pacote <code>.deb</code> (Ubuntu, Debian, Pop!_OS) ou <code>.AppImage</code>, 64 bits.</p>
+    </div>
+    <div class="card">
+      <h3>Android</h3>
+      <p>Arquivo <code>.apk</code>. Pareia com o Qython do seu computador por QR code, na
+      mesma rede; não funciona sozinho. iPhone ainda não.</p>
+    </div>
+  </div>
+  <div class="cta-row" style="margin-top:22px">
+    <a class="btn btn-primary" href="https://github.com/leonardomojoli/qython/releases/latest">
+      Ver os arquivos da versão mais recente
+    </a>
+  </div>
+  <p class="note" style="margin-top:14px">
+    Na página que abrir, role até a lista <em>Assets</em> e escolha o arquivo do seu sistema.
+    No primeiro uso, um assistente escolhe a IA conforme a memória do computador e baixa os
+    modelos (uns 17 GB). Os instaladores ainda não são assinados: o Windows e o macOS avisam na
+    primeira abertura. O <a href="https://github.com/leonardomojoli/qython/blob/main/docs/SETUP.md#1-app-desktop">passo
+    a passo</a> mostra o que clicar.
+  </p>
+
+  <h2>Num servidor, com Docker</h2>
   <div class="install">
     <div class="install-head">
-      <span>Instalação completa</span>
+      <span>Instalação em servidor</span>
       <button class="copy" id="copy">copiar</button>
     </div>
 <pre id="cmd"><span class="c"># clone, configure a chave da IA e suba a stack</span>
@@ -246,16 +281,18 @@
       atestado e pedido de exame em PDF, e orientações ao paciente.</p>
     </div>
     <div class="card">
-      <h3>App Android (em preparação)</h3>
-      <p>Para usar à beira do leito, com modo offline, sincronizando com o Qython do
-      seu computador.</p>
+      <h3>App Android</h3>
+      <p>Para usar à beira do leito, com modo offline: pareia com o Qython do seu
+      computador por QR code e sincroniza quando você volta ao consultório.</p>
     </div>
   </div>
 
   <h2>O que você precisa</h2>
   <ul class="req">
-    <li><b>Docker</b><span>A stack sobe em um comando, com a IA e a transcrição locais.</span></li>
-    <li><b>32 GB de RAM</b><span>A IA padrão é a versão robusta do Gemma 4 (26B), que ocupa uns 17 GB. Os modelos pequenos cabem em máquinas mais modestas, mas erram fato clínico com frequência, então não são o padrão. Com GPU de 24 GB, o Gemma 4 31B é ainda melhor.</span></li>
+    <li><b>Computador</b><span>Windows, macOS (chip Apple) ou Linux, 64 bits. A IA e a transcrição rodam nele.</span></li>
+    <li><b>32 GB de RAM</b><span>A IA padrão é a versão robusta do Gemma 4 (26B), que ocupa uns 17 GB. Com menos memória, o assistente avisa e você escolhe: baixar mesmo assim ou um modelo menor, que cabe em máquinas mais modestas mas erra fato clínico com frequência.</span></li>
+    <li><b>Uns 20 GB livres</b><span>Para os modelos de IA, de busca, de transcrição e de OCR.</span></li>
+    <li><b>Docker</b><span>Só para instalar num servidor.</span></li>
   </ul>
 
   <div class="warn">
