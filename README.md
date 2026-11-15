@@ -37,11 +37,25 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 | **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, questionários, casos clínicos e slides a partir da sua biblioteca. |
 | **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, XP e sequência de dias. |
 | **Consultas** | Anamnese guiada por especialidade (33 especialidades), evolução clínica, prescrição. |
-| **Mobile** | App React Native (Android/iOS) com modo offline e sync delta. |
+| **Mobile** | App React Native para Android, com modo offline e sync delta; pareia com o app do computador por QR code. Ainda sem build para iOS. |
 
 ## Começando
 
-Você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com
+### App para o computador (o caminho mais simples)
+
+Baixe o instalador na [página da versão mais recente](https://github.com/leonardomojoli/qython/releases/latest)
+(role até a lista *Assets*): `.exe` para Windows, `.dmg` para Mac com chip Apple, `.deb` ou
+`AppImage` para Linux. No primeiro uso, um assistente escolhe a IA conforme a memória do computador e
+baixa os modelos (uns 17 GB). A IA padrão pede 32 GB de RAM; com menos, o assistente avisa e você escolhe.
+
+Os instaladores ainda não são assinados, então o Windows e o macOS avisam na primeira abertura. O passo a
+passo, o backup e os requisitos estão em [`docs/SETUP.md`](docs/SETUP.md#1-app-desktop).
+
+O celular Android usa o arquivo `.apk` da mesma página e pareia com o app do computador por QR code.
+
+### Servidor com Docker
+
+Para instalar num servidor ou numa rede, você precisa de [Docker](https://docs.docker.com/get-docker/) e de uma máquina com
 32 GB de RAM. A IA roda na própria máquina, sem chave de API: o compose sobe o
 [llama.cpp](https://github.com/ggml-org/llama.cpp) com o Gemma 4 26B-A4B.
 
