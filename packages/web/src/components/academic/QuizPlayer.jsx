@@ -9,7 +9,7 @@ import styles from './QuizPlayer.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faChevronLeft, faChevronRight, faTimes, faFire,
-    faCheck, faTrophy, faArrowUp, faBolt, faClock,
+    faCheck, faTrophy, faBolt, faClock,
     faChevronDown, faChevronUp as faChevronUpIcon
 } from '@fortawesome/free-solid-svg-icons';
 import InlineLoading from '../shared/InlineLoading';
@@ -280,14 +280,6 @@ const QuizPlayer = ({ activeJob, onClose }) => {
                         </div>
                     )}
                 </div>
-
-                {/* Ranking Update */}
-                {quizResult.ranking_update && (
-                    <div className={styles.rankingUpdate}>
-                        <FontAwesomeIcon icon={faArrowUp} />
-                        <span>#{quizResult.ranking_update.rank_position} — Top {quizResult.ranking_update.percentile}%</span>
-                    </div>
-                )}
 
                 {/* Answer Review */}
                 <div className={styles.reviewSection}>

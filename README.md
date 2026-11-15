@@ -35,7 +35,7 @@ certificado. Leia a seção [Aviso clínico](#aviso-clínico).
 | **Copiloto clínico** | Chat médico que responde a partir de fontes, com citações inline numeradas. Com a IA local, busca antes de responder no catálogo de medicamentos, na sua biblioteca e no PubMed. Hierarquia de evidência (meta-análise > diretriz > relato de caso). |
 | **Biblioteca** | Ingestão de PDF, áudio e vídeo. OCR, transcrição, indexação vetorial. Busca híbrida (embeddings e5 + BM25 + reranking cross-encoder). |
 | **Produtor de materiais** | Gera resumos, mapas mentais, flashcards, questionários, casos clínicos e slides a partir da sua biblioteca. |
-| **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, ranking e gamificação. |
+| **Arena acadêmica** | Simulados com anti-repetição, provas customizadas para concurso, XP e sequência de dias. |
 | **Consultas** | Anamnese guiada por especialidade (33 especialidades), evolução clínica, prescrição. |
 | **Mobile** | App React Native (Android/iOS) com modo offline e sync delta. |
 

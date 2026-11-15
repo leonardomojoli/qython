@@ -232,6 +232,10 @@ jobs:
           # entrega também o que acabou de ser criado.
           python3 tests/backend/test_sync_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
 
+          # Simulado e XP: o primeiro simulado de um usuário novo é aceito e dá XP; o que era da edição
+          # hospedada (ranking, temporada, desafios, farmácias parceiras) não responde mais.
+          python3 tests/backend/test_arena_flow.py http://localhost:8080 dona@clinica-ci.com.br 'Senha123!'
+
       - name: Logs em caso de falha
         if: failure()
         run: docker compose logs --tail=150 || true

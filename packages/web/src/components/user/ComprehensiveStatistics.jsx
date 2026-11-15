@@ -228,20 +228,6 @@ function ComprehensiveStatistics() {
                             </div>
                         </div>
 
-                        {academic.season_rank && (
-                            <div className={styles.academicCard}>
-                                <div className={styles.academicValue} style={{ color: CHART_COLORS.warning }}>
-                                    #{academic.season_rank}
-                                </div>
-                                <div className={styles.academicLabel}>{t('stats.seasonRank', 'Ranking da Temporada')}</div>
-                                {academic.season_percentile && (
-                                    <div className={styles.percentileBadge}>
-                                        Top {academic.season_percentile}%
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         <div className={styles.academicCard}>
                             <div className={styles.academicValue} style={{ color: CHART_COLORS.primary }}>
                                 {overview.arena_score || 0}

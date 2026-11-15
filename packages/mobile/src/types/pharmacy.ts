@@ -50,14 +50,6 @@ export interface PrescriptionItem {
   instructions: string;
 }
 
-export interface PharmacySend {
-  id: number;
-  pharmacy_name: string;
-  pharmacy_address: string | null;
-  status: 'sent' | 'viewed' | 'fulfilled' | 'cancelled';
-  sent_at: string;
-}
-
 export interface Prescription {
   id: number;
   prescription_type: string;
@@ -145,12 +137,5 @@ export const SUPPLY_CATEGORIES = [
   { value: 'Administração', labelKey: 'supplyCategories_administration' },
   { value: 'Outros Dispositivos', labelKey: 'supplyCategories_other' },
 ];
-
-export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  sent: { label: 'prescriptionSent', color: '#3498db' },
-  viewed: { label: 'prescriptionViewed', color: '#f1c40f' },
-  fulfilled: { label: 'prescriptionFulfilled', color: '#27ae60' },
-  cancelled: { label: 'cancelled', color: '#e74c3c' },
-};
 
 export const PAGE_SIZE = 50;

@@ -6,9 +6,8 @@ Allows doctors to create, list, and manage digital prescriptions for patients.
 
 import logging
 import re
-import uuid
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Any
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import Response
@@ -18,10 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import Config
 from ..database import get_db
-from ..models import (
-    User, Prescription, Patient, Consultation,
-    PrescriptionShare, PharmacyPrescription, Pharmacy
-)
+from ..models import User, Prescription, Patient
 from ..security import get_current_active_user
 from ..services.pdf_service import render_prescription_pdf
 
@@ -228,18 +224,15 @@ async def get_prescription_pdf(
     if not patient:
          raise HTTPException(status_code=404, detail="Patient data associated with prescription not found")
 
-    # 3. A receita vai ao paciente como o próprio PDF (sem link público).
-    share_token = None
-
-    # 4. Gerar PDF usando o serviço
+    # 3. Gerar PDF usando o serviço (a receita vai ao paciente como o próprio PDF)
     try:
         # Chamada síncrona, blocante, mas aceitável para MVP
-        pdf_bytes = render_prescription_pdf(prescription, current_user, patient, share_token=share_token)
+        pdf_bytes = render_prescription_pdf(prescription, current_user, patient)
     except Exception as e:
         logger.error(f"Error generating PDF: {e}")
         raise HTTPException(status_code=500, detail="Error generating PDF file")
 
-    # 5. Retornar como stream de arquivo
+    # 4. Retornar como stream de arquivo
     safe_name = re.sub(r'[^\w\-.]', '_', patient.full_name)
     filename = f"receita_{safe_name}_{prescription.created_at.strftime('%Y%m%d')}.pdf"
 
@@ -248,116 +241,3 @@ async def get_prescription_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
     )
-
-
-# --- Share & Send to Pharmacy Endpoints ---
-
-class SendToPharmacyRequest(BaseModel):
-    pharmacy_id: int
-
-
-
-
-
-
-@router.post("/{prescription_id}/send-to-pharmacy")
-async def send_to_pharmacy(
-    prescription_id: int,
-    payload: SendToPharmacyRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Send a prescription directly to a pharmacy."""
-    # Verify prescription belongs to doctor
-    result = await db.execute(
-        select(Prescription).where(
-            Prescription.id == prescription_id,
-            Prescription.doctor_id == current_user.id,
-        )
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Prescription not found")
-
-    # Verify pharmacy exists and is active
-    pharmacy_result = await db.execute(
-        select(Pharmacy).where(
-            Pharmacy.id == payload.pharmacy_id,
-            Pharmacy.is_active == True,
-        )
-    )
-    pharmacy = pharmacy_result.scalar_one_or_none()
-    if not pharmacy:
-        raise HTTPException(status_code=404, detail="Pharmacy not found")
-
-    # Check if already sent to this pharmacy
-    existing_result = await db.execute(
-        select(PharmacyPrescription).where(
-            PharmacyPrescription.prescription_id == prescription_id,
-            PharmacyPrescription.pharmacy_id == payload.pharmacy_id,
-        )
-    )
-    if existing_result.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Prescription already sent to this pharmacy")
-
-    # Create send record
-    send = PharmacyPrescription(
-        prescription_id=prescription_id,
-        pharmacy_id=payload.pharmacy_id,
-        doctor_id=current_user.id,
-    )
-    db.add(send)
-    await db.commit()
-    await db.refresh(send)
-
-    logger.info(f"Prescription {prescription_id} sent to pharmacy {payload.pharmacy_id} by {current_user.email}")
-
-    return {
-        "id": send.id,
-        "prescription_id": send.prescription_id,
-        "pharmacy_id": send.pharmacy_id,
-        "pharmacy_name": pharmacy.name,
-        "status": send.status,
-        "sent_at": send.sent_at.isoformat(),
-    }
-
-
-@router.get("/{prescription_id}/pharmacy-sends")
-async def get_pharmacy_sends(
-    prescription_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get status of all pharmacy sends for a prescription."""
-    # Verify prescription belongs to doctor
-    result = await db.execute(
-        select(Prescription).where(
-            Prescription.id == prescription_id,
-            Prescription.doctor_id == current_user.id,
-        )
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Prescription not found")
-
-    sends_result = await db.execute(
-        select(PharmacyPrescription, Pharmacy)
-        .join(Pharmacy, PharmacyPrescription.pharmacy_id == Pharmacy.id)
-        .where(PharmacyPrescription.prescription_id == prescription_id)
-        .order_by(PharmacyPrescription.sent_at.desc())
-    )
-    rows = sends_result.all()
-
-    return [
-        {
-            "id": send.id,
-            "pharmacy_id": pharmacy.id,
-            "pharmacy_name": pharmacy.name,
-            "pharmacy_address": pharmacy.address,
-            "pharmacy_phone": pharmacy.phone,
-            "status": send.status,
-            "sent_at": send.sent_at.isoformat() if send.sent_at else None,
-            "viewed_at": send.viewed_at.isoformat() if send.viewed_at else None,
-            "fulfilled_at": send.fulfilled_at.isoformat() if send.fulfilled_at else None,
-            "pharmacy_notes": send.pharmacy_notes,
-        }
-        for send, pharmacy in rows
-    ]
