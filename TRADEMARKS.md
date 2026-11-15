@@ -1,6 +1,6 @@
 # Política de uso do nome e do logotipo
 
-> **Rascunho para revisão.** Vale a partir da versão que a incluir.
+> Vale para as versões do Qython publicadas a partir da 1.3.0.
 
 *Qython* e os logotipos do projeto identificam o software mantido por Leonardo de Abreu em
 <https://github.com/leonardomojoli/qython>. A licença do código (AGPL-3.0 e [termos adicionais](TERMOS-ADICIONAIS.md))

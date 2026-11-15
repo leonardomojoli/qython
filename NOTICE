@@ -90,8 +90,8 @@ Qython, or charges for its use, must first remove or replace this file.
 
 Additional terms (AGPL-3.0, section 7)
 
-Beginning with the release that includes the file TERMOS-ADICIONAIS.md, the
-copyright holder adds to material of their authorship the terms stated there
+Beginning with release 1.3.0, the first to include the file TERMOS-ADICIONAIS.md,
+the copyright holder adds to material of their authorship the terms stated there
 (preservation of notices and attribution, origin of modified versions, and no
 grant of rights over the name and logos; see also TRADEMARKS.md). Earlier
 releases are not affected by those terms.
