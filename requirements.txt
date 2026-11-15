@@ -55,7 +55,6 @@ google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
 Pillow
-qrcode[pil]
 beautifulsoup4
 defusedxml
 

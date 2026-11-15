@@ -108,7 +108,6 @@ class QuizSubmitPayload(BaseModel):
     answers: Any  # dict {str(index): answer_index} or list
     questions: List[Any]
     time_elapsed_seconds: Optional[int] = None
-    challenge_id: Optional[int] = None
 
 class LibraryChatPayload(BaseModel):
     message: str = Field(..., max_length=10000)
@@ -1045,10 +1044,7 @@ async def submit_quiz(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    from ..services.xp_service import (
-        calculate_xp, award_xp, update_streak,
-        update_user_ranking, get_or_create_xp_profile, get_league_info
-    )
+    from ..services.xp_service import calculate_xp, award_xp, update_streak
 
     # Build answers dict (handle both dict and list formats)
     answers = payload.answers
@@ -1116,8 +1112,6 @@ async def submit_quiz(
         total_questions=total_questions,
         time_elapsed_seconds=payload.time_elapsed_seconds,
         current_streak=streak_info['current'],
-        is_challenge=payload.challenge_id is not None,
-        challenge_won=False,  # determined later for challenges
     )
 
     # Save quiz attempt with full data
@@ -1143,14 +1137,17 @@ async def submit_quiz(
         xp_breakdown=xp_breakdown,
         db=db,
         quiz_attempt_id=new_attempt.id,
-        challenge_id=payload.challenge_id,
     )
 
     # Update legacy UserStats (backward compat)
     result = await db.execute(select(UserStats).filter_by(user_id=current_user.id))
     user_stats = result.scalars().first()
     if not user_stats:
-        user_stats = UserStats(user_id=current_user.id)
+        # Os `default=0` do modelo só valem ao gravar; somar antes disso falha com None.
+        user_stats = UserStats(
+            user_id=current_user.id, total_score=0, quizzes_completed=0,
+            correct_answers=0, incorrect_answers=0,
+        )
         db.add(user_stats)
 
     user_stats.total_score += score
@@ -1158,13 +1155,7 @@ async def submit_quiz(
     user_stats.correct_answers += correct_count
     user_stats.incorrect_answers += incorrect_count
 
-    # Real-time ranking update
-    ranking_update = await update_user_ranking(current_user.id, payload.specialty, db)
-
     await db.commit()
-
-    # Build league info
-    league_info = get_league_info(profile)
 
     accuracy_pct = round(correct_count / total_questions * 100, 1) if total_questions > 0 else 0
 
@@ -1180,61 +1171,8 @@ async def submit_quiz(
         "accuracy_pct": accuracy_pct,
         "answers_detail": answers_detail,
         "streak": streak_info,
-        "league": league_info,
-        "ranking_update": ranking_update,
     }
 
-@router.get("/arena/rankings", status_code=status.HTTP_200_OK)
-async def get_rankings(
-    specialty: str = "Geral",
-    period: str = "all_time",
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    query = select(
-        User.id.label('user_id'),
-        func.sum(QuizAttempt.score).label('total_score')
-    ).join(User, User.id == QuizAttempt.user_id).filter(QuizAttempt.mode == 'challenge')
-
-    if specialty != "Geral":
-        query = query.filter(QuizAttempt.quiz_specialty == specialty)
-    
-    query = query.group_by(User.id).order_by(func.sum(QuizAttempt.score).desc()).limit(100)
-    result = await db.execute(query)
-    rankings_data = result.all()
-
-    anonymous_rankings = [{"rank": i + 1, "score": r.total_score} for i, r in enumerate(rankings_data)]
-
-    user_rank = None
-    user_score = None
-    
-    subquery = select(
-        QuizAttempt.user_id,
-        func.sum(QuizAttempt.score).label('total_score')
-    ).filter(QuizAttempt.mode == 'challenge')
-    if specialty != "Geral":
-        subquery = subquery.filter(QuizAttempt.quiz_specialty == specialty)
-    subquery = subquery.group_by(QuizAttempt.user_id).subquery()
-
-    result = await db.execute(select(subquery.c.user_id, subquery.c.total_score).filter(subquery.c.user_id == current_user.id))
-    user_result = result.first()
-    
-    if user_result:
-        user_score = user_result.total_score
-        # To count higher scores, we need to query the subquery again or use a CTE.
-        # Let's construct a count query.
-        count_query = select(func.count()).select_from(subquery).filter(subquery.c.total_score > user_score)
-        result = await db.execute(count_query)
-        higher_scores_count = result.scalar()
-        user_rank = higher_scores_count + 1
-            
-    return {
-        "anonymous_rankings": anonymous_rankings,
-        "user_position": {
-            "rank": user_rank,
-            "score": user_score
-        }
-    }
 
 @router.post("/libraries/{library_id}/chat", status_code=status.HTTP_200_OK)
 async def chat_with_library(
@@ -1482,358 +1420,9 @@ async def unenroll_from_exam(
 
     return {"message": "Inscrição removida com sucesso."}
 
-@router.get("/arena/ranking/{exam_code}", status_code=status.HTTP_200_OK)
-async def get_exam_ranking(
-    exam_code: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    XP-based ranking for an exam. Shows effort (XP), not just accuracy.
-    Pads with bots to ensure minimum 20 participants.
-    """
-    from ..models import UserXpProfile
-
-    # 1. Get real users with XP > 0 for this exam
-    query = select(
-        User.id,
-        User.username,
-        User.full_name,
-        func.coalesce(func.sum(QuizAttempt.xp_earned), 0).label('total_xp'),
-        func.count(QuizAttempt.id).label('quizzes_completed'),
-    ).join(QuizAttempt).filter(
-        QuizAttempt.mode == exam_code,
-        QuizAttempt.mode != 'practice',
-    ).group_by(User.id, User.username, User.full_name).having(
-        func.coalesce(func.sum(QuizAttempt.xp_earned), 0) > 0
-    )
-
-    result = await db.execute(query)
-    real_users = result.all()
-
-    # Get league tiers for all real users
-    user_ids = [u.id for u in real_users]
-    tier_map = {}
-    if user_ids:
-        tier_result = await db.execute(
-            select(UserXpProfile.user_id, UserXpProfile.league_tier)
-            .filter(UserXpProfile.user_id.in_(user_ids))
-        )
-        tier_map = {row.user_id: row.league_tier for row in tier_result.all()}
-
-    from ..models import LEAGUE_TIERS as LT
-    tier_icon_map = {t['name']: t['icon'] for t in LT}
-
-    ranking = []
-    for user in real_users:
-        tier = tier_map.get(user.id, 'bronze')
-        ranking.append({
-            "name": f"@{user.username}" if user.username else user.full_name,
-            "xp": user.total_xp,
-            "league_tier": tier,
-            "league_icon": tier_icon_map.get(tier, '🥉'),
-            "quizzes_completed": user.quizzes_completed,
-            "isRealUser": True,
-            "user_id": user.id,
-        })
-
-    current_user_display = f"@{current_user.username}" if current_user.username else current_user.full_name
-
-    # 2. Pad with bots if fewer than 20
-    num_bots_to_add = max(0, 20 - len(ranking))
-
-    if num_bots_to_add > 0:
-        # Handles verossímeis: maioria sem marcador "médico" (gente real raramente põe título
-        # no username); a minoria titulada respeita o gênero (dra. p/ nomes femininos).
-        bot_usernames = [
-            "@juliana.rocha", "@ricardo_alves", "@camilaferraz", "@fe.moreira",
-            "@pedrohenriq", "@nat.oliveira", "@lucasmartins", "@amanda.szb",
-            "@rafa.torres", "@bruno_lima", "@carol.mvz", "@thiagocosta",
-            "@marina.gpe", "@gui.santana", "@isadora.mk", "@matheus.vf",
-            "@leticia.prado", "@andre.folli", "@bia.castro", "@vitorhugo.a",
-            "@paula.regis", "@diegomaia", "@julia.sanches", "@renan.krz",
-            "@larissa.b92", "@sofia.trt", "@gabizinha.st", "@marcosvin",
-            "@dra.juliana.f", "@dr.fernando.lp", "@dra.beatriz.g", "@dr.carlosmg",
-            "@manu.medufmg", "@joao.rezmed", "@anaclara.enare", "@hique.residencia",
-        ]
-
-        # Roster e progressão DETERMINÍSTICOS (seed por exame+temporada): o leaderboard
-        # fica estável entre refreshes e o XP dos bots cresce dia a dia como o de gente real.
-        from ..services.arena_service import get_active_season
-        now = datetime.now(timezone.utc)
-        active_season = await get_active_season(db)
-        if active_season:
-            season_key = f"season-{active_season.id}"
-            days_elapsed = max(1, (now - active_season.start_date).days + 1)
-        else:
-            season_key = now.strftime("%Y-%m")
-            days_elapsed = max(1, now.day)
-        seed_base = f"{exam_code}:{season_key}"
-
-        existing_names = {p['name'] for p in ranking}
-        available_bots = [b for b in bot_usernames if b not in existing_names]
-        roster_rng = random.Random(seed_base)
-        roster_rng.shuffle(available_bots)
-        selected_bots = available_bots[:num_bots_to_add]
-
-        tier_names = [t['name'] for t in LT]
-        today_key = now.date().isoformat()
-        for bot_name in selected_bots:
-            # Perfil fixo do bot na temporada (rng por nome, independente da ordem do loop)
-            brng = random.Random(f"{seed_base}:{bot_name}")
-            daily_rate = brng.uniform(3, 30)        # XP/dia: poucos grinders, muitos casuais
-            consistency = brng.uniform(0.5, 0.95)   # fração de dias em que estuda
-            tier_bump = brng.random() < 0.3         # XP de outros exames pode subir a liga
-            quizzes_factor = brng.uniform(0.15, 0.5)
-            # Sessão "de hoje" (muda diariamente, estável dentro do dia)
-            jitter = random.Random(f"{seed_base}:{bot_name}:{today_key}").randint(0, int(daily_rate))
-            bot_xp = max(15, int(daily_rate * days_elapsed * consistency) + jitter)
-
-            bot_tier = tier_names[0]
-            for t in LT:
-                if bot_xp >= t['min_xp']:
-                    bot_tier = t['name']
-            if tier_bump:
-                bump_idx = tier_names.index(bot_tier) + 1
-                if bump_idx < len(tier_names):
-                    bot_tier = tier_names[bump_idx]
-
-            ranking.append({
-                "name": bot_name,
-                "xp": bot_xp,
-                "league_tier": bot_tier,
-                "league_icon": tier_icon_map.get(bot_tier, '🥉'),
-                "quizzes_completed": max(1, int(days_elapsed * consistency * quizzes_factor)),
-                "isRealUser": False,
-                "user_id": None,
-            })
-
-    # 3. Sort by XP descending and assign ranks
-    sorted_ranking = sorted(ranking, key=lambda x: x['xp'], reverse=True)
-
-    final_ranking = []
-    for i, player in enumerate(sorted_ranking):
-        final_ranking.append({
-            "rank": i + 1,
-            "name": player['name'],
-            "xp": player['xp'],
-            "league_tier": player['league_tier'],
-            "league_icon": player['league_icon'],
-            "quizzes_completed": player['quizzes_completed'],
-            "isRealUser": player['isRealUser'],
-        })
-
-    return {"ranking_data": final_ranking}
-
 
 # =============================================================================
-# SEASON ENDPOINTS
-# =============================================================================
-
-@router.get("/arena/current-season", status_code=status.HTTP_200_OK)
-async def get_current_season(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get information about the current active season"""
-    from ..services.arena_service import get_active_season, get_current_or_upcoming_season
-    
-    active = await get_active_season(db)
-    if active:
-        return {
-            "season": {
-                "id": active.id,
-                "name": active.name,
-                "start_date": active.start_date.isoformat(),
-                "end_date": active.end_date.isoformat(),
-                "is_active": True,
-                "days_remaining": (active.end_date - datetime.now(timezone.utc)).days
-            }
-        }
-    
-    # Check for upcoming season
-    upcoming = await get_current_or_upcoming_season(db)
-    if upcoming:
-        return {
-            "season": {
-                "id": upcoming.id,
-                "name": upcoming.name,
-                "start_date": upcoming.start_date.isoformat(),
-                "end_date": upcoming.end_date.isoformat(),
-                "is_active": False,
-                "days_until_start": (upcoming.start_date - datetime.now(timezone.utc)).days
-            }
-        }
-    
-    return {"season": None}
-
-
-@router.get("/arena/my-season-stats/{exam_code}", status_code=status.HTTP_200_OK)
-async def get_my_season_stats(
-    exam_code: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get user's ranking stats for the current season for a specific exam"""
-    from ..services.arena_service import get_user_season_stats
-    
-    stats = await get_user_season_stats(current_user.id, exam_code, db)
-    
-    if not stats:
-        return {
-            "has_stats": False,
-            "message": "Você ainda não participou desta competição nesta temporada."
-        }
-    
-    return {
-        "has_stats": True,
-        **stats
-    }
-
-
-# =============================================================================
-# SHARE CARD ENDPOINTS
-# =============================================================================
-
-class ShareCardRequest(BaseModel):
-    exam_code: str
-    exam_name: str
-    exam_flag: str
-    score: int
-    rank_position: Optional[int] = None
-    percentile: Optional[int] = None
-    season_name: Optional[str] = None
-
-@router.post("/arena/generate-share-card", status_code=status.HTTP_200_OK)
-async def generate_share_card(
-    payload: ShareCardRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    Generate a shareable card image for quiz results.
-    Returns the image as base64 encoded string.
-    """
-    from ..services.share_card_service import generate_quiz_result_card
-    import base64
-    
-    try:
-        image_bytes = generate_quiz_result_card(
-            user_name=current_user.full_name,
-            exam_name=payload.exam_name,
-            exam_flag=payload.exam_flag,
-            score=payload.score,
-            rank_position=payload.rank_position,
-            percentile=payload.percentile,
-            season_name=payload.season_name
-        )
-        
-        # Convert to base64 for easy frontend consumption
-        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-        
-        return {
-            "success": True,
-            "image_data": f"data:image/png;base64,{image_base64}",
-            "share_text": f"Acabei de completar um simulado de {payload.exam_name} no Qython! 🏆 Minha pontuação: {payload.score} pts",
-            "share_url": f"{Config.WEB_BASE_URL}/arena"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error generating share card: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao gerar card de compartilhamento."
-        )
-
-
-# =============================================================================
-# CHALLENGE ENDPOINTS
-# =============================================================================
-
-class CreateChallengeRequest(BaseModel):
-    opponent_username: str
-    exam_code: str
-    # Opcional: o mobile não manda (422 histórico); fallback = exam_code
-    exam_name: Optional[str] = None
-
-class RespondChallengeRequest(BaseModel):
-    accept: bool
-
-class SubmitChallengeScoreRequest(BaseModel):
-    score: int
-
-@router.post("/arena/challenges", status_code=status.HTTP_201_CREATED)
-async def create_challenge(
-    payload: CreateChallengeRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Create a new head-to-head challenge"""
-    from ..services.challenge_service import create_challenge as create_challenge_svc
-    
-    result = await create_challenge_svc(
-        challenger=current_user,
-        opponent_username=payload.opponent_username,
-        exam_code=payload.exam_code,
-        exam_name=payload.exam_name or payload.exam_code,
-        db=db
-    )
-    
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    return result
-
-
-@router.get("/arena/challenges", status_code=status.HTTP_200_OK)
-async def get_my_challenges(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get all challenges for current user (sent and received)"""
-    from ..services.challenge_service import get_my_challenges as get_my_challenges_svc
-    
-    return await get_my_challenges_svc(current_user, db)
-
-
-@router.post("/arena/challenges/{challenge_id}/respond", status_code=status.HTTP_200_OK)
-async def respond_to_challenge(
-    challenge_id: int,
-    payload: RespondChallengeRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Accept or decline a challenge"""
-    from ..services.challenge_service import respond_to_challenge as respond_svc
-    
-    result = await respond_svc(current_user, challenge_id, payload.accept, db)
-    
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    return result
-
-
-@router.post("/arena/challenges/{challenge_id}/submit-score", status_code=status.HTTP_200_OK)
-async def submit_challenge_score(
-    challenge_id: int,
-    payload: SubmitChallengeScoreRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Submit score for a challenge after completing the quiz"""
-    from ..services.challenge_service import submit_challenge_score as submit_svc
-
-    result = await submit_svc(current_user, challenge_id, payload.score, db)
-
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    return result
-
-
-# =============================================================================
-# XP PROFILE & LEAGUE ENDPOINTS
+# XP PROFILE
 # =============================================================================
 
 @router.get("/arena/my-xp-profile", status_code=status.HTTP_200_OK)
@@ -1841,8 +1430,8 @@ async def get_my_xp_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get user's XP profile with streak, league tier, and recent XP history."""
-    from ..services.xp_service import get_or_create_xp_profile, get_league_info
+    """Get user's XP profile with streak and recent XP history."""
+    from ..services.xp_service import get_or_create_xp_profile
     from ..models import XpTransaction
 
     profile = await get_or_create_xp_profile(current_user.id, db)
@@ -1863,68 +1452,13 @@ async def get_my_xp_profile(
         for tx in xp_history_result.scalars().all()
     ]
 
-    league = get_league_info(profile)
-
     return {
         "total_xp": profile.total_xp,
-        "season_xp": profile.season_xp,
         "current_streak": profile.current_streak,
         "longest_streak": profile.longest_streak,
         "last_activity_date": profile.last_activity_date.isoformat() if profile.last_activity_date else None,
-        "league": league,
-        # Campos flat que web/mobile consomem (tier como SLUG p/ ícone + i18n; o
-        # league.next_tier aninhado é display name e não serve de chave)
-        "league_tier": league["tier"],
-        "next_tier": league["next_tier_name"],
-        "next_tier_icon": league["next_tier_icon"],
-        "xp_to_next": league["xp_to_next"],
-        "next_tier_min_xp": league["next_tier_min_xp"],
-        "season_rank": profile.season_rank,
-        "season_percentile": profile.season_percentile,
         "xp_history": xp_history,
     }
-
-
-@router.get("/arena/league-tiers", status_code=status.HTTP_200_OK)
-async def get_league_tiers():
-    """Get all league tiers with their XP thresholds."""
-    from ..models import LEAGUE_TIERS
-    return {"tiers": LEAGUE_TIERS}
-
-
-class MatchmakingRequest(BaseModel):
-    exam_code: str
-
-@router.post("/arena/matchmaking", status_code=status.HTTP_200_OK)
-async def find_opponent(
-    payload: MatchmakingRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Find a random opponent for a challenge (skill-based matchmaking)."""
-    from ..services.xp_service import find_random_opponent
-    from ..services.challenge_service import create_challenge as create_challenge_svc
-
-    opponent = await find_random_opponent(current_user, payload.exam_code, db)
-
-    if not opponent:
-        return {"success": False, "error": "Nenhum oponente encontrado. Tente novamente mais tarde."}
-
-    # Get exam name for the challenge
-    result = await db.execute(select(ArenaExam).filter(ArenaExam.exam_code == payload.exam_code))
-    exam = result.scalars().first()
-    exam_name = exam.title_key if exam else payload.exam_code
-
-    # Auto-create challenge
-    challenge_result = await create_challenge_svc(
-        challenger=current_user,
-        opponent_username=opponent.username,
-        exam_code=payload.exam_code,
-        exam_name=exam_name,
-        db=db
-    )
-
-    return challenge_result
 
 
 # =============================================================================
