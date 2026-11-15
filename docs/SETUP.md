@@ -74,8 +74,11 @@ corta o acesso dele na hora. Se o sistema perguntar sobre o firewall, permita em
 Contrato técnico em [`PAREAMENTO.md`](PAREAMENTO.md).
 
 **Atualização.** Windows e AppImage atualizam sozinhos, em segundo plano, e instalam quando o app é
-fechado. O `.deb` atualiza pelo gerenciador de pacotes. No macOS o app só avisa. Para desligar:
-`QYTHON_NO_UPDATE=1` (checar atualização revela o IP e a versão ao GitHub).
+fechado. O `.deb` não procura atualização (não existe repositório de pacotes): para atualizar, baixe o
+instalador novo na página de releases. No macOS o app só avisa. Checar atualização revela o seu IP e a
+versão do Qython ao GitHub; para desligar, desmarque *Ajuda* → *Procurar atualizações automaticamente*
+(ou use `QYTHON_NO_UPDATE=1`). Quem instala pelo `.deb` não tem essa opção porque o app nunca consulta
+o GitHub.
 
 Detalhes técnicos em [`packages/desktop/README.md`](../packages/desktop/README.md).
 

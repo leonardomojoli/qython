@@ -180,14 +180,15 @@ silencioso no Windows, dmg no macOS) antes de repetir a fumaça no app instalado
 
 `electron-updater` pelo GitHub Releases (`src/updater.js`): baixa em segundo plano e **instala quando o
 app é fechado**, sem interromper o médico; o banco se atualiza sozinho na abertura seguinte (as
-migrations rodam no bootstrap). Para desligar: `autoUpdate: false` no `settings.json` ou
-`QYTHON_NO_UPDATE=1` (checar atualização revela o IP e a versão ao GitHub).
+migrations rodam no bootstrap). Para desligar: *Ajuda* → *Procurar atualizações automaticamente* (grava
+`autoUpdate: false` no `settings.json`, e vale na hora) ou `QYTHON_NO_UPDATE=1`, que manda mais que o menu
+(checar atualização revela o IP e a versão ao GitHub). O deb não consulta o GitHub e não mostra a opção.
 
 | Sistema | Atualização |
 |---|---|
 | Windows (NSIS) | automática |
 | Linux AppImage | automática |
-| Linux deb | pelo gerenciador de pacotes do sistema |
+| Linux deb | nenhuma (não há repositório de pacotes); baixe o instalador novo |
 | macOS | **só avisa**: sem assinatura o macOS não deixa o app se trocar sozinho |
 
 ### Assinatura do Windows (SignPath Foundation): o que falta é cadastro seu
