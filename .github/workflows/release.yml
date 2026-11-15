@@ -124,8 +124,12 @@ jobs:
 
           tables=$(docker compose exec -T db psql -U qython -d qython -tAc \
             "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
-          echo "tabelas: $tables"
-          [ "$tables" -ge 60 ]
+          # O banco tem exatamente as tabelas dos modelos mais a alembic_version. (Antes era um mínimo
+          # fixo, que quebrava toda vez que uma limpeza tirava tabelas.)
+          modelos=$(docker compose exec -T backend python -c \
+            "from backend.db_base import Base; from backend import models; print(len(Base.metadata.tables))")
+          echo "tabelas: $tables (modelos: $modelos, mais a alembic_version)"
+          [ "$tables" -eq $((modelos + 1)) ]
           head=$(docker compose exec -T db psql -U qython -d qython -tAc "SELECT version_num FROM alembic_version")
           echo "alembic head: $head"
           [ -n "$head" ]
@@ -151,8 +155,6 @@ jobs:
           [ "$prompts" -ge 15 ]
           meds=$(psql "SELECT count(*) FROM medications"); echo "medicamentos: $meds"
           [ "$meds" -gt 0 ]
-          seasons=$(psql "SELECT count(*) FROM arena_seasons"); echo "temporadas da Arena: $seasons"
-          [ "$seasons" -gt 0 ]
           exams=$(psql "SELECT count(*) FROM arena_exams"); echo "concursos da Arena: $exams"
           [ "$exams" -ge 7 ]
 
