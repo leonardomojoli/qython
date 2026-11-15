@@ -1,8 +1,7 @@
 # Termos adicionais da licença / Additional license terms
 
-> **Rascunho para revisão jurídica.** Este texto ainda não vale: só passa a valer, para as versões do Qython
-> publicadas depois dele, quando o mantenedor o aprovar e uma versão o incluir. As versões já publicadas
-> (1.0.0 a 1.2.0) continuam sob a AGPL-3.0, sem estes termos.
+> **Vigência.** Estes termos valem para as versões do Qython publicadas a partir da 1.3.0. As versões
+> anteriores (1.0.0 a 1.2.0) continuam sob a AGPL-3.0, sem estes termos.
 
 O Qython é distribuído sob a **GNU Affero General Public License, versão 3** ([`LICENSE`](LICENSE)).
 Nos termos da seção 7 da AGPL-3.0, o titular dos direitos autorais acrescenta ao material de sua autoria os
